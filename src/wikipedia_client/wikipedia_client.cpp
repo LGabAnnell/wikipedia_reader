@@ -1,102 +1,92 @@
 // WikipediaClient.cpp
+
 #include "wikipedia_client.h"
+#include "components/searchbar/SearchBarModel.h"
+#include <QUrlQuery>
+#include <QUrl>
+#include <iostream>
 
-namespace Wikipedia
-{
+namespace Wikipedia {
 
-    WikipediaClient::WikipediaClient() : curl(curl_easy_init()), baseUrl("https://en.wikipedia.org/w/api.php")
-    {
-        if (!curl)
-        {
-            throw std::runtime_error("Failed to initialize CURL");
-        }
+    WikipediaClient::WikipediaClient(QObject *parent) : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
+        baseUrl = "https://test.wikipedia.org/w/api.php";
     }
 
-    WikipediaClient::~WikipediaClient()
-    {
-        if (curl)
-        {
-            curl_easy_cleanup(curl);
-        }
+    WikipediaClient::~WikipediaClient() = default; // Default implementation
+
+    void WikipediaClient::search(const QString &query, int limit) {
+        QUrl url(baseUrl);
+        QUrlQuery urlQuery;
+        urlQuery.addQueryItem("action", "query");
+        urlQuery.addQueryItem("format", "json");
+        urlQuery.addQueryItem("list", "search");
+        urlQuery.addQueryItem("srsearch", query);
+        urlQuery.addQueryItem("srlimit", QString::number(limit));
+        url.setQuery(urlQuery);
+
+        QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+        connect(reply, &QNetworkReply::finished, this, [this, reply]() { this->onSearchReply(reply); });
     }
 
-    size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::string *output)
-    {
-        size_t total_size = size * nmemb;
-        output->append((char *)contents, total_size);
-        return total_size;
-    }
+    void WikipediaClient::onSearchReply(QNetworkReply *reply) {
+        if (reply->error() == QNetworkReply::NoError) {
+            QByteArray response = reply->readAll();
+            QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
+            QJsonObject jsonObj = jsonDoc.object();
+            QJsonArray searchResults = jsonObj["query"].toObject()["search"].toArray();
 
-    std::string WikipediaClient::httpGet(const std::string &url)
-    {
-        std::string readBuffer;
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "WikipediaClient/1.0");
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-        CURLcode res = curl_easy_perform(curl);
-        if (res != CURLE_OK)
-        {
-            throw std::runtime_error(curl_easy_strerror(res));
-        }
-        return readBuffer;
-    }
-
-    std::vector<SearchResult> WikipediaClient::search(const std::string &query, int limit)
-    {
-        std::string encodedQuery = curl_easy_escape(curl, query.c_str(), query.length());
-        std::string url = baseUrl + "?action=query&format=json&list=search&srsearch=" + encodedQuery + "&srlimit=" + std::to_string(limit);
-        std::string response = httpGet(url);
-        json j = json::parse(response);
-
-        std::vector<SearchResult> results;
-        for (auto &item : j["query"]["search"])
-        {
-            results.push_back({item["title"],
-                               item["snippet"],
-                               item["pageid"]});
-        }
-        return results;
-    }
-
-    Page WikipediaClient::getPage(const std::string &title)
-    {
-        std::string url = baseUrl + "?action=query&format=json&prop=extracts&titles=" + title + "&explaintext=1";
-        std::string response = httpGet(url);
-        json j = json::parse(response);
-
-        auto pages = j["query"]["pages"];
-        for (auto it = pages.begin(); it != pages.end(); ++it)
-        {
-            if (it.value()["title"] == title)
-            {
-                return {
-                    it.value()["title"],
-                    it.value()["extract"],
-                    std::stoi(it.key())};
+            QVector<SearchResult> results;
+            for (const QJsonValue &result : searchResults) {
+                results.append({ result["title"].toString(),
+                                result["snippet"].toString(),
+                                result["pageid"].toInt() });
             }
+            emit searchCompleted(results);
+        } else {
+            emit errorOccurred(reply->errorString());
         }
-        throw std::runtime_error("Page not found");
+        reply->deleteLater();
     }
 
-    Page WikipediaClient::getPageById(int pageid)
-    {
-        std::string url = baseUrl + "?action=query&format=json&prop=extracts&pageids=" + std::to_string(pageid) + "&explaintext=1";
-        std::string response = httpGet(url);
-        json j = json::parse(response);
+    void WikipediaClient::getPage(const QString &title) {
+        QUrl url(baseUrl);
+        QUrlQuery urlQuery;
+        urlQuery.addQueryItem("action", "query");
+        urlQuery.addQueryItem("format", "json");
+        urlQuery.addQueryItem("prop", "extracts");
+        urlQuery.addQueryItem("titles", title);
+        urlQuery.addQueryItem("explaintext", "1");
+        url.setQuery(urlQuery);
 
-        auto pages = j["query"]["pages"];
-        for (auto it = pages.begin(); it != pages.end(); ++it)
-        {
-            if (std::stoi(it.key()) == pageid)
-            {
-                return {
-                    it.value()["title"],
-                    it.value()["extract"],
-                    std::stoi(it.key())};
+        QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+        connect(reply, &QNetworkReply::finished, this, [this, reply, title]() { this->onPageReply(reply, title); });
+    }
+
+    void WikipediaClient::onPageReply(QNetworkReply *reply, const QString &title) {
+        if (reply->error() == QNetworkReply::NoError) {
+            QByteArray response = reply->readAll();
+            QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
+            QJsonObject jsonObj = jsonDoc.object();
+            QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
+
+            for (auto it = pages.begin(); it != pages.end(); ++it) {
+                if (it.value().toObject()["title"].toString() == title) {
+                    Page page;
+                    page.title = it.value().toObject()["title"].toString();
+                    page.extract = it.value().toObject()["extract"].toString();
+                    page.pageid = it.key().toInt();
+                    emit pageReceived(page);
+                    break;
+                }
             }
+        } else {
+            emit errorOccurred(reply->errorString());
         }
-        throw std::runtime_error("Page not found");
+        reply->deleteLater();
+    }
+
+    void WikipediaClient::getPageById(int pageid) {
+        // Implement similarly to getPage
     }
 
 } // namespace Wikipedia

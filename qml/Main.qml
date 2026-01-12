@@ -1,6 +1,5 @@
 // Main.qml
 import QtQuick
-import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 
@@ -18,13 +17,10 @@ ApplicationWindow {
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
+        Layout.fillWidth: true
+        Layout.fillHeight: true
 
-        SearchBar {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 50
-            Layout.rightMargin: 10
-            Layout.leftMargin: 10
-        }
+        SearchBar {}
 
         RowLayout {
             Layout.fillWidth: true

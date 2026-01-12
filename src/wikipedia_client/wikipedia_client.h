@@ -1,56 +1,54 @@
-// Wikipedia API C++ Client Outline
-#include <iostream>
-#include <string>
-#include <vector>
-#include <map>
-#include <algorithm>
-#include <ranges>
-#include <regex>
-#include <curl/curl.h>
-#include <nlohmann/json.hpp>
+// WikipediaClient.h
 
-using json = nlohmann::json;
+#include <QObject>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QString>
+#include <QVector>
 
 namespace Wikipedia
 {
 
-    // Structure to represent a Wikipedia search result
     struct SearchResult
     {
-        std::string title;
-        std::string snippet;
+        QString title;
+        QString snippet;
         int pageid;
     };
 
-    // Structure to represent a Wikipedia page
     struct Page
     {
-        std::string title;
-        std::string extract;
+        QString title;
+        QString extract;
         int pageid;
     };
 
-    class WikipediaClient
+    class WikipediaClient : public QObject
     {
+        Q_OBJECT
     public:
-        WikipediaClient();
+        explicit WikipediaClient(QObject *parent = nullptr);
         ~WikipediaClient();
 
-        // Search Wikipedia
-        std::vector<SearchResult> search(const std::string &query, int limit = 10);
+        void search(const QString &query, int limit = 10);
+        void getPage(const QString &title);
+        void getPageById(int pageid);
 
-        // Get page content by title
-        Page getPage(const std::string &title);
+    signals:
+        void searchCompleted(const QVector<SearchResult> &results);
+        void pageReceived(const Page &page);
+        void errorOccurred(const QString &error);
 
-        // Get page content by ID
-        Page getPageById(int pageid);
+    private slots:
+        void onSearchReply(QNetworkReply *reply);
+        void onPageReply(QNetworkReply *reply, const QString &title);
 
     private:
-        CURL *curl;
-        std::string baseUrl;
-
-        // Helper function to perform HTTP GET request
-        std::string httpGet(const std::string &url);
+        QNetworkAccessManager *networkManager;
+        QString baseUrl;
     };
 
 } // namespace Wikipedia

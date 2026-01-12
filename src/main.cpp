@@ -1,9 +1,11 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <iostream>
 #include "wikipedia_client/wikipedia_client.h"
+#include "components/searchbar/SearchBarModel.h"
 
-int main(int argc, char *argv[])
-{
+
+int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
 
     QQmlApplicationEngine engine;
@@ -11,30 +13,20 @@ int main(int argc, char *argv[])
         &engine,
         &QQmlApplicationEngine::objectCreationFailed,
         &app,
-        []()
-        { QCoreApplication::exit(-1); },
+        []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
+
     engine.loadFromModule("wikipedia_qt", "Main");
 
     Wikipedia::WikipediaClient client;
+    QObject::connect(&client, &Wikipedia::WikipediaClient::searchCompleted,
+                     [](const QVector<Wikipedia::SearchResult> &results) {
+                         for (const auto &result : results) {
+                             std::cout << "Title:" << result.title.toStdString() << "Snippet:" << result.snippet.toStdString() << "ID:" << result.pageid << std::endl;
+                         }
+                     });
 
-    // Search for articles
-    auto results = client.search("C++ programming language");
-    for (const auto &result : results)
-    {
-        std::cout << "Title: " << result.title << "\nSnippet: " << result.snippet << "\nID: " << result.pageid << "\n\n";
-    }
-
-    // Get page content
-    try
-    {
-        auto page = client.getPage("C++");
-        std::cout << "Title: " << page.title << "\nContent: " << page.extract.substr(0, 200) << "...\n";
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
+    client.search("C++ programming language");
 
     return app.exec();
 }
