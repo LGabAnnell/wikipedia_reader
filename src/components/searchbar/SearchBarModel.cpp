@@ -1,18 +1,34 @@
+// src/components/searchbar/SearchBarModel.cpp
 #include "SearchBarModel.h"
-
 #include "wikipedia_client/wikipedia_client.h"
+#include "GlobalState.h"
 
 SearchBarModel *SearchBarModel::m_instance = nullptr;
 
 SearchBarModel::SearchBarModel(QObject *parent) : QObject(parent) {
     m_isSearching = false;
-    m_searchText = "hello";
+    m_searchText = "";
+    m_globalState = nullptr;
+    m_wikipediaClient = new Wikipedia::WikipediaClient(this);
 
     if (!m_instance) {
         m_instance = this;
     }
 }
 
+void SearchBarModel::setGlobalState(GlobalState *globalState) {
+    m_globalState = globalState;
+
+    // Connect WikipediaClient signals to update GlobalState
+    if (m_globalState && m_wikipediaClient) {
+        connect(m_wikipediaClient, &Wikipedia::WikipediaClient::searchCompleted,
+                m_globalState, &GlobalState::setSearchResults);
+        connect(m_wikipediaClient, &Wikipedia::WikipediaClient::pageReceived,
+                m_globalState, &GlobalState::setCurrentPage);
+        connect(m_wikipediaClient, &Wikipedia::WikipediaClient::errorOccurred,
+                this, &SearchBarModel::handleError);
+    }
+}
 QString SearchBarModel::searchText() const {
     return m_searchText;
 }
@@ -33,9 +49,38 @@ void SearchBarModel::performSearch() {
         m_isSearching = true;
         emit isSearchingChanged(m_isSearching);
         emit searchRequested(m_searchText);
+
+        if (m_globalState) {
+            m_globalState->setIsLoading(true);
+            // Clear previous search results and errors
+            m_globalState->setSearchResults({});
+            m_globalState->clearErrorMessage();
+        }
+
+        if (m_wikipediaClient) {
+            m_wikipediaClient->search(m_searchText);
+        }
+    }
+}
+
+void SearchBarModel::handleError(const QString &error) {
+    qWarning() << "Search error:" << error;
+    if (m_globalState) {
+        m_globalState->setIsLoading(false);
+        m_globalState->setErrorMessage(error);
+    }
+    m_isSearching = false;
+    emit isSearchingChanged(m_isSearching);
+    emit errorOccurred(error);
+}
+
+void SearchBarModel::clearSearchResults() {
+    if (m_globalState) {
+        m_globalState->setSearchResults({});
     }
 }
 
 const SearchBarModel *SearchBarModel::instance() {
     return m_instance;
 }
+

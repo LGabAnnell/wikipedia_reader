@@ -4,6 +4,9 @@
 #include <QObject>
 #include <QString>
 #include <QQmlEngine>
+#include "GlobalState.h"
+
+class WikipediaClient; // Forward declaration
 
 /**
  * @brief The SearchBar class provides the backend logic for the SearchBar QML component.
@@ -46,6 +49,15 @@ public:
      */
     static const SearchBarModel *instance();
 
+    /**
+     * @brief Sets the GlobalState instance.
+     * @param globalState The GlobalState instance to use.
+     */
+    void setGlobalState(GlobalState *globalState);
+
+    // Add method to clear search results
+    Q_INVOKABLE void clearSearchResults();
+
 signals:
     /**
      * @brief Emitted when the search text changes.
@@ -58,23 +70,29 @@ signals:
      * @param query The search query.
      */
     void searchRequested(const QString &query);
-
     /**
      * @brief Emitted when the search status changes.
      * @param isSearching True if a search is in progress, false otherwise.
      */
     void isSearchingChanged(bool isSearching);
 
+    // Add error signal
+    void errorOccurred(const QString &error);
+
 public slots:
     /**
      * @brief Initiates a search with the current search text.
      */
     void performSearch();
+private slots:
+    void handleError(const QString &error);
 
 private:
     QString m_searchText; ///< The current search text.
     bool m_isSearching;   ///< Indicates whether a search is currently in progress.
     static SearchBarModel *m_instance;
+    GlobalState *m_globalState; ///< The GlobalState instance.
+    Wikipedia::WikipediaClient *m_wikipediaClient; ///< The Wikipedia client instance.
 };
 
 #endif // SEARCHBAR_H

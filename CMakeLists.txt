@@ -13,18 +13,21 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/searchbar
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/components
+    ${CMAKE_CURRENT_SOURCE_DIR}/test
 )
 
 find_package(Qt6 REQUIRED COMPONENTS Quick)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Network)
-
+find_package(Qt6 REQUIRED COMPONENTS Test)
 
 # Add the project's source directory and nested directories to the include path
 qt_standard_project_setup(REQUIRES 6.8)
 
 qt_add_executable(appwikipedia_qt
     src/main.cpp
+    src/GlobalState.cpp
     src/components/searchbar/SearchBarModel.cpp
     src/wikipedia_client/wikipedia_client.cpp
 )
@@ -56,15 +59,11 @@ qt_add_qml_module(appwikipedia_qt
         icons/location.png
 )
 
-# Set the QML import path to include the project's QML directory
-target_compile_definitions(appwikipedia_qt PRIVATE QML_IMPORT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/qml")
-
 set_target_properties(appwikipedia_qt PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
-    
 )
 
 target_link_libraries(appwikipedia_qt PRIVATE Qt::Quick Qt::Core Qt::Network)
@@ -76,3 +75,4 @@ install(TARGETS appwikipedia_qt
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
+add_subdirectory(tests)

@@ -1,0 +1,19 @@
+Start testing: Jan 13 17:05 CET
+----------------------------------------------------------
+Unable to find executable: /code/wikipedia_qt/bin/test_wikipedia_client
+1/1 Testing: wikipedia_client_tests
+1/1 Test: wikipedia_client_tests
+Command: ""
+Directory: /code/wikipedia_qt
+"wikipedia_client_tests" start time: 
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"wikipedia_client_tests" end time: Jan 13 17:05 CET
+"wikipedia_client_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Jan 13 17:05 CET
