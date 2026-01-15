@@ -3,17 +3,11 @@
 #include "wikipedia_client/wikipedia_client.h"
 #include "GlobalState.h"
 
-SearchBarModel *SearchBarModel::m_instance = nullptr;
-
 SearchBarModel::SearchBarModel(QObject *parent) : QObject(parent) {
     m_isSearching = false;
     m_searchText = "";
     m_globalState = nullptr;
     m_wikipediaClient = new Wikipedia::WikipediaClient(this);
-
-    if (!m_instance) {
-        m_instance = this;
-    }
 }
 
 void SearchBarModel::setGlobalState(GlobalState *globalState) {
@@ -29,6 +23,7 @@ void SearchBarModel::setGlobalState(GlobalState *globalState) {
                 this, &SearchBarModel::handleError);
     }
 }
+
 QString SearchBarModel::searchText() const {
     return m_searchText;
 }
@@ -78,9 +73,5 @@ void SearchBarModel::clearSearchResults() {
     if (m_globalState) {
         m_globalState->setSearchResults({});
     }
-}
-
-const SearchBarModel *SearchBarModel::instance() {
-    return m_instance;
 }
 

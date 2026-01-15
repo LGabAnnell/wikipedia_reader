@@ -4,15 +4,25 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/include/qt6/**",
-                "/usr/include/nlohmann/**",
-                "/usr/include/curl/**"
+                "/usr/include/qt6",
+                "/usr/include/qt6/**"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/clang",
+            "compilerPath": "/usr/bin/gcc",
             "cStandard": "c17",
             "cppStandard": "c++20",
-            "intelliSenseMode": "linux-clang-x64"
+            "intelliSenseMode": "linux-gcc-x64",
+            // "compilerArgs": [
+            //     "-I/usr/include/qt6",
+            //     "-I/usr/include/qt6/QtCore",
+            //     "-I/usr/include/qt6/QtGui",
+            //     "-I/usr/include/qt6/QtQml",
+            //     "-I/usr/include/qt6/QtQuick",
+            //     "-I/usr/include/qt6/QtQuickControls2",
+            //     "-I/usr/include/qt6/QtNetwork",
+            //     "-I/usr/include/qt6/QtWebEngineCore",
+            //     "-I/usr/include/qt6/QtWebEngineWidgets"
+            // ]
         }
     ],
     "version": 4

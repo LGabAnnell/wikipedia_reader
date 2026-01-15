@@ -5,7 +5,10 @@ project(GlobalStateTests)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../SearchBarModule
+)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Test)
 
@@ -78,7 +81,7 @@ enable_testing()
 qt_add_executable(integration_test
     test_integration.cpp
     ${CMAKE_SOURCE_DIR}/src/GlobalState.cpp
-    ${CMAKE_SOURCE_DIR}/src/components/searchbar/SearchBarModel.cpp
+    ${CMAKE_SOURCE_DIR}/SearchBarModule/SearchBarModel.cpp
     ${CMAKE_SOURCE_DIR}/src/wikipedia_client/wikipedia_client.cpp
 )
 
@@ -99,7 +102,7 @@ add_test(NAME wikipedia_client_tests COMMAND test_wikipedia_client)
 qt_add_executable(test_search_display 
     test_search_display.cpp
     ${CMAKE_SOURCE_DIR}/src/GlobalState.cpp
-    ${CMAKE_SOURCE_DIR}/src/components/searchbar/SearchBarModel.cpp
+    ${CMAKE_SOURCE_DIR}/SearchBarModule/SearchBarModel.cpp
     ${CMAKE_SOURCE_DIR}/src/wikipedia_client/wikipedia_client.cpp
 )
 

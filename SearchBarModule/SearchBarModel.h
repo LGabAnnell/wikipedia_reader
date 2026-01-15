@@ -17,7 +17,6 @@ class WikipediaClient; // Forward declaration
 class SearchBarModel : public QObject {
     Q_OBJECT
         QML_ELEMENT
-        QML_SINGLETON
         Q_PROPERTY(QString searchText READ searchText WRITE setSearchText NOTIFY searchTextChanged)
         Q_PROPERTY(bool isSearching READ isSearching NOTIFY isSearchingChanged)
 

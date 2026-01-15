@@ -3,7 +3,7 @@
 #include <QDebug>
 #include <QTimer>
 #include "GlobalState.h"
-#include "components/searchbar/SearchBarModel.h"
+#include "SearchBarModel.h"
 #include "wikipedia_client/wikipedia_client.h"
 
 int main(int argc, char *argv[]) {

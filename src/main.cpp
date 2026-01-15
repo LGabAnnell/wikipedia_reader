@@ -3,7 +3,7 @@
 #include <QQmlContext>
 #include <iostream>
 #include "wikipedia_client/wikipedia_client.h"
-#include "components/searchbar/SearchBarModel.h"
+#include "SearchBarModel.h"
 #include "GlobalState.h"
 
 int main(int argc, char *argv[]) {

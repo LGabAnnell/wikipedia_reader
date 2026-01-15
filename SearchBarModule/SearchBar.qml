@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-import wikipedia_qt 1.0
+import SearchBar 1.0
 
 RowLayout {
     id: searchBar
@@ -10,19 +10,16 @@ RowLayout {
     spacing: 10
     // Remove padding property as RowLayout doesn't support it
 
-    // Add margin using anchors instead
-    anchors.left: parent.left
-    anchors.leftMargin: 10
-    anchors.right: parent.right
-    anchors.rightMargin: 10
-    anchors.top: parent.top
-    anchors.topMargin: 10
+    SearchBarModel {
+        id: searchBarModel
+    }
+
     TextField {
         id: searchText
         Layout.fillWidth: true
         placeholderText: "Search Wikipedia"
-        onTextChanged: SearchBarModel.searchText = text
-        enabled: !SearchBarModel.isSearching
+        onTextChanged: searchBarModel.searchText = text
+        enabled: !searchBarModel.isSearching
         font.pixelSize: 16
         color: "#333"
 
@@ -55,8 +52,8 @@ RowLayout {
     Button {
         id: searchButton
         text: "Search"
-        enabled: !SearchBarModel.isSearching && searchText.text.length > 0
-        onClicked: SearchBarModel.performSearch()
+        enabled: !searchBarModel.isSearching && searchText.text.length > 0
+        onClicked: searchBarModel.performSearch()
 
         background: Rectangle {
             color: enabled ? "#4a90e2" : "#cccccc"
