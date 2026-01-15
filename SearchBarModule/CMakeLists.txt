@@ -1,6 +1,8 @@
 # SearchBarModule CMakeLists.txt
 cmake_minimum_required(VERSION 3.16)
 
+set(QT_QML_GENERATE_QMLLS_INI ON)
+
 # Enable AUTOMOC for Qt meta-object compiler
 set(CMAKE_AUTOMOC ON)
 
@@ -22,8 +24,6 @@ qt_add_qml_module(SearchBarModule
     SOURCES
         SearchBarModel.cpp
         SearchBarModel.h
-    OUTPUT_DIRECTORY 
-        ${CMAKE_CURRENT_BINARY_DIR}/qml/SearchBar
 )
 
 target_link_libraries(SearchBarModule PRIVATE Qt::Quick Qt::Core Qt::Network)

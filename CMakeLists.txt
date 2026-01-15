@@ -53,14 +53,14 @@ qt_add_qml_module(appwikipedia_qt
         qml/components/Header.qml
         qml/components/Sidebar.qml
         qml/components/MainContent.qml
+        SearchBarModule/SearchBar.qml
     RESOURCES
         icons/home.jpg
         icons/history.jpg
         icons/bookmark.jpg
         icons/safes.jpg
         icons/location.png
-    IMPORTS
-        SearchBarModule
+    DEPENDENCIES TARGET SearchBarModule
 )
 
 set_target_properties(appwikipedia_qt PROPERTIES
