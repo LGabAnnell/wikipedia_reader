@@ -10,32 +10,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(QT_QML_GENERATE_QMLLS_INI ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/components
-    ${CMAKE_CURRENT_SOURCE_DIR}/test
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchBarModule
-)
-
-find_package(Qt6 REQUIRED COMPONENTS Quick)
-find_package(Qt6 REQUIRED COMPONENTS Core)
-find_package(Qt6 REQUIRED COMPONENTS Network)
-find_package(Qt6 REQUIRED COMPONENTS Test)
-
-
-# Add the project's source directory and nested directories to the include path
+find_package(Qt6 REQUIRED COMPONENTS Quick Core Network Test)
 qt_standard_project_setup(REQUIRES 6.8)
+
+include_directories(
+    SearchBarModule
+    src/wikipedia_client
+    src
+)
 
 add_subdirectory(SearchBarModule)
 
 qt_add_executable(appwikipedia_qt
     src/main.cpp
     src/GlobalState.cpp
-    SearchBarModule/SearchBarModel.cpp
     src/wikipedia_client/wikipedia_client.cpp
 )
 
-qt_add_resources(appwikipedia_qt 
+qt_add_resources(appwikipedia_qt
     "icons"
     FILES
         icons/home.jpg
@@ -53,7 +45,6 @@ qt_add_qml_module(appwikipedia_qt
         qml/components/Header.qml
         qml/components/Sidebar.qml
         qml/components/MainContent.qml
-        SearchBarModule/SearchBar.qml
     RESOURCES
         icons/home.jpg
         icons/history.jpg
@@ -70,7 +61,7 @@ set_target_properties(appwikipedia_qt PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-target_link_libraries(appwikipedia_qt PRIVATE Qt::Quick Qt::Core Qt::Network)
+target_link_libraries(appwikipedia_qt PRIVATE Qt::Quick Qt::Core Qt::Network SearchBarModule)
 
 include(GNUInstallDirs)
 install(TARGETS appwikipedia_qt

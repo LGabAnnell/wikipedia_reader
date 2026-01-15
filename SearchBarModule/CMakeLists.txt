@@ -16,14 +16,14 @@ include_directories(
 # Create a simple library for the SearchBar component
 # (The QML file is included directly in the main application)
 qt_add_qml_module(SearchBarModule 
-    URI 
-        SearchBar
+    URI SearchBar
     VERSION 1.0
     QML_FILES
         SearchBar.qml
     SOURCES
         SearchBarModel.cpp
         SearchBarModel.h
+    OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt/SearchBar
 )
 
 target_link_libraries(SearchBarModule PRIVATE Qt::Quick Qt::Core Qt::Network)
