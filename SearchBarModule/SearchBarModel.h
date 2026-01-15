@@ -43,12 +43,6 @@ public:
     void setSearchText(const QString &text);
 
     /**
-     * @brief Gets the singleton instance of the SearchBarModel.
-     * @return The singleton instance of the SearchBarModel.
-     */
-    static const SearchBarModel *instance();
-
-    /**
      * @brief Sets the GlobalState instance.
      * @param globalState The GlobalState instance to use.
      */
