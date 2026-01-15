@@ -21,10 +21,7 @@ int main(int argc, char *argv[]) {
     GlobalState *globalState = new GlobalState(&app);
     qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "GlobalState", globalState);
 
-    // Create and register SearchBarModel singleton
-    SearchBarModel *searchBarModel = new SearchBarModel(&app);
-    searchBarModel->setGlobalState(globalState); // Connect SearchBarModel to GlobalState
-    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "SearchBarModel", searchBarModel);
+    std::cout << engine.importPathList().join('\n').toStdString() << std::endl;
 
     // Load the QML application
     engine.loadFromModule("wikipedia_qt", "Main");

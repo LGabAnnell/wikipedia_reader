@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import wikipedia_qt 1.0
+import SearchBar 1.0
 
 ApplicationWindow {
     // id: root

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(wikipedia_qt VERSION 0.1 LANGUAGES CXX)
 
-set(MY_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+option(BUILD_TESTING "Build tests" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -60,7 +60,7 @@ qt_add_qml_module(appwikipedia_qt
         icons/safes.jpg
         icons/location.png
     IMPORTS
-        SearchBar 1.0
+        SearchBarModule
 )
 
 set_target_properties(appwikipedia_qt PROPERTIES
@@ -70,7 +70,7 @@ set_target_properties(appwikipedia_qt PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-target_link_libraries(appwikipedia_qt PRIVATE Qt::Quick Qt::Core Qt::Network SearchBarModule)
+target_link_libraries(appwikipedia_qt PRIVATE Qt::Quick Qt::Core Qt::Network)
 
 include(GNUInstallDirs)
 install(TARGETS appwikipedia_qt
@@ -79,4 +79,6 @@ install(TARGETS appwikipedia_qt
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-add_subdirectory(tests)
+if (BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
