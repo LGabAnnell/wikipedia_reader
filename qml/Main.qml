@@ -5,32 +5,44 @@ import QtQuick.Layouts
 
 import wikipedia_qt 1.0
 import SearchBar 1.0
+import Sidebar 1.0
 
 ApplicationWindow {
-    // id: root
+    id: root
     visible: true
     width: 800
     height: 600
     title: "Browse Wikipedia"
+    Layout.fillWidth: true
+    Layout.fillHeight: true
 
-    header: Header {}
+    header: Header {
+        Layout.fillWidth: true
+    }
 
     ColumnLayout {
-        anchors.fill: parent
+        width: parent.width
+        height: parent.height
         spacing: 0
-        Layout.fillWidth: true
-        Layout.fillHeight: true
 
-        SearchBar {}
+        SearchBar {
+        }
 
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 0
+            spacing: 10
 
-            Sidebar {}
+            Sidebar {
+                Layout.preferredWidth: 200
+                Layout.minimumWidth: 40
+                Layout.maximumWidth: 200
+            }
 
-            MainContent {}
+            MainContent {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
         }
     }
 }

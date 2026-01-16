@@ -119,3 +119,18 @@ target_link_libraries(test_search_display PRIVATE
 # Add the test to CTest
 add_test(NAME test_search_display COMMAND test_search_display)
 
+# Add sidebar layout test
+qt_add_executable(test_sidebar_layout
+    test_sidebar_layout.cpp
+    ${CMAKE_SOURCE_DIR}/SidebarModule/SidebarModel.cpp
+)
+
+target_link_libraries(test_sidebar_layout PRIVATE
+    Qt::Core
+    Qt::Quick
+    Qt::Test
+)
+
+# Add the test to CTest
+add_test(NAME test_sidebar_layout COMMAND test_sidebar_layout)
+

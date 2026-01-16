@@ -6,8 +6,8 @@ import QtQuick.Layouts
 Frame {
     Layout.preferredWidth: 200
     Layout.fillHeight: true
+    padding: 0
     background: Rectangle {
-        color: "#333333"
     }
 
     ColumnLayout {
@@ -17,8 +17,11 @@ Frame {
         Label {
             text: "Results"
             font.pixelSize: 16
+            font.bold: true
             padding: 10
             horizontalAlignment: Text.AlignHCenter
+            background: Rectangle {
+            }
         }
 
         ListView {
@@ -46,6 +49,9 @@ Frame {
             delegate: ItemDelegate {
                 text: model.title
                 width: parent.width
+                padding: 10
+                background: Rectangle {
+                }
                 onClicked: console.log("Selected:", model.title)
             }
         }

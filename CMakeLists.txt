@@ -15,11 +15,13 @@ qt_standard_project_setup(REQUIRES 6.8)
 
 include_directories(
     SearchBarModule
+    SidebarModule
     src/wikipedia_client
     src
 )
 
 add_subdirectory(SearchBarModule)
+add_subdirectory(SidebarModule)
 
 qt_add_executable(appwikipedia_qt
     src/main.cpp
@@ -43,15 +45,16 @@ qt_add_qml_module(appwikipedia_qt
     QML_FILES
         qml/Main.qml
         qml/components/Header.qml
-        qml/components/Sidebar.qml
         qml/components/MainContent.qml
+        SearchBarModule/SearchBar.qml
+        SidebarModule/Sidebar.qml
     RESOURCES
         icons/home.jpg
         icons/history.jpg
         icons/bookmark.jpg
         icons/safes.jpg
         icons/location.png
-    DEPENDENCIES TARGET SearchBarModule
+    DEPENDENCIES TARGET SearchBarModule SidebarModule
 )
 
 set_target_properties(appwikipedia_qt PROPERTIES
@@ -61,7 +64,7 @@ set_target_properties(appwikipedia_qt PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-target_link_libraries(appwikipedia_qt PRIVATE Qt::Quick Qt::Core Qt::Network SearchBarModule)
+target_link_libraries(appwikipedia_qt PRIVATE Qt::Quick Qt::Core Qt::Network SearchBarModule SidebarModule)
 
 include(GNUInstallDirs)
 install(TARGETS appwikipedia_qt
