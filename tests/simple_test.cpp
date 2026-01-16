@@ -1,7 +1,7 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QTimer>
-#include "../src/wikipedia_client/wikipedia_client.h"
+#include "wikipedia_client.h"
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);

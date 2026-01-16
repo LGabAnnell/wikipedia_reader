@@ -1,10 +1,14 @@
 // src/GlobalState.cpp
 #include "GlobalState.h"
-#include "wikipedia_client/wikipedia_client.h"
+#include "wikipedia_client.h"
 
-GlobalState::GlobalState(QObject *parent) : QObject(parent), m_isLoading(false) {}
+QPointer<GlobalState> GlobalState::m_instance = nullptr; // Definition
 
-QVector<Wikipedia::SearchResult> GlobalState::searchResults() const {
+GlobalState::GlobalState(QObject *parent) : QObject(parent), m_isLoading(false) {
+    m_instance = this;
+}
+
+QVector<SearchResult> GlobalState::searchResults() const {
     return m_searchResults;
 }
 
@@ -28,12 +32,12 @@ QString GlobalState::errorMessage() const {
     return m_errorMessage;
 }
 
-void GlobalState::setSearchResults(const QVector<Wikipedia::SearchResult> &results) {
+void GlobalState::setSearchResults(const QVector<SearchResult> &results) {
     m_searchResults = results;
     emit searchResultsChanged();
 }
 
-void GlobalState::setCurrentPage(const Wikipedia::Page &page) {
+void GlobalState::setCurrentPage(const Page &page) {
     m_currentPage = page;
     emit currentPageChanged();
 }

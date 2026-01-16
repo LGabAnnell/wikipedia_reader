@@ -4,8 +4,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import wikipedia_qt 1.0
-import SearchBar 1.0
-import Sidebar 1.0
+import wikipedia_qt.SearchBar 1.0
+import wikipedia_qt.Sidebar 1.0
 
 ApplicationWindow {
     id: root
@@ -13,8 +13,6 @@ ApplicationWindow {
     width: 800
     height: 600
     title: "Browse Wikipedia"
-    Layout.fillWidth: true
-    Layout.fillHeight: true
 
     header: Header {
         Layout.fillWidth: true
@@ -25,23 +23,26 @@ ApplicationWindow {
         height: parent.height
         spacing: 0
 
-        SearchBar {
-        }
+        SearchBar {}
 
-        RowLayout {
-            Layout.fillWidth: true
+        Item {
             Layout.fillHeight: true
-            spacing: 10
+            Layout.fillWidth: true
+            SplitView {
+                height: parent.height
+                width: parent.width
+                orientation: Qt.Horizontal
 
-            Sidebar {
-                Layout.preferredWidth: 200
-                Layout.minimumWidth: 40
-                Layout.maximumWidth: 200
-            }
+                Sidebar {
+                    SplitView.fillHeight: true
+                    SplitView.minimumWidth: 200
+                    searchResults: GlobalState.searchResults
+                }
 
-            MainContent {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
+                MainContent {
+                    SplitView.minimumWidth: 200
+                    SplitView.fillHeight: true
+                }
             }
         }
     }

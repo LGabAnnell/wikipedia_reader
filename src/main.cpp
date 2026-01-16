@@ -1,9 +1,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include <iostream>
-#include "wikipedia_client/wikipedia_client.h"
-#include "SearchBarModel.h"
+#include <QDebug>
 #include "GlobalState.h"
 
 int main(int argc, char *argv[]) {
@@ -18,10 +16,10 @@ int main(int argc, char *argv[]) {
         Qt::QueuedConnection);
 
     // Create and register GlobalState singleton
-    GlobalState *globalState = new GlobalState(&app);
-    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "GlobalState", globalState);
+    QPointer<GlobalState> globalState = new GlobalState(&app);
+    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "GlobalState", globalState.get());
 
-    std::cout << engine.importPathList().join('\n').toStdString() << std::endl;
+    qDebug() << engine.importPathList();
 
     // Load the QML application
     engine.loadFromModule("wikipedia_qt", "Main");

@@ -9,24 +9,34 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(QT_QML_GENERATE_QMLLS_INI ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
+set(QML_DIRS)
+set(QML_DIRS
+    "qml"
+    "qml/components"
+    "qml/SearchBarModule"
+    "qml/SidebarModule"
+)
+
+# Convert the list to a string with semicolons
+list(JOIN QML_DIRS ";" QML_IMPORT_PATH_STR)
+
+# Set as a cached variable
+set(QML_IMPORT_PATH "${QML_IMPORT_PATH_STR}" CACHE PATH "QML import paths" FORCE)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick Core Network Test)
 qt_standard_project_setup(REQUIRES 6.8)
 
 include_directories(
-    SearchBarModule
-    SidebarModule
-    src/wikipedia_client
+    qml/SearchBarModule
+    qml/SidebarModule
+    qml
     src
 )
-
-add_subdirectory(SearchBarModule)
-add_subdirectory(SidebarModule)
 
 qt_add_executable(appwikipedia_qt
     src/main.cpp
     src/GlobalState.cpp
-    src/wikipedia_client/wikipedia_client.cpp
+    qml/wikipedia_client.cpp
 )
 
 qt_add_resources(appwikipedia_qt
@@ -39,23 +49,12 @@ qt_add_resources(appwikipedia_qt
         icons/location.png
 )
 
-qt_add_qml_module(appwikipedia_qt
-    URI wikipedia_qt
-    VERSION 1.0
-    QML_FILES
-        qml/Main.qml
-        qml/components/Header.qml
-        qml/components/MainContent.qml
-        SearchBarModule/SearchBar.qml
-        SidebarModule/Sidebar.qml
-    RESOURCES
-        icons/home.jpg
-        icons/history.jpg
-        icons/bookmark.jpg
-        icons/safes.jpg
-        icons/location.png
-    DEPENDENCIES TARGET SearchBarModule SidebarModule
-)
+
+add_subdirectory(qml/SearchBarModule)
+add_subdirectory(qml/SidebarModule)
+add_subdirectory(qml)
+
+
 
 set_target_properties(appwikipedia_qt PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
@@ -64,7 +63,7 @@ set_target_properties(appwikipedia_qt PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-target_link_libraries(appwikipedia_qt PRIVATE Qt::Quick Qt::Core Qt::Network SearchBarModule SidebarModule)
+target_link_libraries(appwikipedia_qt PRIVATE Qt::Quick Qt::Core Qt::Network wikipedia_qt SearchBarModule SidebarModule)
 
 include(GNUInstallDirs)
 install(TARGETS appwikipedia_qt

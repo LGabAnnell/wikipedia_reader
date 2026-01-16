@@ -6,7 +6,7 @@
 #include <QVector>
 #include <QString>
 #include <QQmlEngine>
-#include "wikipedia_client/wikipedia_client.h"
+#include "wikipedia_client.h"
 
 class GlobalState : public QObject {
     Q_OBJECT
@@ -14,7 +14,7 @@ class GlobalState : public QObject {
         QML_SINGLETON
 
         // Expose Page properties directly
-        Q_PROPERTY(QVector<Wikipedia::SearchResult> searchResults READ searchResults NOTIFY searchResultsChanged)
+        Q_PROPERTY(QVector<SearchResult> searchResults READ searchResults NOTIFY searchResultsChanged)
         Q_PROPERTY(QString currentPageTitle READ currentPageTitle NOTIFY currentPageChanged)
         Q_PROPERTY(QString currentPageExtract READ currentPageExtract NOTIFY currentPageChanged)
         Q_PROPERTY(int currentPageId READ currentPageId NOTIFY currentPageChanged)
@@ -25,7 +25,7 @@ class GlobalState : public QObject {
 public:
     explicit GlobalState(QObject *parent = nullptr);
 
-    QVector<Wikipedia::SearchResult> searchResults() const;
+    QVector<SearchResult> searchResults() const;
 
     // Page property accessors
     QString currentPageTitle() const;
@@ -35,9 +35,13 @@ public:
     bool isLoading() const;
     QString errorMessage() const;
 
+    static QPointer<GlobalState> instance() {
+        return m_instance;
+    }
+
 public slots:
-    void setSearchResults(const QVector<Wikipedia::SearchResult> &results);
-    void setCurrentPage(const Wikipedia::Page &page);
+    void setSearchResults(const QVector<SearchResult> &results);
+    void setCurrentPage(const Page &page);
     void setIsLoading(bool loading);
     void setErrorMessage(const QString &message);
     void clearErrorMessage();
@@ -49,10 +53,11 @@ signals:
     void errorMessageChanged();
 
 private:
-    QVector<Wikipedia::SearchResult> m_searchResults;
-    Wikipedia::Page m_currentPage;
+    QVector<SearchResult> m_searchResults;
+    Page m_currentPage;
     bool m_isLoading;
     QString m_errorMessage;
+    static QPointer<GlobalState> m_instance;
 };
 
 #endif // GLOBALSTATE_H
