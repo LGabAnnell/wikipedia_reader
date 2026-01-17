@@ -19,12 +19,13 @@ Item {
         id: listView
         anchors.fill: parent
         model: searchResults
-
         delegate: ItemDelegate {
             id: delegate
             hoverEnabled: true
             width: parent ? parent.width : 0
             height: 80
+            padding: 10
+            clip: true
 
             background: Rectangle {
                 id: bgRect
@@ -33,19 +34,29 @@ Item {
             }
 
             Rectangle {
-                visible: listView.currentIndex == index
+                id: selectedRect
                 anchors.fill: parent
+                anchors.margins: 5
+                visible: listView.currentIndex == index
                 color: sysPalette.highlight
                 border.color: sysPalette.highlight
                 border.width: 2
+                radius: 5
             }
 
             Column {
+                padding: 10
+                spacing: 5
+                anchors.fill: parent
+                anchors.margins: 5
+                clip: true
                 Text {
                     text: modelData.title
+                    color: sysPalette.text
                 }
                 Text {
                     text: modelData.snippet
+                    color: sysPalette.text
                 }
             }
 
@@ -71,3 +82,4 @@ Item {
         spacing: 10
     }
 }
+

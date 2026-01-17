@@ -34,12 +34,14 @@ ApplicationWindow {
                 orientation: Qt.Horizontal
 
                 Sidebar {
+                    id: sidebar
                     SplitView.fillHeight: true
                     SplitView.minimumWidth: 200
                     searchResults: GlobalState.searchResults
                 }
 
                 MainContent {
+                    id: mainContent
                     SplitView.minimumWidth: 200
                     SplitView.fillHeight: true
                 }
