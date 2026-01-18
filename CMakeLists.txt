@@ -15,6 +15,17 @@ set(QML_DIRS
     "src/modules/SidebarModule"
 )
 
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(DEBUG TRUE)
+    message("Debug set???")
+endif()
+
+if (DEBUG) 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG -g -DQT_QML_DEBUG")
+    message(${CMAKE_CXX_FLAGS})
+endif()
+
 # Convert the list to a string with semicolons
 list(JOIN QML_DIRS ";" QML_IMPORT_PATH_STR)
 

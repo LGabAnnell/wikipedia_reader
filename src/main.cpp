@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QDebug>
+#include <QLoggingCategory>
 #include "GlobalState.h"
 
 int main(int argc, char *argv[]) {
@@ -15,14 +16,18 @@ int main(int argc, char *argv[]) {
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
 
+    #ifdef DEBUG
+        QLoggingCategory::defaultCategory()->setEnabled(QtDebugMsg, true);
+    #endif // DEBUG
+
     // Create and register GlobalState singleton
     QPointer<GlobalState> globalState = new GlobalState(&app);
     qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "GlobalState", globalState.get());
 
-    qDebug() << engine.importPathList();
-
     // Load the QML application
     engine.loadFromModule("wikipedia_qt", "Main");
+
+    qDebug() << engine.importPathList();
 
     if (engine.rootObjects().isEmpty()) {
         return -1;

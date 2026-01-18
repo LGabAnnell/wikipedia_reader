@@ -6,10 +6,8 @@
 if [[ $1 == "rebuild" ]]; then
     echo "Rebuilding the project..."
     rm -rf build
-    mkdir -p build && cd build
-    cmake .. || { echo "CMake configuration failed"; exit 1; }
-    make || { echo "Build failed"; exit 1; }
-    cd ..
+    cmake -B build -DCMAKE_BUILD_TYPE=Debug
+    cmake --build build || { echo "CMake configuration failed"; exit 1; }
 fi
 
 # Navigate to the build directory
@@ -25,7 +23,7 @@ cd bin || { echo "Failed to navigate to bin directory"; exit 1; }
 
 # Run the application without enabling debug logging for all Qt components
 echo "Running appwikipedia_qt in debug mode..."
-QT_LOGGING_RULES="appwikipedia_qt.debug=true" ./appwikipedia_qt
+QT_LOGGING_RULES="default.debug=true" ./appwikipedia_qt
 
 # Exit with the status of the application
 echo "Application exited with status: $?"

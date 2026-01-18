@@ -88,6 +88,20 @@ private slots:
         globalState.setIsLoading(true);
         QCOMPARE(isLoadingSpy.count(), 1);
     }
+
+    void testLoadArticleByPageId() {
+        GlobalState globalState;
+
+        // Test that the method exists and can be called
+        QVERIFY(QMetaObject::invokeMethod(&globalState, "loadArticleByPageId", 
+                                        Q_ARG(int, 736))); // Einstein's page ID
+        
+        // Verify loading state is set
+        QVERIFY(globalState.isLoading());
+        
+        // Verify error message is cleared
+        QVERIFY(globalState.errorMessage().isEmpty());
+    }
 };
 
 QTEST_MAIN(GlobalStateTest)

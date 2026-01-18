@@ -6,20 +6,21 @@ import QtQuick.Controls
 import wikipedia_qt 1.0
 
 Item {
+    id: container
     clip: true
     width: 180
     height: 200
     property list<SearchResult> searchResults
 
-    SystemPalette {
-        id: sysPalette
-    }
-
     ListView {
         id: listView
         anchors.fill: parent
-        model: searchResults
+        model: container.searchResults
         delegate: ItemDelegate {
+            SystemPalette {
+                id: sysPalette
+            }
+
             id: delegate
             hoverEnabled: true
             width: parent ? parent.width : 0
@@ -35,7 +36,6 @@ Item {
 
             Rectangle {
                 id: selectedRect
-                property ListView listView: listView
                 property SystemPalette sysPalette: sysPalette
                 anchors.fill: parent
                 anchors.margins: 5
@@ -66,6 +66,9 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 onEntered: function () {
+                    if (listView.currentIndex == index) {
+                        return;
+                    }
                     parent.background.color = sysPalette.highlight
                     bgRect.color.a = .5
                     bgRect.border.color = sysPalette.highlight
@@ -77,6 +80,10 @@ Item {
                 }
                 onPressed: function() {
                     listView.currentIndex = index
+                    // Load the article when clicked
+                    if (modelData.pageid > 0) {
+                        GlobalState.loadArticleByPageId(modelData.pageid)
+                    }
                 }
             }
         }

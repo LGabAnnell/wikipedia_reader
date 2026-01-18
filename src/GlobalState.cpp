@@ -6,6 +6,13 @@ QPointer<GlobalState> GlobalState::m_instance = nullptr; // Definition
 
 GlobalState::GlobalState(QObject *parent) : QObject(parent), m_isLoading(false) {
     m_instance = this;
+    m_wikipediaClient = new WikipediaClient(this);
+
+    // Connect WikipediaClient signals to GlobalState
+    connect(m_wikipediaClient, &WikipediaClient::pageReceived,
+            this, &GlobalState::setCurrentPage);
+    connect(m_wikipediaClient, &WikipediaClient::errorOccurred,
+            this, &GlobalState::handleArticleLoadError);
 }
 
 QString GlobalState::currentPageTitle() const {
@@ -55,4 +62,17 @@ void GlobalState::setErrorMessage(const QString &message) {
 void GlobalState::clearErrorMessage() {
     m_errorMessage.clear();
     emit errorMessageChanged();
+}
+
+void GlobalState::loadArticleByPageId(int pageId) {
+    if (m_wikipediaClient) {
+        setIsLoading(true);
+        clearErrorMessage();
+        m_wikipediaClient->getPageById(pageId);
+    }
+}
+
+void GlobalState::handleArticleLoadError(const QString &error) {
+    setIsLoading(false);
+    setErrorMessage(error);
 }

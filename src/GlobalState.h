@@ -25,6 +25,7 @@ class GlobalState : public QObject {
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
 
 public:
+    Q_INVOKABLE void loadArticleByPageId(int pageId);
     explicit GlobalState(QObject *parent = nullptr);
 
     // Page property accessors
@@ -59,6 +60,10 @@ private:
     bool m_isLoading;
     QString m_errorMessage;
     static QPointer<GlobalState> m_instance;
+    WikipediaClient* m_wikipediaClient;
+
+private slots:
+    void handleArticleLoadError(const QString &error);
 };
 
 #endif // GLOBALSTATE_H
