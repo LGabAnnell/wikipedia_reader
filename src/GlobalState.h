@@ -10,27 +10,28 @@
 
 class GlobalState : public QObject {
     Q_OBJECT
-        QML_ELEMENT
-        QML_SINGLETON
+    QML_ELEMENT
+    QML_SINGLETON
+    QML_UNCREATABLE("Singleton")
 
-        // Expose Page properties directly
-        Q_PROPERTY(QVector<SearchResult> searchResults READ searchResults NOTIFY searchResultsChanged)
-        Q_PROPERTY(QString currentPageTitle READ currentPageTitle NOTIFY currentPageChanged)
-        Q_PROPERTY(QString currentPageExtract READ currentPageExtract NOTIFY currentPageChanged)
-        Q_PROPERTY(int currentPageId READ currentPageId NOTIFY currentPageChanged)
-        Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
-        // Add error message property
-        Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
+    // Expose Page properties directly
+    Q_PROPERTY(QVector<SearchResult> searchResults READ searchResults NOTIFY searchResultsChanged)
+    Q_PROPERTY(QString currentPageTitle READ currentPageTitle NOTIFY currentPageChanged)
+    Q_PROPERTY(QString currentPageExtract READ currentPageExtract NOTIFY currentPageChanged)
+    Q_PROPERTY(int currentPageId READ currentPageId NOTIFY currentPageChanged)
+    Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
+
+    // Add error message property
+    Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
 
 public:
     explicit GlobalState(QObject *parent = nullptr);
-
-    QVector<SearchResult> searchResults() const;
 
     // Page property accessors
     QString currentPageTitle() const;
     QString currentPageExtract() const;
     int currentPageId() const;
+    QVector<SearchResult> searchResults() const;
 
     bool isLoading() const;
     QString errorMessage() const;

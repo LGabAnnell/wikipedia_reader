@@ -20,11 +20,10 @@ Frame {
 
     // Display the article content
     Text {
-        text: GlobalState.currentPageExtract ? GlobalState.currentPageExtract : "Select an article to view its content"
+        text: "Select an article to view its content"
         wrapMode: Text.WordWrap
         font.pixelSize: 14
         anchors.fill: parent
         anchors.margins: 10
     }
 }
-

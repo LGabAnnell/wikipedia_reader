@@ -27,11 +27,6 @@ signals:
     void navigateTo(const QString &view);
     void searchResultsChanged();
 
-public slots:
-    void navigateToHome();
-    void navigateToHistory();
-    void navigateToBookmarks();
-
 private:
     QString m_currentView;
     QVector<SearchResult> m_searchResults;

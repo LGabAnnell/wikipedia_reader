@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-import wikipedia_qt 1.0
 import wikipedia_qt.SearchBar 1.0
 
 RowLayout {

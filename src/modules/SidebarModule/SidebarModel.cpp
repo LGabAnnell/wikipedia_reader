@@ -1,5 +1,6 @@
 // SidebarModel.cpp
 #include "SidebarModel.h"
+#include <QDebug>
 
 SidebarModel::SidebarModel(QObject *parent) : QObject(parent) {
     m_currentView = "home";
@@ -22,20 +23,6 @@ QVector<SearchResult> SidebarModel::searchResults() const {
 
 void SidebarModel::setSearchResults(const QVector<SearchResult> &results) {
     m_searchResults = results;
+    qDebug() << "Got " << results.length() << " elements";
     emit searchResultsChanged();
-}
-
-void SidebarModel::navigateToHome() {
-    setCurrentView("home");
-    emit navigateTo("home");
-}
-
-void SidebarModel::navigateToHistory() {
-    setCurrentView("history");
-    emit navigateTo("history");
-}
-
-void SidebarModel::navigateToBookmarks() {
-    setCurrentView("bookmarks");
-    emit navigateTo("bookmarks");
 }

@@ -8,10 +8,6 @@ GlobalState::GlobalState(QObject *parent) : QObject(parent), m_isLoading(false) 
     m_instance = this;
 }
 
-QVector<SearchResult> GlobalState::searchResults() const {
-    return m_searchResults;
-}
-
 QString GlobalState::currentPageTitle() const {
     return m_currentPage.title;
 }
@@ -22,6 +18,10 @@ QString GlobalState::currentPageExtract() const {
 
 int GlobalState::currentPageId() const {
     return m_currentPage.pageid;
+}
+
+QVector<SearchResult> GlobalState::searchResults() const {
+    return m_searchResults;
 }
 
 bool GlobalState::isLoading() const {

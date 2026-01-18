@@ -8,7 +8,6 @@ set(CMAKE_AUTOMOC ON)
 # Add include directories for dependencies
 include_directories(
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/wikipedia_client
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -19,8 +18,8 @@ qt_add_qml_module(wikipedia_qt
     VERSION 1.0
     QML_FILES
         Main.qml
-        components/Header.qml
-        components/MainContent.qml
+        Header.qml
+        MainContent.qml
     SOURCES
         wikipedia_client.cpp
         wikipedia_client.h

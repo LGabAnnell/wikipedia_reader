@@ -37,7 +37,7 @@ ApplicationWindow {
                     id: sidebar
                     SplitView.fillHeight: true
                     SplitView.minimumWidth: 200
-                    searchResults: GlobalState.searchResults
+                    searchResults: GlobalState.searchResults ? GlobalState.searchResults : []
                 }
 
                 MainContent {

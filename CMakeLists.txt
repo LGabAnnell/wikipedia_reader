@@ -9,12 +9,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(QT_QML_GENERATE_QMLLS_INI ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
-set(QML_DIRS)
 set(QML_DIRS
-    "qml"
-    "qml/components"
-    "qml/SearchBarModule"
-    "qml/SidebarModule"
+    "src"
+    "src/modules/SearchBarModule"
+    "src/modules/SidebarModule"
 )
 
 # Convert the list to a string with semicolons
@@ -27,16 +25,15 @@ find_package(Qt6 REQUIRED COMPONENTS Quick Core Network Test)
 qt_standard_project_setup(REQUIRES 6.8)
 
 include_directories(
-    qml/SearchBarModule
-    qml/SidebarModule
-    qml
+    src/modules/SearchBarModule
+    src/modules/SidebarModule
     src
 )
 
 qt_add_executable(appwikipedia_qt
     src/main.cpp
     src/GlobalState.cpp
-    qml/wikipedia_client.cpp
+    src/wikipedia_client.cpp
 )
 
 qt_add_resources(appwikipedia_qt
@@ -50,11 +47,9 @@ qt_add_resources(appwikipedia_qt
 )
 
 
-add_subdirectory(qml/SearchBarModule)
-add_subdirectory(qml/SidebarModule)
-add_subdirectory(qml)
-
-
+add_subdirectory(src/modules/SearchBarModule)
+add_subdirectory(src/modules/SidebarModule)
+add_subdirectory(src)
 
 set_target_properties(appwikipedia_qt PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}

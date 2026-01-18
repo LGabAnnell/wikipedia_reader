@@ -35,6 +35,8 @@ Item {
 
             Rectangle {
                 id: selectedRect
+                property ListView listView: listView
+                property SystemPalette sysPalette: sysPalette
                 anchors.fill: parent
                 anchors.margins: 5
                 visible: listView.currentIndex == index

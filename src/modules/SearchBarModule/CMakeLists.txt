@@ -9,7 +9,6 @@ set(CMAKE_AUTOMOC ON)
 # Add include directories for dependencies
 include_directories(
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/wikipedia_client
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 

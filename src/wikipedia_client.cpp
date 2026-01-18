@@ -5,7 +5,6 @@
 #include <QUrl>
 #include <QDate>
 #include <QEventLoop>
-#include <iostream>
 
 
 WikipediaClient::WikipediaClient(QObject *parent) : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
@@ -158,8 +157,8 @@ void WikipediaClient::onPageWithImagesReply(QNetworkReply *reply, int pageid) {
                 // Extract image titles
                 if (pageObj.contains("images")) {
                     QJsonArray images = pageObj["images"].toArray();
-                    for (const QJsonValue &image : images) {
-                        imageTitles.append(image.toObject()["title"].toString());
+                    for (const QJsonValue &image : std::as_const(images)) {
+                        imageTitles.append(image.toObject().value("title").toString());
                     }
                 }
                 break;
@@ -262,7 +261,7 @@ void WikipediaClient::onFeaturedArticleReply(QNetworkReply *reply) {
                         // Extract image URLs if available
                         if (articleObj.contains("images") && articleObj["images"].isArray()) {
                             QJsonArray images = articleObj["images"].toArray();
-                            for (const QJsonValue &image : images) {
+                            for (const QJsonValue &image : std::as_const(images)) {
                                 article.imageUrls.append(image.toString());
                             }
                         }
