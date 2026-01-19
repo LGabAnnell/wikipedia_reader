@@ -34,7 +34,7 @@ void WikipediaClient::onSearchReply(QNetworkReply *reply) {
         QJsonObject jsonObj = jsonDoc.object();
         QJsonArray searchResults = jsonObj["query"].toObject()["search"].toArray();
 
-        QVector<SearchResult> results;
+        QVector<search_result> results;
         for (const QJsonValue &result : searchResults) {
             results.push_back({ result["title"].toString(),
                             result["snippet"].toString(),
@@ -71,7 +71,7 @@ void WikipediaClient::onPageReply(QNetworkReply *reply, const QString &title) {
 
         for (auto it = pages.begin(); it != pages.end(); ++it) {
             if (it.value().toObject()["title"].toString() == title) {
-                Page page;
+                page page;
                 page.title = it.value().toObject()["title"].toString();
                 page.extract = it.value().toObject()["extract"].toString();
                 page.pageid = it.key().toInt();
@@ -105,7 +105,7 @@ void WikipediaClient::getPageById(int pageid) {
 
             for (auto it = pages.begin(); it != pages.end(); ++it) {
                 if (it.key().toInt() == pageid) {
-                    Page page;
+                    page page;
                     page.title = it.value().toObject()["title"].toString();
                     page.extract = it.value().toObject()["extract"].toString();
                     page.pageid = pageid;
@@ -144,7 +144,7 @@ void WikipediaClient::onPageWithImagesReply(QNetworkReply *reply, int pageid) {
         QJsonObject jsonObj = jsonDoc.object();
         QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
 
-        Page page;
+        page page;
         QStringList imageTitles;
 
         for (auto it = pages.begin(); it != pages.end(); ++it) {
@@ -218,18 +218,18 @@ void WikipediaClient::fetchImageUrlsFromTitles(const QStringList &imageTitles, Q
 }
 
 void WikipediaClient::getFeaturedArticleOfTheDay() {
-    QUrl url(baseUrl);
-    QUrlQuery urlQuery;
-    urlQuery.addQueryItem("action", "featuredfeed");
-    urlQuery.addQueryItem("format", "json");
-    urlQuery.addQueryItem("feed", "featured");
-    urlQuery.addQueryItem("language", "en");
-    urlQuery.addQueryItem("sections", "today");
-    url.setQuery(urlQuery);
+    // Get the current date in the format YYYY/MM/DD
+    QDate currentDate = QDate::currentDate();
+    QString dateString = currentDate.toString("yyyy/MM/dd");
 
+    // Construct the URL
+    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/en/featured/%1").arg(dateString));
+
+    // Send the request
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         this->onFeaturedArticleReply(reply);
+        reply->deleteLater();
     });
 }
 
@@ -237,42 +237,16 @@ void WikipediaClient::onFeaturedArticleReply(QNetworkReply *reply) {
     if (reply->error() == QNetworkReply::NoError) {
         QByteArray response = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
+
         QJsonObject jsonObj = jsonDoc.object();
 
-        // Parse the featured article response
-        // Note: The actual structure might vary, this is a simplified approach
-        if (jsonObj.contains("featured") && jsonObj["featured"].isObject()) {
-            QJsonObject featured = jsonObj["featured"].toObject();
-            if (featured.contains("today") && featured["today"].isObject()) {
-                QJsonObject today = featured["today"].toObject();
-
-                FeaturedArticle article;
-                article.date = QDate::currentDate().toString("yyyy-MM-dd");
-
-                // Extract article information - this might need adjustment based on actual API response
-                if (today.contains("articles") && today["articles"].isArray()) {
-                    QJsonArray articles = today["articles"].toArray();
-                    if (!articles.isEmpty()) {
-                        QJsonObject articleObj = articles[0].toObject();
-                        article.title = articleObj["title"].toString();
-                        article.pageid = articleObj["pageid"].toInt();
-                        article.extract = articleObj["extract"].toString();
-
-                        // Extract image URLs if available
-                        if (articleObj.contains("images") && articleObj["images"].isArray()) {
-                            QJsonArray images = articleObj["images"].toArray();
-                            for (const QJsonValue &image : std::as_const(images)) {
-                                article.imageUrls.append(image.toString());
-                            }
-                        }
-                    }
-                }
-
-                emit featuredArticleReceived(article);
-            }
-        }
+        QString extract = jsonObj["tfa"].toObject()["extract"].toString();
+        QString title = jsonObj["tfa"].toObject()["title"].toString();
+        int pageid = jsonObj["tfa"].toObject()["pageid"].toInt();
+        emit featuredArticleReceived(title, extract, pageid); // Emit the featured article with the new structure
     } else {
         emit errorOccurred(reply->errorString());
     }
     reply->deleteLater();
 }
+

@@ -15,7 +15,7 @@ class GlobalState : public QObject {
     QML_UNCREATABLE("Singleton")
 
     // Expose Page properties directly
-    Q_PROPERTY(QVector<SearchResult> searchResults READ searchResults NOTIFY searchResultsChanged)
+    Q_PROPERTY(QVector<search_result> searchResults READ searchResults NOTIFY searchResultsChanged)
     Q_PROPERTY(QString currentPageTitle READ currentPageTitle NOTIFY currentPageChanged)
     Q_PROPERTY(QString currentPageExtract READ currentPageExtract NOTIFY currentPageChanged)
     Q_PROPERTY(int currentPageId READ currentPageId NOTIFY currentPageChanged)
@@ -32,7 +32,7 @@ public:
     QString currentPageTitle() const;
     QString currentPageExtract() const;
     int currentPageId() const;
-    QVector<SearchResult> searchResults() const;
+    QVector<search_result> searchResults() const;
 
     bool isLoading() const;
     QString errorMessage() const;
@@ -42,8 +42,8 @@ public:
     }
 
 public slots:
-    void setSearchResults(const QVector<SearchResult> &results);
-    void setCurrentPage(const Page &page);
+    void setSearchResults(const QVector<search_result> &results);
+    void setCurrentPage(const page &page);
     void setIsLoading(bool loading);
     void setErrorMessage(const QString &message);
     void clearErrorMessage();
@@ -55,8 +55,8 @@ signals:
     void errorMessageChanged();
 
 private:
-    QVector<SearchResult> m_searchResults;
-    Page m_currentPage;
+    QVector<search_result> m_searchResults;
+    page m_currentPage;
     bool m_isLoading;
     QString m_errorMessage;
     static QPointer<GlobalState> m_instance;

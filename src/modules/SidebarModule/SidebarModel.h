@@ -11,7 +11,7 @@ class SidebarModel : public QObject {
     Q_OBJECT
     QML_ELEMENT
     Q_PROPERTY(QString currentView READ currentView WRITE setCurrentView NOTIFY currentViewChanged)
-    Q_PROPERTY(QVector<SearchResult> searchResults READ searchResults WRITE setSearchResults NOTIFY searchResultsChanged)
+    Q_PROPERTY(QVector<search_result> searchResults READ searchResults WRITE setSearchResults NOTIFY searchResultsChanged)
 
 public:
     explicit SidebarModel(QObject *parent = nullptr);
@@ -19,8 +19,8 @@ public:
     QString currentView() const;
     void setCurrentView(const QString &view);
 
-    QVector<SearchResult> searchResults() const;
-    void setSearchResults(const QVector<SearchResult> &results);
+    QVector<search_result> searchResults() const;
+    void setSearchResults(const QVector<search_result> &results);
 
 signals:
     void currentViewChanged(const QString &view);
@@ -29,7 +29,7 @@ signals:
 
 private:
     QString m_currentView;
-    QVector<SearchResult> m_searchResults;
+    QVector<search_result> m_searchResults;
 };
 
 #endif // SIDEBARMODEL_H

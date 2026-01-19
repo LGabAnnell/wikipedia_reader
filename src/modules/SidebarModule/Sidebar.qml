@@ -10,7 +10,7 @@ Item {
     clip: true
     width: 180
     height: 200
-    property list<SearchResult> searchResults
+    property list<search_result> searchResults
 
     ListView {
         id: listView

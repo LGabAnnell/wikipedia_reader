@@ -5,10 +5,9 @@ import QtQuick.Layouts
 
 import wikipedia_qt 1.0
 
-Frame {
+Item {
     Layout.fillWidth: true
     Layout.fillHeight: true
-    padding: 0
 
     // Loading indicator
     BusyIndicator {
@@ -18,43 +17,70 @@ Frame {
         visible: GlobalState.isLoading
     }
 
-    // Display the article content
-    Column {
-        spacing: 10
+    ScrollView {
+        id: scrollView
         anchors.fill: parent
-        anchors.margins: 10
+        clip: true
 
-        // Article title
-        Text {
-            text: GlobalState.currentPageTitle
-            font.pixelSize: 20
-            font.bold: true
-            visible: GlobalState.currentPageTitle.length > 0
-        }
+        // Add a vertical scrollbar
+        ScrollBar.vertical.interactive: true
+        ScrollBar.vertical.policy: ScrollBar.AlwaysOn
 
-        // Article content
-        Text {
-            text: GlobalState.currentPageExtract
-            wrapMode: Text.WordWrap
-            font.pixelSize: 14
-            visible: GlobalState.currentPageExtract.length > 0
-        }
+        Column {
+            id: articleDisplay
+            spacing: 20
+            padding: 20
+            width: scrollView.width - scrollView.effectiveScrollBarWidth - leftPadding - rightPadding
 
-        // Placeholder when no article is selected
-        Text {
-            text: "Select an article to view its content"
-            wrapMode: Text.WordWrap
-            font.pixelSize: 14
-            anchors.centerIn: parent
-            visible: GlobalState.currentPageTitle.length === 0 && !GlobalState.isLoading
-        }
+            property SystemPalette sysPalette: SystemPalette {}
 
-        // Error message display
-        Text {
-            text: GlobalState.errorMessage
-            color: "red"
-            visible: GlobalState.errorMessage.length > 0
-            anchors.centerIn: parent
+            // Article title (using TextEdit for selectable text)
+            TextEdit {
+                text: GlobalState.currentPageTitle
+                font.pixelSize: 20
+                font.bold: true
+                color: articleDisplay.sysPalette.text
+                visible: GlobalState.currentPageTitle.length > 0
+                width: parent.width
+                wrapMode: TextEdit.Wrap
+                readOnly: true // Make it read-only to prevent editing
+                selectByMouse: true // Enable text selection
+                focus: false // Disable focus to avoid cursor blinking
+            }
+
+            // Article content (using TextEdit for selectable text)
+            TextEdit {
+                text: GlobalState.currentPageExtract
+                wrapMode: TextEdit.Wrap
+                font.pixelSize: 14
+                color: articleDisplay.sysPalette.text
+                visible: GlobalState.currentPageExtract.length > 0
+                width: parent.width
+                readOnly: true // Make it read-only to prevent editing
+                selectByMouse: true // Enable text selection
+                focus: false // Disable focus to avoid cursor blinking
+            }
+
+            // Placeholder when no article is selected
+            Text {
+                text: "Select an article to view its content"
+                wrapMode: Text.WordWrap
+                color: articleDisplay.sysPalette.text
+                font.pixelSize: 14
+                horizontalAlignment: Text.AlignHCenter
+                visible: GlobalState.currentPageTitle.length === 0 && !GlobalState.isLoading
+                width: parent.width
+            }
+
+            // Error message display
+            Text {
+                text: GlobalState.errorMessage
+                color: "red"
+                visible: GlobalState.errorMessage.length > 0
+                width: parent.width
+                wrapMode: Text.WordWrap
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
         }
     }
 }

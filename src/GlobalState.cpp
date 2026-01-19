@@ -13,6 +13,17 @@ GlobalState::GlobalState(QObject *parent) : QObject(parent), m_isLoading(false) 
             this, &GlobalState::setCurrentPage);
     connect(m_wikipediaClient, &WikipediaClient::errorOccurred,
             this, &GlobalState::handleArticleLoadError);
+    connect(m_wikipediaClient, &WikipediaClient::featuredArticleReceived,
+            this, [this](const QString &title, const QString &extract, const int &pageid) {
+                // Create a page object from the featured article data
+                page p;
+                p.title = title;
+                p.extract = extract;
+                p.pageid = pageid;
+                setCurrentPage(p);
+            });
+
+    m_wikipediaClient->getFeaturedArticleOfTheDay();
 }
 
 QString GlobalState::currentPageTitle() const {
@@ -27,7 +38,7 @@ int GlobalState::currentPageId() const {
     return m_currentPage.pageid;
 }
 
-QVector<SearchResult> GlobalState::searchResults() const {
+QVector<search_result> GlobalState::searchResults() const {
     return m_searchResults;
 }
 
@@ -39,13 +50,14 @@ QString GlobalState::errorMessage() const {
     return m_errorMessage;
 }
 
-void GlobalState::setSearchResults(const QVector<SearchResult> &results) {
+void GlobalState::setSearchResults(const QVector<search_result> &results) {
     m_searchResults = results;
     emit searchResultsChanged();
 }
 
-void GlobalState::setCurrentPage(const Page &page) {
+void GlobalState::setCurrentPage(const page &page) {
     m_currentPage = page;
+    setIsLoading(false); // Stop loading when page is received
     emit currentPageChanged();
 }
 

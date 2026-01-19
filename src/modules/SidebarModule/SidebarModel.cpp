@@ -17,11 +17,11 @@ void SidebarModel::setCurrentView(const QString &view) {
     }
 }
 
-QVector<SearchResult> SidebarModel::searchResults() const {
+QVector<search_result> SidebarModel::searchResults() const {
     return m_searchResults;
 }
 
-void SidebarModel::setSearchResults(const QVector<SearchResult> &results) {
+void SidebarModel::setSearchResults(const QVector<search_result> &results) {
     m_searchResults = results;
     qDebug() << "Got " << results.length() << " elements";
     emit searchResultsChanged();

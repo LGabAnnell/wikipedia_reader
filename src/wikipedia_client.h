@@ -13,7 +13,7 @@
 #include <QQmlEngine>
 
 
-class SearchResult
+class search_result
 {
     Q_GADGET
     QML_ELEMENT
@@ -26,7 +26,7 @@ public:
     int pageid;
 };
 
-class Page
+class page
 {
     Q_GADGET
     QML_ELEMENT
@@ -40,7 +40,7 @@ public:
     QStringList imageUrls;
 };
 
-class FeaturedArticle
+class featured_article
 {
     Q_GADGET
     QML_ELEMENT
@@ -70,10 +70,10 @@ public:
     void getFeaturedArticleOfTheDay();
 
 signals:
-    void searchCompleted(const QVector<SearchResult> &results);
-    void pageReceived(const Page &page);
-    void pageWithImagesReceived(const Page &page);
-    void featuredArticleReceived(const FeaturedArticle &article);
+    void searchCompleted(const QVector<search_result> &results);
+    void pageReceived(const page &page);
+    void pageWithImagesReceived(const page &page);
+    void featuredArticleReceived(const QString &title, const QString &extract, const int &pageid);
     void errorOccurred(const QString &error);
 
 private slots:

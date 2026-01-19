@@ -5,21 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Qt: QML: Launch",
-            "type": "qml",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/bin/appwikipedia_qt"
-        },
-        {
             "name": "Qt Debug",
             "type": "lldb-dap",
-            "preLaunchTask": "CMake: Debug Build",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/appwikipedia_qt",
             "cwd": "${workspaceFolder}",
             "args": [
                 "-qmljsdebugger=host:localhost,port:13150,block,services:DebugMessages,QmlDebugger,V8Debugger"
-            ]
+            ],
+            "internalConsoleOptions": "openOnSessionStart",
+            "presentation": {
+                "hidden": false,
+                "group": "",
+                "order": 1
+            }
         },
         {
             "name": "QML Debug: Attach",
@@ -27,12 +26,22 @@
             "request": "attach",
             "host": "localhost",
             "port": "13150",
+            "internalConsoleOptions": "neverOpen",
+            "preLaunchTask": "Qt: Acquire Port",
+            "presentation": {
+                "hidden": true,
+                "group": "",
+                "order": 1,
+                "reveal": "never"
+            }
         }
     ],
     "compounds": [
         {
             "name": "Qt Debug + QML Debug",
-            "configurations": ["Qt Debug", "QML Debug: Attach"]
+            "configurations": ["Qt Debug", "QML Debug: Attach"],
+            "preLaunchTask": "CMake: Debug Build",
+            "stopAll": true
         }
     ]
 }
