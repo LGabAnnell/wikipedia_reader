@@ -9,7 +9,11 @@ SearchBarModel::SearchBarModel(QObject *parent) : QObject(parent) {
     m_wikipediaClient = new WikipediaClient(this);
     m_globalState = GlobalState::instance();
     connect(m_wikipediaClient, &WikipediaClient::searchCompleted,
-                m_globalState, &GlobalState::setSearchResults);
+                m_globalState, [this] (const QVector<search_result> results) {
+                    m_isSearching = false;
+                    emit isSearchingChanged(m_isSearching);
+                    m_globalState->setSearchResults(results);
+                });
     connect(m_wikipediaClient, &WikipediaClient::pageReceived,
             m_globalState, &GlobalState::setCurrentPage);
     connect(m_wikipediaClient, &WikipediaClient::errorOccurred,

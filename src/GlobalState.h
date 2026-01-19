@@ -6,12 +6,13 @@
 #include <QVector>
 #include <QString>
 #include <QQmlEngine>
+#include <QPointer>
 #include "wikipedia_client.h"
+#include "HistoryState.h"
 
 class GlobalState : public QObject {
     Q_OBJECT
     QML_ELEMENT
-    QML_SINGLETON
     QML_UNCREATABLE("Singleton")
 
     // Expose Page properties directly
@@ -24,9 +25,14 @@ class GlobalState : public QObject {
     // Add error message property
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
 
+    // Add view management property
+    Q_PROPERTY(QString currentView READ currentView NOTIFY currentViewChanged)
+
+    // Add history property
 public:
     Q_INVOKABLE void loadArticleByPageId(int pageId);
-    explicit GlobalState(QObject *parent = nullptr);
+    Q_INVOKABLE void setCurrentView(const QString &view);
+    explicit GlobalState(QObject *parent = nullptr, HistoryState* historyState = nullptr);
 
     // Page property accessors
     QString currentPageTitle() const;
@@ -36,6 +42,7 @@ public:
 
     bool isLoading() const;
     QString errorMessage() const;
+    QString currentView() const;
 
     static QPointer<GlobalState> instance() {
         return m_instance;
@@ -53,17 +60,25 @@ signals:
     void currentPageChanged();
     void isLoadingChanged();
     void errorMessageChanged();
+    void currentViewChanged();
 
 private:
     QVector<search_result> m_searchResults;
     page m_currentPage;
     bool m_isLoading;
     QString m_errorMessage;
+    QString m_currentView;
     static QPointer<GlobalState> m_instance;
     WikipediaClient* m_wikipediaClient;
+    HistoryState* m_historyState;
+    QMap<int, page> m_articleCache; // Cache for loaded articles
+
+    // Helper method to check if item already exists in history
+    bool itemExistsInHistory(int pageId);
 
 private slots:
     void handleArticleLoadError(const QString &error);
 };
 
 #endif // GLOBALSTATE_H
+

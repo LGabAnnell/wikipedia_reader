@@ -2,9 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QDebug>
-#include <QLoggingCategory>
-#include "GlobalState.h"
-#include "HistoryState.h"
+#include "src/GlobalState.h"
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
@@ -17,25 +15,24 @@ int main(int argc, char *argv[]) {
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
 
-    #ifdef DEBUG
-        QLoggingCategory::defaultCategory()->setEnabled(QtDebugMsg, true);
-    #endif // DEBUG
-
-
-    // Create and register HistoryState singleton
-    QPointer<HistoryState> historyState = new HistoryState(&app);
-    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "HistoryState", historyState.get());
-
     // Create and register GlobalState singleton
-    QPointer<GlobalState> globalState = new GlobalState(&app, historyState);
+    QPointer<GlobalState> globalState = new GlobalState(&app);
     qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "GlobalState", globalState.get());
+
+    // Test history functionality
+    globalState->addToHistory("Test Article", 12345);
+    globalState->addToHistory("Another Article", 67890);
+    
+    qDebug() << "History count:" << globalState->history().size();
+    for (const auto &item : globalState->history()) {
+        qDebug() << "Title:" << item.title << "PageId:" << item.pageId;
+    }
 
     // Load the QML application
     engine.loadFromModule("wikipedia_qt", "Main");
 
-    qDebug() << engine.importPathList();
-
     if (engine.rootObjects().isEmpty()) {
+        qDebug() << "Failed to load QML application";
         return -1;
     }
 

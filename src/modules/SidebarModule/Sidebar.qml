@@ -8,7 +8,6 @@ import wikipedia_qt 1.0
 Item {
     id: container
     clip: true
-    width: 180
     height: 200
     property list<search_result> searchResults
 
@@ -17,16 +16,27 @@ Item {
         anchors.fill: parent
         model: container.searchResults
         delegate: ItemDelegate {
+            id: delegate
+            focus: false
             SystemPalette {
                 id: sysPalette
             }
 
-            id: delegate
+            onFocusChanged: function (isEntered) {
+                if (!isEntered) {
+                    return;
+                }
+                if (modelData.pageid > 0) {
+                    GlobalState.loadArticleByPageId(modelData.pageid);
+                }
+            }
+
             hoverEnabled: true
             width: parent ? parent.width : 0
             height: 80
             padding: 10
             clip: true
+            focusPolicy: Qt.NoFocus
 
             background: Rectangle {
                 id: bgRect
@@ -69,21 +79,17 @@ Item {
                     if (listView.currentIndex == index) {
                         return;
                     }
-                    parent.background.color = sysPalette.highlight
-                    bgRect.color.a = .5
-                    bgRect.border.color = sysPalette.highlight
-                    bgRect.border.width = 2
+                    parent.background.color = sysPalette.highlight;
+                    bgRect.color.a = .5;
+                    bgRect.border.color = sysPalette.highlight;
+                    bgRect.border.width = 2;
                 }
                 onExited: function () {
-                    parent.background.color = sysPalette.button
-                    bgRect.border.width = 0
+                    parent.background.color = sysPalette.button;
+                    bgRect.border.width = 0;
                 }
-                onPressed: function() {
-                    listView.currentIndex = index
-                    // Load the article when clicked
-                    if (modelData.pageid > 0) {
-                        GlobalState.loadArticleByPageId(modelData.pageid)
-                    }
+                onPressed: function () {
+                    listView.currentIndex = index;
                 }
             }
         }
@@ -91,4 +97,3 @@ Item {
         spacing: 10
     }
 }
-

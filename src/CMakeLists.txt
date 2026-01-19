@@ -33,6 +33,5 @@ qt_add_qml_module(wikipedia_qt
     DEPENDENCIES TARGET 
         SearchBarModule 
         SidebarModule
+        HistoryModule
 )
-
-target_link_libraries(wikipedia_qt PRIVATE Qt::Quick Qt::Core Qt::Network SearchBarModule SidebarModule)

@@ -12,11 +12,23 @@
 #include <QVector>
 #include <QQmlEngine>
 
+class history_item {
+    Q_GADGET
+        QML_ELEMENT
+        Q_PROPERTY(QString title MEMBER title)
+        Q_PROPERTY(int pageId MEMBER pageId)
+        Q_PROPERTY(QDateTime timestamp MEMBER timestamp)
+public:
+    QString title;
+    int pageId;
+    QDateTime timestamp;
+};
+
 
 class search_result
 {
     Q_GADGET
-    QML_ELEMENT
+        QML_ELEMENT
         Q_PROPERTY(QString title MEMBER title)
         Q_PROPERTY(QString snippet MEMBER snippet)
         Q_PROPERTY(int pageid MEMBER pageid)
@@ -29,7 +41,7 @@ public:
 class page
 {
     Q_GADGET
-    QML_ELEMENT
+        QML_ELEMENT
         Q_PROPERTY(QString title MEMBER title)
         Q_PROPERTY(QString extract MEMBER extract)
         Q_PROPERTY(int pageid MEMBER pageid)
@@ -43,7 +55,7 @@ public:
 class featured_article
 {
     Q_GADGET
-    QML_ELEMENT
+        QML_ELEMENT
         Q_PROPERTY(QString title MEMBER title)
         Q_PROPERTY(QString extract MEMBER extract)
         Q_PROPERTY(int pageid MEMBER pageid)

@@ -19,7 +19,7 @@ ToolBar {
                 sourceSize: Qt.size(24, 24)
             }
             text: "Home"
-            onClicked: console.log("Home button clicked")
+            onClicked: GlobalState.setCurrentView("content")
         }
         ToolButton {
             contentItem: Image {
@@ -28,6 +28,7 @@ ToolBar {
                 sourceSize: Qt.size(24, 24)
             }
             text: "History"
+            onClicked: GlobalState.setCurrentView("history")
         }
         ToolButton {
             contentItem: Image {

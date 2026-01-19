@@ -13,7 +13,6 @@ include_directories(
 )
 
 # Create a simple library for the SearchBar component
-# (The QML file is included directly in the main application)
 qt_add_qml_module(SearchBarModule 
     URI wikipedia_qt.SearchBar
     VERSION 1.0

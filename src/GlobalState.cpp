@@ -4,7 +4,12 @@
 
 QPointer<GlobalState> GlobalState::m_instance = nullptr; // Definition
 
-GlobalState::GlobalState(QObject *parent) : QObject(parent), m_isLoading(false) {
+GlobalState::GlobalState(QObject *parent, HistoryState *historyState) :
+    QObject(parent),
+    m_isLoading(false),
+    m_currentView("content"),
+    m_historyState(historyState) {
+
     m_instance = this;
     m_wikipediaClient = new WikipediaClient(this);
 
@@ -57,7 +62,14 @@ void GlobalState::setSearchResults(const QVector<search_result> &results) {
 
 void GlobalState::setCurrentPage(const page &page) {
     m_currentPage = page;
-    setIsLoading(false); // Stop loading when page is received
+    setIsLoading(false);
+
+    if (page.pageid > 0 && !page.title.isEmpty()) {
+        m_historyState->addToHistory(page.title, page.pageid);
+        // Cache the loaded article
+        m_articleCache[page.pageid] = page;
+    }
+
     emit currentPageChanged();
 }
 
@@ -78,13 +90,36 @@ void GlobalState::clearErrorMessage() {
 
 void GlobalState::loadArticleByPageId(int pageId) {
     if (m_wikipediaClient) {
-        setIsLoading(true);
+        // Check if the article is already in the cache
+        if (m_articleCache.contains(pageId)) {
+            // Use the cached article
+            setCurrentPage(m_articleCache[pageId]);
+            setIsLoading(false);
+        } else {
+            // Fetch the article from the network
+            setIsLoading(true);
         clearErrorMessage();
         m_wikipediaClient->getPageById(pageId);
     }
+}
 }
 
 void GlobalState::handleArticleLoadError(const QString &error) {
     setIsLoading(false);
     setErrorMessage(error);
 }
+
+// New methods for view management
+QString GlobalState::currentView() const {
+    return m_currentView;
+}
+
+void GlobalState::setCurrentView(const QString &view) {
+    if (m_currentView != view) {
+        m_currentView = view;
+        emit currentViewChanged();
+}
+}
+
+// New methods for history management
+

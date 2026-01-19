@@ -19,4 +19,6 @@ You are an expert C++ developer specializing in the Qt framework. Your task is t
 
 <IMPORTANT>
 Ignore the build directory when scanning for files.
+
+When in agent mode, apply the changes directly, do not only give examples
 </IMPORTANT>

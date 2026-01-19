@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import wikipedia_qt 1.0
 import wikipedia_qt.SearchBar 1.0
 import wikipedia_qt.Sidebar 1.0
+import wikipedia_qt.History 1.0
 
 ApplicationWindow {
     id: root
@@ -28,22 +29,41 @@ ApplicationWindow {
         Item {
             Layout.fillHeight: true
             Layout.fillWidth: true
-            SplitView {
-                height: parent.height
-                width: parent.width
-                orientation: Qt.Horizontal
+            
+            // Use a Loader to switch between different views
+            Loader {
+                id: viewLoader
+                anchors.fill: parent
+                sourceComponent: GlobalState.currentView === "content" ? contentComponent : historyComponent
+            }
+            
+            Component {
+                id: contentComponent
+                SplitView {
+                    height: parent.height
+                    width: parent.width
+                    orientation: Qt.Horizontal
 
-                Sidebar {
-                    id: sidebar
-                    SplitView.fillHeight: true
-                    SplitView.minimumWidth: 200
-                    searchResults: GlobalState.searchResults ? GlobalState.searchResults : []
+                    Sidebar {
+                        id: sidebar
+                        SplitView.fillHeight: true
+                        SplitView.minimumWidth: 200
+                        searchResults: GlobalState.searchResults ? GlobalState.searchResults : []
+                    }
+
+                    MainContent {
+                        id: mainContent
+                        SplitView.minimumWidth: 200
+                        SplitView.fillHeight: true
+                    }
                 }
-
-                MainContent {
-                    id: mainContent
-                    SplitView.minimumWidth: 200
-                    SplitView.fillHeight: true
+            }
+            
+            Component {
+                id: historyComponent
+                History {
+                    width: parent.width
+                    height: parent.height
                 }
             }
         }

@@ -6,6 +6,7 @@
 #include <QQmlEngine>
 #include <QPointer>
 #include "GlobalState.h"
+#include "HistoryState.h"
 
 class WikipediaClient; // Forward declaration
 
@@ -85,9 +86,8 @@ private slots:
 private:
     QString m_searchText; ///< The current search text.
     bool m_isSearching;   ///< Indicates whether a search is currently in progress.
-    static SearchBarModel *m_instance;
     QPointer<GlobalState> m_globalState; ///< The GlobalState instance.
-    WikipediaClient *m_wikipediaClient; ///< The Wikipedia client instance.
+    QPointer<WikipediaClient> m_wikipediaClient; ///< The Wikipedia client instance.
 };
 
 #endif // SEARCHBAR_H
