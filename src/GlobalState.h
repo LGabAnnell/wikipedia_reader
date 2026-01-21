@@ -32,6 +32,7 @@ class GlobalState : public QObject {
 public:
     Q_INVOKABLE void loadArticleByPageId(int pageId);
     Q_INVOKABLE void setCurrentView(const QString &view);
+    Q_INVOKABLE void navigateToArticle();
     explicit GlobalState(QObject *parent = nullptr, HistoryState* historyState = nullptr);
 
     // Page property accessors
@@ -81,4 +82,3 @@ private slots:
 };
 
 #endif // GLOBALSTATE_H
-

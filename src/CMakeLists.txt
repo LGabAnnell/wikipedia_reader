@@ -20,6 +20,7 @@ qt_add_qml_module(wikipedia_qt
         Main.qml
         Header.qml
         MainContent.qml
+        SearchScreen.qml
     SOURCES
         wikipedia_client.cpp
         wikipedia_client.h
@@ -35,3 +36,4 @@ qt_add_qml_module(wikipedia_qt
         SidebarModule
         HistoryModule
 )
+

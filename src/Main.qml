@@ -19,53 +19,44 @@ ApplicationWindow {
         Layout.fillWidth: true
     }
 
-    ColumnLayout {
-        width: parent.width
-        height: parent.height
-        spacing: 0
+    StackView {
+        id: stackView
+        anchors.fill: parent
+        initialItem: searchComponent
 
-        SearchBar {}
-
-        Item {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            
-            // Use a Loader to switch between different views
-            Loader {
-                id: viewLoader
-                anchors.fill: parent
-                sourceComponent: GlobalState.currentView === "content" ? contentComponent : historyComponent
-            }
-            
-            Component {
-                id: contentComponent
-                SplitView {
-                    height: parent.height
-                    width: parent.width
-                    orientation: Qt.Horizontal
-
-                    Sidebar {
-                        id: sidebar
-                        SplitView.fillHeight: true
-                        SplitView.minimumWidth: 200
-                        searchResults: GlobalState.searchResults ? GlobalState.searchResults : []
-                    }
-
-                    MainContent {
-                        id: mainContent
-                        SplitView.minimumWidth: 200
-                        SplitView.fillHeight: true
-                    }
-                }
-            }
-            
-            Component {
-                id: historyComponent
-                History {
-                    width: parent.width
-                    height: parent.height
+        // Listen for changes to GlobalState.currentView
+        Connections {
+            target: GlobalState
+            function onCurrentViewChanged() {
+                switch (GlobalState.currentView) {
+                case "content":
+                    stackView.replace(articleComponent)
+                    break;
+                case "history":
+                    stackView.replace(historyComponent)
+                    break;
+                default:
+                    stackView.replace(searchComponent)
+                    break;
                 }
             }
         }
     }
+
+    // Components for StackView
+    Component {
+        id: searchComponent
+        SearchScreen {}
+    }
+
+    Component {
+        id: articleComponent
+        MainContent {}
+    }
+
+    Component {
+        id: historyComponent
+        History {}
+    }
 }
+

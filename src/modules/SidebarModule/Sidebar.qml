@@ -28,6 +28,7 @@ Item {
                 }
                 if (modelData.pageid > 0) {
                     GlobalState.loadArticleByPageId(modelData.pageid);
+                    GlobalState.navigateToArticle();
                 }
             }
 
@@ -91,9 +92,16 @@ Item {
                 onPressed: function () {
                     listView.currentIndex = index;
                 }
+                onClicked: function () {
+                    if (modelData.pageid > 0) {
+                        GlobalState.loadArticleByPageId(modelData.pageid);
+                        GlobalState.navigateToArticle();
+                    }
+                }
             }
         }
 
         spacing: 10
     }
 }
+

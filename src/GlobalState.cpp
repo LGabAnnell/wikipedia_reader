@@ -118,8 +118,11 @@ void GlobalState::setCurrentView(const QString &view) {
     if (m_currentView != view) {
         m_currentView = view;
         emit currentViewChanged();
+    }
 }
+
+void GlobalState::navigateToArticle() {
+    setCurrentView("content");
 }
 
 // New methods for history management
-

@@ -21,4 +21,6 @@ You are an expert C++ developer specializing in the Qt framework. Your task is t
 Ignore the build directory when scanning for files.
 
 When in agent mode, apply the changes directly, do not only give examples
+
+When writing debugging statements in .qml files, use console.warn instead of console.warn
 </IMPORTANT>
