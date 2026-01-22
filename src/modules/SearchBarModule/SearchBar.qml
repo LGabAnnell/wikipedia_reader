@@ -19,7 +19,7 @@ RowLayout {
         onTextChanged: searchBarModel.searchText = text
         enabled: !searchBarModel.isSearching
         font.pixelSize: 16
-
+        Layout.fillWidth: true
         // Clear button
         rightPadding: 30
     }

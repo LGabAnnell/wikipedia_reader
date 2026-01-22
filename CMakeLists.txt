@@ -50,6 +50,7 @@ qt_add_executable(appwikipedia_qt
     src/wikipedia_client.cpp
     src/HistoryState.cpp
     src/NavigationState.cpp
+    src/HistoryDatabase.cpp
 )
 
 qt_add_resources(appwikipedia_qt

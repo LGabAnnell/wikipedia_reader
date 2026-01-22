@@ -51,11 +51,11 @@ Item {
                 wrapMode: TextEdit.Wrap
                 readOnly: true // Make it read-only to prevent editing
                 selectByMouse: true // Enable text selection
-                focus: false // Disable focus to avoid cursor blinking
             }
 
             // Article content (using TextEdit for selectable text)
             TextEdit {
+                id: articleSection
                 text: GlobalState.currentPageExtract
                 wrapMode: TextEdit.Wrap
                 font.pixelSize: 14
@@ -64,7 +64,14 @@ Item {
                 width: parent.width
                 readOnly: true // Make it read-only to prevent editing
                 selectByMouse: true // Enable text selection
-                focus: false // Disable focus to avoid cursor blinking
+                ContextMenu.menu: Menu {
+                    MenuItem {
+                        text: "Copy"
+                        onTriggered: function () {
+                            articleSection.copy();
+                        }
+                    }
+                }
             }
 
             // Placeholder when no article is selected

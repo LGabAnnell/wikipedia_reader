@@ -55,9 +55,6 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 onEntered: function () {
-                    if (listView.currentIndex == index) {
-                        return;
-                    }
                     parent.background.color = sysPalette.highlight;
                     bgRect.color.a = .5;
                     bgRect.border.color = sysPalette.highlight;
@@ -66,9 +63,6 @@ Item {
                 onExited: function () {
                     parent.background.color = sysPalette.button;
                     bgRect.border.width = 0;
-                }
-                onPressed: function () {
-                    listView.currentIndex = index;
                 }
                 onClicked: function () {
                     if (modelData.pageid > 0) {

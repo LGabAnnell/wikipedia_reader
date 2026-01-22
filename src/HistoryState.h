@@ -6,9 +6,9 @@
 #include <QString>
 #include <QDateTime>
 #include <QQmlEngine>
-#include <QSqlQuery>
-#include <QSqlError>
-#include "wikipedia_client.h"
+#include "wikipedia_client.h" // For history_item
+
+class HistoryDatabase; // Forward declaration
 
 class HistoryState : public QObject {
     Q_OBJECT
@@ -30,17 +30,14 @@ public slots:
 signals:
     void historyChanged();
     void databaseError(const QString &errorMessage);
-    void databaseInitialized();  // New signal
+    void databaseInitialized();
 
 private:
     QVector<history_item> m_history;
     static const int MAX_HISTORY_ITEMS = 50;
+    HistoryDatabase *m_database;
 
     bool itemExistsInHistory(int pageId);
-    void initializeDatabase();
-    void loadHistoryFromDatabase();
-    bool executeQuery(QSqlQuery &query, const QString &queryText, const QString &operationDescription);
-
 };
 
 #endif // HISTORYSTATE_H
