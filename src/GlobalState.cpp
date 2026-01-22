@@ -7,7 +7,6 @@ QPointer<GlobalState> GlobalState::m_instance = nullptr; // Definition
 GlobalState::GlobalState(QObject *parent, HistoryState *historyState) :
     QObject(parent),
     m_isLoading(false),
-    m_currentView("content"),
     m_historyState(historyState) {
 
     m_instance = this;
@@ -28,7 +27,7 @@ GlobalState::GlobalState(QObject *parent, HistoryState *historyState) :
                 setCurrentPage(p);
             });
 
-    m_wikipediaClient->getFeaturedArticleOfTheDay();
+    // m_wikipediaClient->getFeaturedArticleOfTheDay();
 }
 
 QString GlobalState::currentPageTitle() const {
@@ -98,31 +97,13 @@ void GlobalState::loadArticleByPageId(int pageId) {
         } else {
             // Fetch the article from the network
             setIsLoading(true);
-        clearErrorMessage();
-        m_wikipediaClient->getPageById(pageId);
+            clearErrorMessage();
+            m_wikipediaClient->getPageById(pageId);
+        }
     }
-}
 }
 
 void GlobalState::handleArticleLoadError(const QString &error) {
     setIsLoading(false);
     setErrorMessage(error);
 }
-
-// New methods for view management
-QString GlobalState::currentView() const {
-    return m_currentView;
-}
-
-void GlobalState::setCurrentView(const QString &view) {
-    if (m_currentView != view) {
-        m_currentView = view;
-        emit currentViewChanged();
-    }
-}
-
-void GlobalState::navigateToArticle() {
-    setCurrentView("content");
-}
-
-// New methods for history management

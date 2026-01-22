@@ -6,7 +6,6 @@ import wikipedia_qt.SearchBar 1.0
 
 RowLayout {
     id: searchBar
-    Layout.fillWidth: true
     Layout.margins: 10
     spacing: 10
 
@@ -16,7 +15,6 @@ RowLayout {
 
     TextField {
         id: searchText
-        Layout.fillWidth: true
         placeholderText: "Search Wikipedia"
         onTextChanged: searchBarModel.searchText = text
         enabled: !searchBarModel.isSearching

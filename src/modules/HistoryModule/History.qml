@@ -7,15 +7,39 @@ import wikipedia_qt 1.0
 
 Item {
     id: container
+    // Removed anchors.fill: parent to avoid conflicting with StackView
+    width: parent ? parent.width : 0
+    height: parent ? parent.height : 0
     clip: true
-    anchors.fill: parent
-
     property list<history_item> history: HistoryState.history
+
+    // Error message dialog
+    Dialog {
+        id: errorDialog
+        standardButtons: Dialog.Ok
+        title: "Database Error"
+        modal: true
+        visible: false
+        Label {
+            id: errorMessage
+            text: ""
+        }
+    }
+
+    Component.onCompleted: {
+        // Connect to database error signal
+        HistoryState.databaseError.connect(function(errorMessage) {
+            errorMessage.text = errorMessage
+            errorDialog.visible = true
+            console.warn("Database error:", errorMessage)
+        })
+    }
 
     ColumnLayout {
         spacing: 10
-        anchors.fill: parent
-
+        // Use the container's dimensions instead of anchoring
+        width: container.width
+        height: container.height
         // Header with title and clear button
         RowLayout {
             Layout.fillWidth: true
@@ -23,14 +47,12 @@ Item {
             Layout.rightMargin: 10
             Layout.leftMargin: 10
             spacing: 10
-
             Label {
                 text: "Browsing History"
                 font.pixelSize: 18
                 font.bold: true
                 Layout.alignment: Qt.AlignLeft
             }
-
             Item {
                 Layout.fillWidth: true
             }
@@ -40,6 +62,17 @@ Item {
                 onClicked: HistoryState.clearHistory()
                 enabled: container.history.length > 0
             }
+        }
+            // Empty state message
+        Label {
+            id: emptyStateLabel
+            text: "No browsing history yet"
+            color: "gray"
+            font.pixelSize: 14
+            horizontalAlignment: Text.AlignHCenter
+            visible: container.history.length === 0
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 20
         }
 
         // History list
@@ -51,6 +84,7 @@ Item {
             clip: true
             cellHeight: 60
             cellWidth: 140
+            visible: container.history.length > 0
 
             delegate: Item {
                 width: 140
@@ -124,23 +158,13 @@ Item {
                             if (modelData.pageId > 0) {
                                 GlobalState.loadArticleByPageId(modelData.pageId);
                                 // Switch back to content view
-                                GlobalState.setCurrentView("content");
+                                NavigationState.navigateToContent();
                             }
                         }
                     }
                 }
             }
-
-            // Empty state message
-            // footer: Text {
-            //     text: HistoryState.history.length() === 0 ? "No browsing history yet" : ""
-            //     color: "gray"
-            //     font.pixelSize: 14
-            //     horizontalAlignment: Text.AlignHCenter
-            //     visible: HistoryState.history.length() === 0
-            //     anchors.horizontalCenter: parent.horizontalCenter
-            //     padding: 20
-            // }
         }
     }
 }
+

@@ -27,7 +27,7 @@ qt_add_qml_module(wikipedia_qt
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt
     RESOURCES
         ../icons/home.jpg
-        ../icons/history.jpg
+        ../icons/history.svg
         ../icons/bookmark.jpg
         ../icons/safes.jpg
         ../icons/location.png

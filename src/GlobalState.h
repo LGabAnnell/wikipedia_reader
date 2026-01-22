@@ -25,14 +25,8 @@ class GlobalState : public QObject {
     // Add error message property
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
 
-    // Add view management property
-    Q_PROPERTY(QString currentView READ currentView NOTIFY currentViewChanged)
-
-    // Add history property
 public:
     Q_INVOKABLE void loadArticleByPageId(int pageId);
-    Q_INVOKABLE void setCurrentView(const QString &view);
-    Q_INVOKABLE void navigateToArticle();
     explicit GlobalState(QObject *parent = nullptr, HistoryState* historyState = nullptr);
 
     // Page property accessors
@@ -43,7 +37,6 @@ public:
 
     bool isLoading() const;
     QString errorMessage() const;
-    QString currentView() const;
 
     static QPointer<GlobalState> instance() {
         return m_instance;
@@ -61,14 +54,12 @@ signals:
     void currentPageChanged();
     void isLoadingChanged();
     void errorMessageChanged();
-    void currentViewChanged();
 
 private:
     QVector<search_result> m_searchResults;
     page m_currentPage;
     bool m_isLoading;
     QString m_errorMessage;
-    QString m_currentView;
     static QPointer<GlobalState> m_instance;
     WikipediaClient* m_wikipediaClient;
     HistoryState* m_historyState;

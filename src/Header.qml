@@ -7,9 +7,25 @@ ToolBar {
     id: header
     Layout.fillWidth: true
 
+    // Accept stackView as a property
+    property StackView stackView: null
+
     height: 50
 
     RowLayout {
+        ToolButton {
+            contentItem: Image {
+                source: "qrc:/icons/back.jpg"
+                fillMode: Image.PreserveAspectFit
+                sourceSize: Qt.size(24, 24)
+            }
+            text: "Back"
+            onClicked: {
+                if (stackView && stackView.depth > 1) {
+                    stackView.pop();
+                }
+            }
+        }
         ToolButton {
             height: parent.height
             contentItem: Image {
@@ -19,16 +35,18 @@ ToolBar {
                 sourceSize: Qt.size(24, 24)
             }
             text: "Home"
-            onClicked: GlobalState.setCurrentView("content")
+            onClicked: {
+                NavigationState.navigateToSearch();
+            }
         }
         ToolButton {
             contentItem: Image {
-                source: "qrc:/icons/history.jpg"
+                source: "qrc:/icons/history.svg"
                 fillMode: Image.PreserveAspectFit
                 sourceSize: Qt.size(24, 24)
             }
             text: "History"
-            onClicked: GlobalState.setCurrentView("history")
+            onClicked: NavigationState.navigateToHistory()
         }
         ToolButton {
             contentItem: Image {
@@ -58,4 +76,8 @@ ToolBar {
         //     Layout.fillWidth: true
         // }
     }
+
+    // Internal alias to avoid naming conflicts
+    property QtObject stackViewAlias: null
 }
+

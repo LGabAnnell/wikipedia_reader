@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "/usr/include/qt6",
-                "/usr/include/qt6/**"
+                "/usr/include/qt6/**",
+                "/usr/include/qt6/QtSql"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

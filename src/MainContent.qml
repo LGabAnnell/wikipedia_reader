@@ -6,8 +6,12 @@ import QtQuick.Layouts
 import wikipedia_qt 1.0
 
 Item {
-    Layout.fillWidth: true
-    Layout.fillHeight: true
+    id: mainContent
+    // Let the parent StackView manage our size
+    width: parent ? parent.width : 0
+    height: parent ? parent.height : 0
+    // Signal to notify parent components about back navigation
+    signal backRequested
 
     // Loading indicator
     BusyIndicator {
@@ -19,7 +23,9 @@ Item {
 
     ScrollView {
         id: scrollView
-        anchors.fill: parent
+        // Use the mainContent's dimensions
+        width: mainContent.width
+        height: mainContent.height
         clip: true
 
         // Add a vertical scrollbar

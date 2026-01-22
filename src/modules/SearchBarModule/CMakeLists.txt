@@ -24,4 +24,4 @@ qt_add_qml_module(SearchBarModule
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt/SearchBar
 )
 
-target_link_libraries(SearchBarModule PRIVATE Qt::Quick Qt::Core Qt::Network)
+target_link_libraries(SearchBarModule PRIVATE Qt::Quick Qt::Core Qt::Network Qt::Sql)

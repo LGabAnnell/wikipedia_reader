@@ -22,16 +22,6 @@ Item {
                 id: sysPalette
             }
 
-            onFocusChanged: function (isEntered) {
-                if (!isEntered) {
-                    return;
-                }
-                if (modelData.pageid > 0) {
-                    GlobalState.loadArticleByPageId(modelData.pageid);
-                    GlobalState.navigateToArticle();
-                }
-            }
-
             hoverEnabled: true
             width: parent ? parent.width : 0
             height: 80
@@ -42,18 +32,6 @@ Item {
             background: Rectangle {
                 id: bgRect
                 color: sysPalette.button
-                radius: 5
-            }
-
-            Rectangle {
-                id: selectedRect
-                property SystemPalette sysPalette: sysPalette
-                anchors.fill: parent
-                anchors.margins: 5
-                visible: listView.currentIndex == index
-                color: sysPalette.highlight
-                border.color: sysPalette.highlight
-                border.width: 2
                 radius: 5
             }
 
@@ -95,7 +73,7 @@ Item {
                 onClicked: function () {
                     if (modelData.pageid > 0) {
                         GlobalState.loadArticleByPageId(modelData.pageid);
-                        GlobalState.navigateToArticle();
+                        NavigationState.navigateToContent();
                     }
                 }
             }

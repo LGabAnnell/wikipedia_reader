@@ -10,8 +10,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(QT_QML_GENERATE_QMLLS_INI ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 
-
-
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(DEBUG TRUE)
     message("Debug set???")
@@ -35,7 +33,8 @@ list(JOIN QML_DIRS ";" QML_IMPORT_PATH_STR)
 # Set as a cached variable
 set(QML_IMPORT_PATH "${QML_IMPORT_PATH_STR}")
 
-find_package(Qt6 REQUIRED COMPONENTS Quick Core Network Test)
+find_package(Qt6 REQUIRED COMPONENTS Quick Core Network Sql Test)
+
 qt_standard_project_setup(REQUIRES 6.8)
 
 include_directories(
@@ -50,18 +49,18 @@ qt_add_executable(appwikipedia_qt
     src/GlobalState.cpp
     src/wikipedia_client.cpp
     src/HistoryState.cpp
+    src/NavigationState.cpp
 )
 
 qt_add_resources(appwikipedia_qt
     "icons"
     FILES
         icons/home.jpg
-        icons/history.jpg
+        icons/history.svg
         icons/bookmark.jpg
         icons/safes.jpg
         icons/location.png
 )
-
 
 add_subdirectory(src/modules/SearchBarModule)
 add_subdirectory(src/modules/SidebarModule)
@@ -80,6 +79,7 @@ PRIVATE
     Qt::Quick 
     Qt::Core 
     Qt::Network 
+    Qt::Sql
     wikipedia_qt 
     SearchBarModule 
     SidebarModule 
@@ -96,3 +96,4 @@ install(TARGETS appwikipedia_qt
 if (BUILD_TESTING)
     add_subdirectory(tests)
 endif()
+

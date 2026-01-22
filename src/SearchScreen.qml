@@ -9,14 +9,16 @@ import wikipedia_qt.Sidebar 1.0
 
 Item {
     id: searchScreen
-    Layout.fillWidth: true
-    Layout.fillHeight: true
-
+    // Let the parent StackView manage our size
     ColumnLayout {
-        anchors.fill: parent
+        // Use the searchScreen's dimensions
         spacing: 0
 
-        SearchBar {}
+        anchors.fill: parent
+
+        SearchBar {
+            Layout.fillWidth: true
+        }
 
         SplitView {
             Layout.fillHeight: true
