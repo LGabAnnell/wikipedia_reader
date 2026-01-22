@@ -46,6 +46,7 @@ Item {
                 font.pixelSize: 20
                 font.bold: true
                 color: articleDisplay.sysPalette.text
+                selectionColor: articleDisplay.sysPalette.highlight
                 visible: GlobalState.currentPageTitle.length > 0
                 width: parent.width
                 wrapMode: TextEdit.Wrap
@@ -57,6 +58,7 @@ Item {
             TextEdit {
                 id: articleSection
                 text: GlobalState.currentPageExtract
+                selectionColor: articleDisplay.sysPalette.highlight
                 wrapMode: TextEdit.Wrap
                 font.pixelSize: 14
                 color: articleDisplay.sysPalette.text

@@ -28,11 +28,11 @@ Item {
 
     Component.onCompleted: {
         // Connect to database error signal
-        HistoryState.databaseError.connect(function(errorMessage) {
-            errorMessage.text = errorMessage
-            errorDialog.visible = true
-            console.warn("Database error:", errorMessage)
-        })
+        HistoryState.databaseError.connect(function (errorMessage) {
+            errorMessage.text = errorMessage;
+            errorDialog.visible = true;
+            console.warn("Database error:", errorMessage);
+        });
     }
 
     ColumnLayout {
@@ -63,7 +63,7 @@ Item {
                 enabled: container.history.length > 0
             }
         }
-            // Empty state message
+        // Empty state message
         Label {
             id: emptyStateLabel
             text: "No browsing history yet"
@@ -122,6 +122,7 @@ Item {
                         padding: 10
                         spacing: 5
                         clip: true
+
                         Text {
                             text: modelData.title
                             color: sysPalette.text
@@ -140,10 +141,6 @@ Item {
                     MouseArea {
                         hoverEnabled: true
                         onEntered: function () {
-                            if (historyList.currentIndex == index) {
-                                return;
-                            }
-                            parent.background.color = sysPalette.highlight;
                             bgRect.color.a = .5;
                             bgRect.border.color = sysPalette.highlight;
                             bgRect.border.width = 2;
@@ -157,8 +154,18 @@ Item {
                             // Load the article when clicked
                             if (modelData.pageId > 0) {
                                 GlobalState.loadArticleByPageId(modelData.pageId);
-                                // Switch back to content view
-                                NavigationState.navigateToContent();
+                                // Get the StackView from NavigationState and push the article view
+                                const stackView = NavigationState.stackView;
+                                if (stackView) {
+                                    // Define the article view component
+                                    const articleComponent = Qt.createComponent("../MainContent.qml");
+                                    if (articleComponent.status === Component.Ready) {
+                                        const articleItem = articleComponent.createObject(stackView);
+                                        stackView.push(articleItem);
+                                    } else {
+                                        console.warn("Failed to create article component:", articleComponent.errorString());
+                                    }
+                                }
                             }
                         }
                     }
@@ -167,4 +174,3 @@ Item {
         }
     }
 }
-
