@@ -1,6 +1,7 @@
 // tests/GlobalStateTest.cpp
 #include <QtTest/QtTest>
 #include <QCoreApplication>
+#include <QVector>
 #include "GlobalState.h"
 
 class GlobalStateTest : public QObject {
@@ -26,10 +27,10 @@ private slots:
 
     void testSetSearchResults() {
         GlobalState globalState;
-        QVector<Wikipedia::SearchResult> results;
+        QVector<search_result> results;
 
         // Add a test search result
-        Wikipedia::SearchResult result;
+        search_result result;
         result.title = "Test Title";
         result.snippet = "Test Snippet";
         result.pageid = 123;
@@ -43,7 +44,7 @@ private slots:
 
     void testSetCurrentPage() {
         GlobalState globalState;
-        Wikipedia::Page page;
+        page page;
 
         // Set page details
         page.title = "Test Page";
@@ -77,11 +78,11 @@ private slots:
         QSignalSpy isLoadingSpy(&globalState, &GlobalState::isLoadingChanged);
 
         // Trigger changes
-        QVector<Wikipedia::SearchResult> results;
+        QVector<search_result> results;
         globalState.setSearchResults(results);
         QCOMPARE(searchResultsSpy.count(), 1);
 
-        Wikipedia::Page page;
+        page page;
         globalState.setCurrentPage(page);
         QCOMPARE(currentPageSpy.count(), 1);
 

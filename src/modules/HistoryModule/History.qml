@@ -107,16 +107,6 @@ Item {
                         radius: 5
                     }
 
-                    Rectangle {
-                        id: selectedRect
-                        property SystemPalette sysPalette: sysPalette
-                        visible: historyList.currentIndex == index
-                        color: sysPalette.highlight
-                        border.color: sysPalette.highlight
-                        border.width: 2
-                        radius: 5
-                    }
-
                     Column {
                         Layout.alignment: Qt.AlignHCenter
                         padding: 10
@@ -140,32 +130,22 @@ Item {
 
                     MouseArea {
                         hoverEnabled: true
+                        anchors.fill: parent
                         onEntered: function () {
                             bgRect.color.a = .5;
                             bgRect.border.color = sysPalette.highlight;
                             bgRect.border.width = 2;
                         }
                         onExited: function () {
-                            parent.background.color = sysPalette.button;
                             bgRect.border.width = 0;
                         }
-                        onPressed: function () {
+                        onClicked: function () {
                             historyList.currentIndex = index;
                             // Load the article when clicked
                             if (modelData.pageId > 0) {
                                 GlobalState.loadArticleByPageId(modelData.pageId);
                                 // Get the StackView from NavigationState and push the article view
-                                const stackView = NavigationState.stackView;
-                                if (stackView) {
-                                    // Define the article view component
-                                    const articleComponent = Qt.createComponent("../MainContent.qml");
-                                    if (articleComponent.status === Component.Ready) {
-                                        const articleItem = articleComponent.createObject(stackView);
-                                        stackView.push(articleItem);
-                                    } else {
-                                        console.warn("Failed to create article component:", articleComponent.errorString());
-                                    }
-                                }
+                                NavigationState.navigateToContent();
                             }
                         }
                     }

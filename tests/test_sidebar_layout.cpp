@@ -5,7 +5,7 @@
 #include <QtQml/QQmlEngine>
 #include <QtQml/QQmlComponent>
 
-#include "SidebarModule/SidebarModel.h"
+#include "SidebarModel.h"
 
 class TestSidebarLayout : public QObject
 {
@@ -23,6 +23,10 @@ private slots:
         // Test that Sidebar respects width constraints
         QQmlEngine engine;
         QQmlComponent component(&engine, QUrl::fromLocalFile("SidebarModule/Sidebar.qml"));
+        
+        if (component.isError()) {
+            QFAIL("Failed to load Sidebar.qml");
+        }
         
         QObject *sidebarObj = component.create();
         QVERIFY(sidebarObj != nullptr);
@@ -44,6 +48,10 @@ private slots:
         // Test that sidebar buttons are properly laid out
         QQmlEngine engine;
         QQmlComponent component(&engine, QUrl::fromLocalFile("SidebarModule/Sidebar.qml"));
+        
+        if (component.isError()) {
+            QFAIL("Failed to load Sidebar.qml");
+        }
         
         QObject *sidebarObj = component.create();
         QVERIFY(sidebarObj != nullptr);

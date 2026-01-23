@@ -3,12 +3,16 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+import wikipedia_qt
+
 ToolBar {
     id: header
     Layout.fillWidth: true
 
     // Accept stackView as a property
     property StackView stackView: null
+
+    signal changeView(string viewName)
 
     height: 50
 
@@ -36,7 +40,7 @@ ToolBar {
             }
             text: "Home"
             onClicked: {
-                NavigationState.navigateToSearch();
+                header.changeView(Constants.searchView)
             }
         }
         ToolButton {
@@ -46,7 +50,7 @@ ToolBar {
                 sourceSize: Qt.size(24, 24)
             }
             text: "History"
-            onClicked: NavigationState.navigateToHistory()
+            onClicked: header.changeView(Constants.historyView)
         }
         ToolButton {
             contentItem: Image {

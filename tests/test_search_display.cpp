@@ -2,6 +2,7 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QTimer>
+#include <QVector>
 #include "GlobalState.h"
 #include "SearchBarModel.h"
 #include "wikipedia_client/wikipedia_client.h"

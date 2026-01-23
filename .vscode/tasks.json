@@ -15,12 +15,38 @@
             "detail": "Build the project in Debug mode using CMake"
         },
         {
+            "label": "CMake: Build tests",
+            "type": "shell",
+            "command": "cmake -DBUILD_TESTS=ON -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j 10",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Build project with test files"
+        },
+        {
             "label": "CMake: Configure (Debug)",
             "type": "shell",
-            "command": "cmake -B build -DDEBUG -DCMAKE_BUILD_TYPE=Debug",
+            "command": "cmake -B build -DDEBUG=ON -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j 10",
             "group": "build",
             "problemMatcher": [],
             "detail": "Configure the project in Debug mode using CMake"
-        }
+        },
+        {
+            "label": "CMake: QML debug Build",
+            "type": "shell",
+            "command": "cmake -D QT_QML_DEBUG=ON -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j 10",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Build the project in Debug mode using CMake"
+        },
     ]
 }

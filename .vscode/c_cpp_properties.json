@@ -4,9 +4,9 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
+                "/usr/include",
                 "/usr/include/qt6",
-                "/usr/include/qt6/**",
-                "/usr/include/qt6/QtSql"
+                "/usr/include/qt6/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

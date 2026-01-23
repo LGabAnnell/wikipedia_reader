@@ -19,11 +19,12 @@ qt_add_qml_module(wikipedia_qt
     QML_FILES
         Main.qml
         Header.qml
-        MainContent.qml
         SearchScreen.qml
     SOURCES
         wikipedia_client.cpp
         wikipedia_client.h
+        constants.cpp
+        constants.h
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt
     RESOURCES
         ../icons/home.jpg
@@ -35,5 +36,6 @@ qt_add_qml_module(wikipedia_qt
         SearchBarModule 
         SidebarModule
         HistoryModule
+        ContentDisplayModule
 )
 

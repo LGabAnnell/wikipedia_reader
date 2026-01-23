@@ -3,9 +3,58 @@
 #include "wikipedia_client.h"
 #include <QUrlQuery>
 #include <QUrl>
+#include <iostream>
 #include <QDate>
 #include <QEventLoop>
+#include <QFile>
+#include <tinyxml2.h>
 
+
+
+void RemoveImgNodes(tinyxml2::XMLElement *element) {
+    if (element == nullptr) return;
+
+    // Remove img nodes
+    for (tinyxml2::XMLElement *img = element->FirstChildElement("img");
+         img != nullptr; img = element->FirstChildElement("img")) {
+        element->DeleteChild(img);
+    }
+
+    // Recursively process child elements
+    for (tinyxml2::XMLElement *child = element->FirstChildElement();
+         child != nullptr; child = child->NextSiblingElement()) {
+        RemoveImgNodes(child);
+    }
+}
+
+void RemoveStyleNodes(tinyxml2::XMLElement *element) {
+    if (element == nullptr) return;
+
+    // Remove img nodes
+    for (tinyxml2::XMLElement *img = element->FirstChildElement("style");
+         img != nullptr; img = element->FirstChildElement("style")) {
+        element->DeleteChild(img);
+    }
+
+    // Recursively process child elements
+    for (tinyxml2::XMLElement *child = element->FirstChildElement();
+         child != nullptr; child = child->NextSiblingElement()) {
+        RemoveStyleNodes(child);
+    }
+}
+
+void RemoveStyleAttributes(tinyxml2::XMLElement *node) {
+    if (node == nullptr) return;
+
+    // Remove style attribute from the current node
+    node->DeleteAttribute("style");
+
+    // Recursively process child elements
+    for (tinyxml2::XMLElement *child = node->FirstChildElement();
+         child != nullptr; child = child->NextSiblingElement()) {
+        RemoveStyleAttributes(child);
+    }
+}
 
 WikipediaClient::WikipediaClient(QObject *parent) : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
     baseUrl = "https://en.wikipedia.org/w/api.php";
@@ -49,6 +98,7 @@ void WikipediaClient::onSearchReply(QNetworkReply *reply) {
 }
 
 void WikipediaClient::getPage(const QString &title) {
+    //
     QUrl url(baseUrl);
     QUrlQuery urlQuery;
     urlQuery.addQueryItem("action", "query");
@@ -86,38 +136,70 @@ void WikipediaClient::onPageReply(QNetworkReply *reply, const QString &title) {
 }
 
 void WikipediaClient::getPageById(int pageid) {
+    // https://en.wikipedia.org/w/api.php?action=parse&page=Article_Title&format=json&prop=text&contentmodel=wikitext&disableeditsection=true&disabletoc=true&noimages=true
     QUrl url(baseUrl);
     QUrlQuery urlQuery;
-    urlQuery.addQueryItem("action", "query");
+    urlQuery.addQueryItem("action", "parse");
     urlQuery.addQueryItem("format", "json");
-    urlQuery.addQueryItem("prop", "extracts");
-    urlQuery.addQueryItem("pageids", QString::number(pageid));
-    urlQuery.addQueryItem("explaintext", "1");
+    urlQuery.addQueryItem("prop", "text");
+    // urlQuery.addQueryItem("contentmodel", "wikitext");
+    urlQuery.addQueryItem("disableeditsection", "true");
+    urlQuery.addQueryItem("formatversion", "2");
+    urlQuery.addQueryItem("pageid", QString::number(pageid));
+    // urlQuery.addQueryItem("explaintext", "1");
     url.setQuery(urlQuery);
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    qDebug() << "Requesting page with id: " << url.toString();
     connect(reply, &QNetworkReply::finished, this, [this, reply, pageid]() {
         if (reply->error() == QNetworkReply::NoError) {
             QByteArray response = reply->readAll();
             QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
             QJsonObject jsonObj = jsonDoc.object();
-            QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
+            QJsonObject pages = jsonObj["parse"].toObject();
 
-            for (auto it = pages.begin(); it != pages.end(); ++it) {
-                if (it.key().toInt() == pageid) {
-                    page page;
-                    page.title = it.value().toObject()["title"].toString();
-                    page.extract = it.value().toObject()["extract"].toString();
-                    page.pageid = pageid;
-                    emit pageReceived(page);
-                    break;
-                }
-            }
+            page page;
+            page.title = pages["title"].toString();
+            page.extract = pages["text"].toString();
+
+            tinyxml2::XMLDocument doc = tinyxml2::XMLDocument();
+            doc.Parse(page.extract.toStdString().c_str());
+
+            RemoveImgNodes(doc.RootElement());
+            RemoveStyleAttributes(doc.RootElement());
+            RemoveStyleNodes(doc.RootElement());
+
+            tinyxml2::XMLPrinter printer;
+            doc.Print(&printer);
+            page.extract = R"""(
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <style>
+                                a {
+                                    text-decoration: none;
+                                }
+                                sup {
+                                    /* vertical-align: baseline; */
+                                    line-height: 2.0;
+                                }
+                            </style>
+                    </head>
+                    <body>
+                )""" +
+                QString(printer.CStr())
+                + R"""(
+                    </body>
+                    </html>
+                )""";
+            page.pageid = pageid;
+
+            emit pageReceived(page);
         } else {
             emit errorOccurred(reply->errorString());
         }
         reply->deleteLater();
-    });
+});
 }
 
 void WikipediaClient::getPageWithImages(int pageid) {

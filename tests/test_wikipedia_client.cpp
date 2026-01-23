@@ -1,6 +1,7 @@
 #include <QCoreApplication>
 #include <QTest>
 #include <QSignalSpy>
+#include <QVector>
 #include "../src/wikipedia_client/wikipedia_client.h"
 
 class TestWikipediaClient : public QObject

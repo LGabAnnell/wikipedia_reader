@@ -1,22 +1,23 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QTimer>
+#include <QVector>
 #include "wikipedia_client.h"
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
 
     // Register custom types
-    qRegisterMetaType<Wikipedia::SearchResult>();
-    qRegisterMetaType<Wikipedia::Page>();
-    qRegisterMetaType<Wikipedia::FeaturedArticle>();
-    qRegisterMetaType<QVector<Wikipedia::SearchResult>>();
+    qRegisterMetaType<search_result>();
+    qRegisterMetaType<page>();
+    qRegisterMetaType<featured_article>();
+    qRegisterMetaType<QVector<search_result>>();
 
-    Wikipedia::WikipediaClient client;
+    WikipediaClient client;
 
     // Test search
-    QObject::connect(&client, &Wikipedia::WikipediaClient::searchCompleted,
-        [](const QVector<Wikipedia::SearchResult> &results) {
+    QObject::connect(&client, &WikipediaClient::searchCompleted,
+        [](const QVector<search_result> &results) {
             qDebug() << "Search completed with" << results.size() << "results:";
             for (const auto &result : results) {
                 qDebug() << "  - " << result.title << "(ID:" << result.pageid << ")";
@@ -24,7 +25,7 @@ int main(int argc, char *argv[]) {
             qDebug() << "Search test completed successfully!";
         });
 
-    QObject::connect(&client, &Wikipedia::WikipediaClient::errorOccurred,
+    QObject::connect(&client, &WikipediaClient::errorOccurred,
         [](const QString &error) {
             qDebug() << "Error occurred:" << error;
         });
