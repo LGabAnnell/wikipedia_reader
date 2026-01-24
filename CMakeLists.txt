@@ -53,6 +53,7 @@ qt_add_executable(appwikipedia_qt
     src/main.cpp
     src/state/GlobalState.cpp
     src/wikipedia_client.cpp
+    src/html_processor.cpp
     src/state/HistoryState.cpp
     src/state/NavigationState.cpp
     src/state/db/HistoryDatabase.cpp

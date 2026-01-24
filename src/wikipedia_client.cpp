@@ -1,6 +1,7 @@
 // WikipediaClient.cpp
 
 #include "wikipedia_client.h"
+#include "html_processor.h"
 #include <QUrlQuery>
 #include <QUrl>
 #include <iostream>
@@ -8,57 +9,8 @@
 #include <QEventLoop>
 #include <QFile>
 #include <tinyxml2.h>
-#include <format>
-#include <string>
-
-#include <QtGui/QPalette>
 
 
-
-void RemoveImgNodes(tinyxml2::XMLElement *element) {
-    if (element == nullptr) return;
-
-    // Remove img nodes
-    for (tinyxml2::XMLElement *img = element->FirstChildElement("img");
-         img != nullptr; img = element->FirstChildElement("img")) {
-        element->DeleteChild(img);
-    }
-
-    // Recursively process child elements
-    for (tinyxml2::XMLElement *child = element->FirstChildElement();
-         child != nullptr; child = child->NextSiblingElement()) {
-        RemoveImgNodes(child);
-    }
-}
-
-void RemoveStyleNodes(tinyxml2::XMLElement *element) {
-    if (element == nullptr) return;
-
-    // Remove img nodes
-    for (tinyxml2::XMLElement *img = element->FirstChildElement("style");
-         img != nullptr; img = element->FirstChildElement("style")) {
-        element->DeleteChild(img);
-    }
-
-    // Recursively process child elements
-    for (tinyxml2::XMLElement *child = element->FirstChildElement();
-         child != nullptr; child = child->NextSiblingElement()) {
-        RemoveStyleNodes(child);
-    }
-}
-
-void RemoveStyleAttributes(tinyxml2::XMLElement *node) {
-    if (node == nullptr) return;
-
-    // Remove style attribute from the current node
-    node->DeleteAttribute("style");
-
-    // Recursively process child elements
-    for (tinyxml2::XMLElement *child = node->FirstChildElement();
-         child != nullptr; child = child->NextSiblingElement()) {
-        RemoveStyleAttributes(child);
-    }
-}
 
 WikipediaClient::WikipediaClient(QObject *parent) : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
     baseUrl = "https://en.wikipedia.org/w/api.php";
@@ -166,37 +118,7 @@ void WikipediaClient::getPageById(int pageid) {
             page.title = pages["title"].toString();
             page.extract = pages["text"].toString();
 
-            tinyxml2::XMLDocument doc = tinyxml2::XMLDocument();
-            doc.Parse(page.extract.toStdString().c_str());
-
-            RemoveImgNodes(doc.RootElement());
-            RemoveStyleAttributes(doc.RootElement());
-            RemoveStyleNodes(doc.RootElement());
-
-            tinyxml2::XMLPrinter printer;
-            doc.Print(&printer);
-
-            QFile css("styles/table_style.css");
-            if (css.open(QIODevice::ReadWrite)) {
-                qDebug() << "CSS file opened successfully";
-            }
-
-            auto style = QString(css.readAll()).arg(QPalette().text().color().name());
-            page.extract = QString(R"""(
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <style>
-                            %1                            
-                        </style>
-                    </head>
-                    <body>
-                )""").arg(style) +
-                QString(printer.CStr())
-                + R"""(
-                    </body>
-                    </html>
-                )""";
+            page.extract = HtmlProcessor::processHtml(pages["text"].toString());
             page.pageid = pageid;
 
             emit pageReceived(page);

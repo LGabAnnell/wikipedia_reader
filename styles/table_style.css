@@ -11,4 +11,5 @@ table {
     border: 1px solid;
     border-color: %1;
     border-collapse: collapse;
+    vertical-align: middle;
 }
