@@ -35,7 +35,7 @@ list(JOIN QML_DIRS ";" QML_IMPORT_PATH_STR)
 # Set as a cached variable
 set(QML_IMPORT_PATH "${QML_IMPORT_PATH_STR}")
 
-find_package(Qt6 REQUIRED COMPONENTS Quick Core Network Sql Test)
+find_package(Qt6 REQUIRED COMPONENTS Quick Core Network Sql Gui Test)
 find_package(tinyxml2 REQUIRED)
 
 qt_standard_project_setup(REQUIRES 6.8)
@@ -68,6 +68,12 @@ qt_add_resources(appwikipedia_qt
         icons/location.png
 )
 
+qt_add_resources(appwikipedia_qt
+    "styles"
+    FILES
+        styles/table_style.css
+)
+
 add_subdirectory(src/modules/SearchBarModule)
 add_subdirectory(src/modules/SidebarModule)
 add_subdirectory(src/modules/HistoryModule)
@@ -87,6 +93,7 @@ PRIVATE
     Qt::Core 
     Qt::Network 
     Qt::Sql
+    Qt::Gui
     wikipedia_qt 
     SearchBarModule 
     SidebarModule 

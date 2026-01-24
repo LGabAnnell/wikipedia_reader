@@ -8,6 +8,10 @@
 #include <QEventLoop>
 #include <QFile>
 #include <tinyxml2.h>
+#include <format>
+#include <string>
+
+#include <QtGui/QPalette>
 
 
 
@@ -171,22 +175,23 @@ void WikipediaClient::getPageById(int pageid) {
 
             tinyxml2::XMLPrinter printer;
             doc.Print(&printer);
-            page.extract = R"""(
+
+            QFile css("styles/table_style.css");
+            if (css.open(QIODevice::ReadWrite)) {
+                qDebug() << "CSS file opened successfully";
+            }
+
+            auto style = QString(css.readAll()).arg(QPalette().text().color().name());
+            page.extract = QString(R"""(
                     <!DOCTYPE html>
                     <html>
                     <head>
                         <style>
-                                a {
-                                    text-decoration: none;
-                                }
-                                sup {
-                                    /* vertical-align: baseline; */
-                                    line-height: 2.0;
-                                }
-                            </style>
+                            %1                            
+                        </style>
                     </head>
                     <body>
-                )""" +
+                )""").arg(style) +
                 QString(printer.CStr())
                 + R"""(
                     </body>
