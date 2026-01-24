@@ -4,7 +4,7 @@
         {
             "label": "CMake: Debug Build",
             "type": "shell",
-            "command": "cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j 10",
+            "command": "cmake -DCMAKE_BUILD_TYPE=Debug -B build && cmake --build build -j 10",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -17,7 +17,7 @@
         {
             "label": "CMake: Build tests",
             "type": "shell",
-            "command": "cmake -DBUILD_TESTS=ON -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j 10",
+            "command": "cmake -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -B build && cmake --build build -j 16",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -30,7 +30,7 @@
         {
             "label": "CMake: Configure (Debug)",
             "type": "shell",
-            "command": "cmake -B build -DDEBUG=ON -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j 10",
+            "command": "cmake -B build -DQT_QML_DEBUG=OFF -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j 16",
             "group": "build",
             "problemMatcher": [],
             "detail": "Configure the project in Debug mode using CMake"
@@ -38,7 +38,7 @@
         {
             "label": "CMake: QML debug Build",
             "type": "shell",
-            "command": "cmake -D QT_QML_DEBUG=ON -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j 10",
+            "command": "cmake -D QT_QML_DEBUG=ON -DCMAKE_BUILD_TYPE=Debug -B build && cmake --build build -j 16",
             "group": {
                 "kind": "build",
                 "isDefault": true
