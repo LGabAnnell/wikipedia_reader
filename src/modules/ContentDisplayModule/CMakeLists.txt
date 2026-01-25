@@ -18,9 +18,9 @@ qt_add_qml_module(ContentDisplayModule
     VERSION 1.0
     QML_FILES
         ContentDisplay.qml
-    # SOURCES
-    #     HistoryModel.cpp
-    #     HistoryModel.h
+    SOURCES
+        ContentDisplayModel.cpp
+        ContentDisplayModel.h
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt/ContentDisplay
 )
 

@@ -21,6 +21,39 @@ Item {
         visible: GlobalState.isLoading
     }
 
+    // Search bar
+    TextField {
+        id: searchField
+        placeholderText: "Search..."
+        width: parent.width - 40
+        height: 40
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: 20
+        onTextChanged: {
+            // Emit searchRequested signal when text changes
+            contentDisplay.searchRequested(text);
+        }
+    }
+
+    // Search results list
+    ListView {
+        id: searchResultsList
+        width: parent.width - 40
+        height: 100
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: searchField.bottom
+        anchors.topMargin: 10
+        visible: searchResultsModel.count > 0
+        model: searchResultsModel
+        delegate: Text {
+            text: modelData
+            width: parent.width
+            height: 30
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+
     ScrollView {
         id: scrollView
         // Use the mainContent's dimensions
@@ -103,5 +136,19 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
             }
         }
+    }
+
+    // ContentDisplay instance to handle search functionality
+    ContentDisplayModel {
+        id: contentDisplay
+        onSearchResultsAvailable: {
+            searchResultsModel.clear();
+            searchResultsModel.append(results);
+        }
+    }
+
+    // Model for search results
+    ListModel {
+        id: searchResultsModel
     }
 }

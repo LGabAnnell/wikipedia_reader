@@ -2,14 +2,9 @@ a {
     text-decoration: none;
 }
 
-sup {
-    /* vertical-align: baseline; */
-    line-height: 2.0;
-}
-
 table {
     border: 1px solid;
-    border-color: %1;
+    border-color: %1; /* border color, set by system palette */
     border-collapse: collapse;
     vertical-align: middle;
 }
