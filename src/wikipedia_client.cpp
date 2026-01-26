@@ -45,7 +45,6 @@ void WikipediaClient::onSearchReply(QNetworkReply *reply) {
                             result["snippet"].toString(),
                             result["pageid"].toInt() });
         }
-        qDebug() << "Search completed with" << results.size() << "results";
         emit searchCompleted(results);
     } else {
         emit errorOccurred(reply->errorString());
@@ -106,7 +105,6 @@ void WikipediaClient::getPageById(int pageid) {
     url.setQuery(urlQuery);
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    qDebug() << "Requesting page with id: " << url.toString();
     connect(reply, &QNetworkReply::finished, this, [this, reply, pageid]() {
         if (reply->error() == QNetworkReply::NoError) {
             QByteArray response = reply->readAll();

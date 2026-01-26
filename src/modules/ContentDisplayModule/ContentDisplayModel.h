@@ -1,5 +1,5 @@
-#ifndef CONTENTDISPLAY_H
-#define CONTENTDISPLAY_H
+#ifndef CONTENTDISPLAYMODEL_H
+#define CONTENTDISPLAYMODEL_H
 
 #include <QObject>
 #include <QString>
@@ -22,8 +22,23 @@ class ContentDisplayModel : public QObject
     Q_OBJECT
         QML_ELEMENT
 
+    Q_PROPERTY(int currentResultIndex READ currentResultIndex NOTIFY currentResultIndexChanged)
+    Q_PROPERTY(int totalResults READ totalResults NOTIFY totalResultsChanged)
+
 public:
-    ContentDisplayModel(QObject *parent = nullptr);
+    explicit ContentDisplayModel(QObject *parent = nullptr);
+
+    // Method to navigate to the next search result
+    Q_INVOKABLE void navigateToNextResult();
+
+    // Method to navigate to the previous search result
+    Q_INVOKABLE void navigateToPreviousResult();
+
+    // Getter for currentResultIndex
+    int currentResultIndex() const { return m_currentResultIndex + 1; }
+
+    // Getter for totalResults
+    int totalResults() const { return m_searchResults.size(); }
 
 signals:
     /**
@@ -38,6 +53,19 @@ signals:
      */
     void searchResultsAvailable(const QList<SearchIndices> &results);
 
+    /**
+     * @brief Signal emitted when navigating to a specific search result.
+     * @param start The start index of the search result.
+     * @param end The end index of the search result.
+     */
+    void navigateToResult(qsizetype start, qsizetype end);
+
+    // Signal emitted when currentResultIndex changes
+    void currentResultIndexChanged();
+
+    // Signal emitted when totalResults changes
+    void totalResultsChanged();
+
 private:
     // Helper method to connect search signals and slots
     void connectSearchSignals();
@@ -47,6 +75,13 @@ private:
 
     // List of items to search through
     QStringList m_items;
+
+    // Store the current search results
+    QList<SearchIndices> m_searchResults;
+
+    // Index of the currently selected search result
+    int m_currentResultIndex = -1;
 };
 
-#endif // CONTENTDISPLAY_H
+#endif // CONTENTDISPLAYMODEL_H
+

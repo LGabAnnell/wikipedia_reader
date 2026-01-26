@@ -6,6 +6,7 @@
 #include <QQuickItem>
 #include <QEvent>
 #include <QMouseEvent>
+#include <QPointer>
 
 #include "constants.h"
 
@@ -13,7 +14,6 @@ class NavigationState : public QObject {
     Q_OBJECT
     QML_ELEMENT
     Q_PROPERTY(QQuickItem* stackView READ stackView WRITE setStackView NOTIFY stackViewChanged)
-    Q_PROPERTY(QString currentView READ currentView WRITE setCurrentView NOTIFY currentViewChanged)
 
 public:
     explicit NavigationState(QObject *parent = nullptr);
@@ -46,8 +46,7 @@ protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
-    QQuickItem* m_stackView;
-    QString m_currentView;
+    QPointer<QQuickItem> m_stackView;
     std::map<QString, QQmlComponent*> views;
 };
 

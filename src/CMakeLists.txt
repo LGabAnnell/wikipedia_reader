@@ -19,7 +19,6 @@ qt_add_qml_module(wikipedia_qt
     VERSION 1.0
     QML_FILES
         Main.qml
-        Header.qml
         SearchScreen.qml
     SOURCES
         wikipedia_client.cpp
@@ -28,15 +27,14 @@ qt_add_qml_module(wikipedia_qt
         constants.h
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt
     RESOURCES
-        ../icons/home.jpg
+        ../icons/home.svg
         ../icons/history.svg
-        ../icons/bookmark.jpg
-        ../icons/safes.jpg
-        ../icons/location.png
+        ../icons/back.svg
     DEPENDENCIES TARGET 
         SearchBarModule 
         SidebarModule
         HistoryModule
         ContentDisplayModule
+        HeaderModule
 )
 

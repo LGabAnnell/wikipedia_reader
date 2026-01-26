@@ -6,6 +6,8 @@
 #include "GlobalState.h"
 #include "HistoryState.h"
 #include "NavigationState.h"
+#include "SvgImageProvider.h"
+#include "HeaderModel.h"
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
@@ -19,7 +21,7 @@ int main(int argc, char *argv[]) {
         Qt::QueuedConnection);
 
     #ifdef DEBUG
-        QLoggingCategory::defaultCategory()->setEnabled(QtDebugMsg, true);
+    QLoggingCategory::defaultCategory()->setEnabled(QtDebugMsg, true);
     #endif // DEBUG
 
 
@@ -35,6 +37,10 @@ int main(int argc, char *argv[]) {
     QPointer<GlobalState> globalState = new GlobalState(&app, historyState);
     qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "GlobalState", globalState.get());
 
+    HeaderModel headerModel;
+    engine.addImageProvider("svg", new SvgImageProvider(&headerModel));
+
+
     // Load the QML application
     engine.loadFromModule("wikipedia_qt", "Main");
 
@@ -46,3 +52,4 @@ int main(int argc, char *argv[]) {
 
     return app.exec();
 }
+

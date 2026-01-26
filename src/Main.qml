@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import wikipedia_qt // For NavigationState, GlobalState, etc.
 import wikipedia_qt.History
 import wikipedia_qt.ContentDisplay
+import wikipedia_qt.Header
 
 ApplicationWindow {
     id: root
@@ -20,7 +21,7 @@ ApplicationWindow {
         Header {
             stackView: stackView // Pass stackView to Header
             onChangeView: function (viewName) {
-                NavigationState.navigateToView(viewName);
+                NavigationState.setCurrentView(viewName);
             }
         }
 
@@ -82,7 +83,8 @@ ApplicationWindow {
         });
 
         NavigationState.replaceView.connect((newView) => {
-            stackView.replaceCurrentItem(newView);
+            // Clear the stack and replace with the new view instantly
+            stackView.replace(null, newView);
         })
     }
 }

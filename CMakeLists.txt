@@ -27,6 +27,7 @@ set(QML_DIRS
     "src/modules/SearchBarModule"
     "src/modules/SidebarModule"
     "src/modules/HistoryModule"
+    "src/modules/HeaderModule"
 )
 
 # Convert the list to a string with semicolons
@@ -35,7 +36,7 @@ list(JOIN QML_DIRS ";" QML_IMPORT_PATH_STR)
 # Set as a cached variable
 set(QML_IMPORT_PATH "${QML_IMPORT_PATH_STR}")
 
-find_package(Qt6 REQUIRED COMPONENTS Quick Core Network Sql Gui Test)
+find_package(Qt6 REQUIRED COMPONENTS Quick Core Network Sql Gui Svg Widgets SvgWidgets Test)
 find_package(tinyxml2 REQUIRED)
 
 qt_standard_project_setup(REQUIRES 6.8)
@@ -47,6 +48,7 @@ include_directories(
     src/modules/HistoryModule
     src/modules/SearchBarModule
     src/modules/SidebarModule
+    src/modules/HeaderModule
 )
 
 qt_add_executable(appwikipedia_qt
@@ -57,16 +59,15 @@ qt_add_executable(appwikipedia_qt
     src/state/HistoryState.cpp
     src/state/NavigationState.cpp
     src/state/db/HistoryDatabase.cpp
+    src/modules/HeaderModule/SvgImageProvider.cpp
 )
 
 qt_add_resources(appwikipedia_qt
     "icons"
     FILES
-        icons/home.jpg
+        icons/home.svg
         icons/history.svg
-        icons/bookmark.jpg
-        icons/safes.jpg
-        icons/location.png
+        icons/back.svg
 )
 
 qt_add_resources(appwikipedia_qt
@@ -79,6 +80,7 @@ add_subdirectory(src/modules/SearchBarModule)
 add_subdirectory(src/modules/SidebarModule)
 add_subdirectory(src/modules/HistoryModule)
 add_subdirectory(src/modules/ContentDisplayModule)
+add_subdirectory(src/modules/HeaderModule)
 add_subdirectory(src)
 
 set_target_properties(appwikipedia_qt PROPERTIES
@@ -95,11 +97,15 @@ PRIVATE
     Qt::Network 
     Qt::Sql
     Qt::Gui
+    Qt::Svg
+    Qt::Widgets
+    Qt::SvgWidgets
     wikipedia_qt 
     SearchBarModule 
     SidebarModule 
     HistoryModule
     ContentDisplayModule
+    HeaderModule
     tinyxml2
 )
 

@@ -31,7 +31,6 @@ Item {
         HistoryState.databaseError.connect(function (errorMessage) {
             errorMessage.text = errorMessage;
             errorDialog.visible = true;
-            console.warn("Database error:", errorMessage);
         });
     }
 

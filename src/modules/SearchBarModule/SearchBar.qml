@@ -17,6 +17,7 @@ RowLayout {
         id: searchText
         placeholderText: "Search Wikipedia"
         onTextChanged: searchBarModel.searchText = text
+        onAccepted: searchBarModel.performSearch()
         enabled: !searchBarModel.isSearching
         font.pixelSize: 16
         Layout.fillWidth: true

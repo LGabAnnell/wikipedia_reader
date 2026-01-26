@@ -31,12 +31,6 @@ Item {
                 SplitView.minimumWidth: 200
                 searchResults: GlobalState.searchResults ? GlobalState.searchResults : []
             }
-
-            // Placeholder for empty space
-            Item {
-                SplitView.fillHeight: true
-                SplitView.minimumWidth: 200
-            }
         }
     }
 }

@@ -2,6 +2,7 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <QDebug>
+#include <QCoreApplication>
 
 HistoryDatabase::HistoryDatabase(QObject *parent) : QObject(parent) {
     // Initialize database in the constructor
@@ -9,6 +10,10 @@ HistoryDatabase::HistoryDatabase(QObject *parent) : QObject(parent) {
 }
 
 HistoryDatabase::~HistoryDatabase() {
+    if (!QCoreApplication::instanceExists()) {
+        return;
+    }
+
     if (QSqlDatabase::contains("history_db")) {
         QSqlDatabase::database("history_db").close();
         QSqlDatabase::removeDatabase("history_db");

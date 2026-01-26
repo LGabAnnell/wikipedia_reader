@@ -23,6 +23,5 @@ QVector<search_result> SidebarModel::searchResults() const {
 
 void SidebarModel::setSearchResults(const QVector<search_result> &results) {
     m_searchResults = results;
-    qDebug() << "Got " << results.length() << " elements";
     emit searchResultsChanged();
 }

@@ -6,14 +6,10 @@
 #include <QMouseEvent>
 
 NavigationState::NavigationState(QObject *parent)
-    : QObject(parent), m_stackView(nullptr), m_currentView("search") {}
+    : QObject(parent), m_stackView(nullptr) {}
 
 QQuickItem* NavigationState::stackView() const {
     return m_stackView;
-}
-
-QString NavigationState::currentView() const {
-    return m_currentView;
 }
 
 void NavigationState::setStackView(QQuickItem* stackView) {
@@ -24,10 +20,7 @@ void NavigationState::setStackView(QQuickItem* stackView) {
 }
 
 void NavigationState::setCurrentView(const QString &view) {
-    if (m_currentView != view) {
-        emit replaceView(views.at(view));
-        m_currentView = view;
-    }
+    emit replaceView(views.at(view));
 }
 
 void NavigationState::installEventFilter(QObject *obj) {
