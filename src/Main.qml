@@ -44,6 +44,7 @@ ApplicationWindow {
             Component {
                 id: articleComponent
                 ContentDisplay {
+                    articleText: GlobalState.currentPageExtract
                     onBackRequested: function () {
                         if (stackView.depth > 1) {
                             stackView.pop();

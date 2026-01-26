@@ -1,40 +1,43 @@
 #include "ContentDisplayModel.h"
 #include <QDebug>
+#include <algorithm>
 
-ContentDisplayModel::ContentDisplayModel(QObject *parent) : QObject(parent)
-{
-    // Constructor implementation
-}
-
-void ContentDisplayModel::addSearchFunctionality()
-{
-    setupSearchBar();
-    setupSearchResults();
+ContentDisplayModel::ContentDisplayModel(QObject *parent) : QObject(parent) {
     connectSearchSignals();
 }
 
-void ContentDisplayModel::setupSearchBar()
-{
-    // This method will be called from QML to set up the search bar UI.
-    // The actual UI setup is done in ContentDisplay.qml.
-}
-
-void ContentDisplayModel::setupSearchResults()
-{
-    // This method will be called from QML to set up the search results display.
-    // The actual UI setup is done in ContentDisplay.qml.
-}
-
-void ContentDisplayModel::connectSearchSignals()
-{
+void ContentDisplayModel::connectSearchSignals() {
     // Connect signals and slots for search functionality.
-    // For example, connect the searchRequested signal to a slot that performs the search.
-    connect(this, &ContentDisplayModel::searchRequested, this, [this](const QString &searchText) {
+    connect(this, &ContentDisplayModel::searchRequested, this, [this](const QString &searchText, const QString &text) {
         // Perform the search and emit searchResultsAvailable with the results.
-        QStringList results;
-        // Example: Search logic here
-        results << "Result 1 for " + searchText;
-        results << "Result 2 for " + searchText;
-        emit searchResultsAvailable(results);
+        QList<SearchIndices> indices = searchForText(searchText, text);
+        emit searchResultsAvailable(indices);
     });
 }
+
+QList<SearchIndices> ContentDisplayModel::searchForText(const QString &searchText, const QString &text) {
+    QList<SearchIndices> indices = {};
+    if (searchText.isEmpty()) {
+        return indices;
+    }
+
+    // Iterate through the text to find occurrences of searchText
+    int startIndex = 0;
+    while (startIndex >= 0) {
+        qDebug() << searchText.length();
+        startIndex = text.indexOf(searchText, startIndex, Qt::CaseInsensitive);
+        if (startIndex != -1) {
+            // Calculate the end index
+            int endIndex = startIndex + searchText.length();
+
+            // Add the start and end indices to the list
+            indices.append(SearchIndices({ .start = startIndex, .end = endIndex}));
+
+            // Move to the next position after the found occurrence
+            startIndex += searchText.length();
+        }
+    }
+
+    return indices;
+}
+

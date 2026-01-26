@@ -1,19 +1,18 @@
-// MainContent.qml
+// ContentDisplay.qml
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
 import wikipedia_qt 1.0
+import wikipedia_qt.ContentDisplay 1.0
 
 Item {
     id: mainContent
-    // Let the parent StackView manage our size
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
-    // Signal to notify parent components about back navigation
     signal backRequested
+    property string articleText: ""
 
-    // Loading indicator
     BusyIndicator {
         id: loadingIndicator
         anchors.centerIn: parent
@@ -21,47 +20,34 @@ Item {
         visible: GlobalState.isLoading
     }
 
-    // Search bar
+    Shortcut {
+        sequence: StandardKey.Find
+        onActivated: {
+            searchField.visible = !searchField.visible;
+        }
+    }
+
     TextField {
         id: searchField
-        placeholderText: "Search..."
         width: parent.width - 40
+        placeholderText: "Search..."
         height: 40
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.topMargin: 20
-        onTextChanged: {
-            // Emit searchRequested signal when text changes
-            contentDisplay.searchRequested(text);
-        }
-    }
-
-    // Search results list
-    ListView {
-        id: searchResultsList
-        width: parent.width - 40
-        height: 100
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: searchField.bottom
-        anchors.topMargin: 10
-        visible: searchResultsModel.count > 0
-        model: searchResultsModel
-        delegate: Text {
-            text: modelData
-            width: parent.width
-            height: 30
-            verticalAlignment: Text.AlignVCenter
+        z: 1
+        visible: false
+        onTextChanged: function () {
+            contentDisplay.searchRequested(text, articleSection.getText(0, articleSection.text.length));
         }
     }
 
     ScrollView {
         id: scrollView
-        // Use the mainContent's dimensions
         width: mainContent.width
         height: mainContent.height
         clip: true
 
-        // Add a vertical scrollbar
         ScrollBar.vertical.interactive: true
         ScrollBar.vertical.policy: ScrollBar.AlwaysOn
 
@@ -73,7 +59,6 @@ Item {
 
             property SystemPalette sysPalette: SystemPalette {}
 
-            // Article title (using TextEdit for selectable text)
             TextEdit {
                 text: GlobalState.currentPageTitle
                 font.pixelSize: 20
@@ -83,29 +68,26 @@ Item {
                 visible: GlobalState.currentPageTitle.length > 0
                 width: parent.width
                 wrapMode: TextEdit.Wrap
-                readOnly: true // Make it read-only to prevent editing
-                selectByMouse: true // Enable text selection
+                readOnly: true
+                selectByMouse: true
             }
 
-            // Article content (using TextEdit for selectable text)
             TextEdit {
                 id: articleSection
-                text: GlobalState.currentPageExtract
+                text: mainContent.articleText
                 selectionColor: articleDisplay.sysPalette.highlight
                 wrapMode: TextEdit.Wrap
                 font.pixelSize: 14
                 textFormat: TextEdit.RichText
                 color: articleDisplay.sysPalette.text
-                visible: GlobalState.currentPageExtract.length > 0
+                visible: mainContent.articleText.length > 0
                 width: parent.width
-                readOnly: true // Make it read-only to prevent editing
-                selectByMouse: true // Enable text selection
+                readOnly: true
+                selectByMouse: true
                 ContextMenu.menu: Menu {
                     MenuItem {
                         text: "Copy"
-                        onTriggered: function () {
-                            articleSection.copy();
-                        }
+                        onTriggered: articleSection.copy()
                     }
                 }
 
@@ -115,7 +97,6 @@ Item {
                 }
             }
 
-            // Placeholder when no article is selected
             Text {
                 text: "Select an article to view its content"
                 wrapMode: Text.WordWrap
@@ -126,7 +107,6 @@ Item {
                 width: parent.width
             }
 
-            // Error message display
             Text {
                 text: GlobalState.errorMessage
                 color: "red"
@@ -136,19 +116,28 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
             }
         }
-    }
 
-    // ContentDisplay instance to handle search functionality
-    ContentDisplayModel {
-        id: contentDisplay
-        onSearchResultsAvailable: {
-            searchResultsModel.clear();
-            searchResultsModel.append(results);
+        function scrollToCursor() {
+            // Get the cursor rectangle in the TextEdit's coordinate system
+            var cursorRect = articleSection.cursorRectangle;
+            // Calculate the position to scroll to
+            var scrollToY = cursorRect.y - scrollView.height / 2;
+            // Ensure the position is within valid bounds
+            scrollToY = Math.max(0, Math.min(scrollToY, scrollView.contentHeight - scrollView.height));
+            // Use the ScrollBar's value property to set the scroll position
+            scrollView.ScrollBar.vertical.position = scrollToY / (scrollView.contentHeight - scrollView.height);
         }
     }
 
-    // Model for search results
-    ListModel {
-        id: searchResultsModel
+    ContentDisplayModel {
+        id: contentDisplay
+        onSearchResultsAvailable: function (indices) {
+            console.warn("Search results available: " + JSON.stringify(indices));
+            articleSection.cursorPosition = indices[0].start;
+            articleSection.select(indices[0].start, indices[0].end);
+
+            // Manually set the contentY property of the Flickable
+            scrollView.scrollToCursor();
+        }
     }
 }
