@@ -49,6 +49,7 @@ include_directories(
     src/modules/SearchBarModule
     src/modules/SidebarModule
     src/modules/HeaderModule
+    src/modules/HomeModule
 )
 
 qt_add_executable(appwikipedia_qt
@@ -81,6 +82,7 @@ add_subdirectory(src/modules/SidebarModule)
 add_subdirectory(src/modules/HistoryModule)
 add_subdirectory(src/modules/ContentDisplayModule)
 add_subdirectory(src/modules/HeaderModule)
+add_subdirectory(src/modules/HomeModule)
 add_subdirectory(src)
 
 set_target_properties(appwikipedia_qt PROPERTIES
@@ -106,6 +108,7 @@ PRIVATE
     HistoryModule
     ContentDisplayModule
     HeaderModule
+    HomeModule
     tinyxml2
 )
 

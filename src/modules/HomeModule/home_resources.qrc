@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/images">
+        <file>images/featured_article.jpg</file>
+        <file>images/iliana_iotova.jpg</file>
+        <file>images/star_chart.jpg</file>
+    </qresource>
+</RCC>
