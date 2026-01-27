@@ -55,6 +55,10 @@ private slots:
     void handleFeaturedArticleReceived(const QString &title, const QString &extract, const int &pageid);
     void handlePageWithImagesReceived(const page &page);
     void handleError(const QString &error);
+    void handleNewsItemsReceived(const QVector<news_item> &items);
+    void handleOnThisDayEventsReceived(const QVector<on_this_day_event> &events);
+    void handleDidYouKnowItemsReceived(const QVector<did_you_know_item> &items);
+
 private:
     WikipediaClient *m_wikipediaClient;
 
@@ -66,11 +70,6 @@ private:
     QVariantList m_newsItems;
     QVariantList m_onThisDayEvents;
     QVariantList m_didYouKnowItems;
-
-    // Initialize sample data as fallback
-    void initializeSampleNewsData();
-    void initializeSampleOnThisDayData();
-    void initializeSampleDidYouKnowData();
 };
 
 #endif // HOMEMODEL_H

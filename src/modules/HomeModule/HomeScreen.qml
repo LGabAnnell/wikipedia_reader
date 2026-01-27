@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+import wikipedia_qt
 import wikipedia_qt.Home
 
 ScrollView {

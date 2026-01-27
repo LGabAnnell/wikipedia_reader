@@ -69,6 +69,7 @@ qt_add_resources(appwikipedia_qt
         icons/home.svg
         icons/history.svg
         icons/back.svg
+        icons/search.svg
 )
 
 qt_add_resources(appwikipedia_qt

@@ -257,3 +257,140 @@ void WikipediaClient::onFeaturedArticleReply(QNetworkReply *reply) {
     reply->deleteLater();
 }
 
+// New methods for HomeModel
+void WikipediaClient::getNewsItems() {
+    // Use Wikipedia's REST API for featured content
+    QDate currentDate = QDate::currentDate();
+    QString dateString = currentDate.toString("yyyy/MM/dd");
+    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/en/featured/%1").arg(dateString));
+    QNetworkRequest request(url);
+    QNetworkReply *reply = networkManager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() { onNewsItemsReply(reply); });
+}
+
+void WikipediaClient::getOnThisDayEvents() {
+    // Use Wikipedia's REST API for "On This Day"
+    QDate today = QDate::currentDate();
+    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/%1/%2")
+                  .arg(today.month(), 2, 10, QLatin1Char('0'))
+                  .arg(today.day(), 2, 10, QLatin1Char('0')));
+    QNetworkRequest request(url);
+    QNetworkReply *reply = networkManager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() { onOnThisDayEventsReply(reply); });
+}
+
+void WikipediaClient::getDidYouKnowItems() {
+    // Fetch a random article and extract its first paragraph
+    QUrl url("https://en.wikipedia.org/api/rest_v1/page/random/title");
+    QNetworkRequest request(url);
+    QNetworkReply *reply = networkManager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() { onRandomArticleTitleReply(reply); });
+}
+
+void WikipediaClient::onNewsItemsReply(QNetworkReply *reply) {
+    if (reply->error() != QNetworkReply::NoError) {
+        emit errorOccurred(tr("Error fetching news: %1").arg(reply->errorString()));
+        reply->deleteLater();
+        return;
+    }
+
+    QByteArray data = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    QJsonObject root = doc.object();
+
+    QVector<news_item> newsItems;
+    if (root.contains("news")) {
+        QJsonArray items = root["news"].toArray();
+        for (const auto &item : items) {
+            QJsonObject newsItem = item.toObject();
+            news_item ni;
+            ni.title = newsItem["story"].toString();
+            ni.description = newsItem["links"].toArray()[0].toObject()["extract"].toString();
+            ni.url = newsItem["links"].toArray()[0].toObject()["pageid"].toString();
+            ni.imageUrl = "qrc:/images/news_placeholder.jpg"; // Placeholder
+            newsItems.append(ni);
+        }
+    }
+
+    emit newsItemsReceived(newsItems);
+    reply->deleteLater();
+}
+
+void WikipediaClient::onOnThisDayEventsReply(QNetworkReply *reply) {
+    if (reply->error() != QNetworkReply::NoError) {
+        emit errorOccurred(tr("Error fetching on-this-day events: %1").arg(reply->errorString()));
+        reply->deleteLater();
+        return;
+    }
+
+    QByteArray data = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    QJsonObject root = doc.object();
+    
+    QVector<on_this_day_event> onThisDayEvents;
+    if (root.contains("selected")) {
+        QJsonArray events = root["selected"].toArray();
+        for (const auto &event : events) {
+            QJsonObject eventObj = event.toObject();
+            on_this_day_event otd;
+            otd.year = eventObj["year"].toInt();
+            otd.event = eventObj["text"].toString();
+            otd.url = eventObj["pages"].toArray()[0].toObject()["content_urls"].toObject()["desktop"].toObject()["page"].toString();
+            onThisDayEvents.append(otd);
+        }
+    }
+
+    emit onThisDayEventsReceived(onThisDayEvents);
+    reply->deleteLater();
+}
+
+void WikipediaClient::onRandomArticleTitleReply(QNetworkReply *reply) {
+    if (reply->error() != QNetworkReply::NoError) {
+        emit errorOccurred(tr("Error fetching random article: %1").arg(reply->errorString()));
+        reply->deleteLater();
+        return;
+    }
+
+    QByteArray data = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    QJsonObject root = doc.object();
+    
+    if (root.contains("items")) {
+        QJsonArray items = root["items"].toArray();
+        if (!items.isEmpty()) {
+            QString title = items[0].toObject()["title"].toString();
+            fetchArticleContent(title);
+        }
+    }
+    
+    reply->deleteLater();
+}
+
+void WikipediaClient::fetchArticleContent(const QString &title) {
+    QUrl url(QString("https://en.wikipedia.org/api/rest_v1/page/summary/%1").arg(title));
+    QNetworkRequest request(url);
+    QNetworkReply *reply = networkManager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, title]() { onArticleContentReply(reply, title); });
+}
+
+void WikipediaClient::onArticleContentReply(QNetworkReply *reply, const QString &title) {
+    if (reply->error() != QNetworkReply::NoError) {
+        emit errorOccurred(tr("Error fetching article content: %1").arg(reply->errorString()));
+        reply->deleteLater();
+        return;
+    }
+
+    QByteArray data = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    QJsonObject root = doc.object();
+    
+    QVector<did_you_know_item> didYouKnowItems;
+    did_you_know_item dyk;
+    dyk.text = root["extract"].toString();
+    dyk.url = root["content_urls"].toObject()["desktop"].toObject()["page"].toString();
+    didYouKnowItems.append(dyk);
+    
+    emit didYouKnowItemsReceived(didYouKnowItems);
+    reply->deleteLater();
+}
+

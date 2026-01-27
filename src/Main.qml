@@ -6,6 +6,7 @@ import wikipedia_qt // For NavigationState, GlobalState, etc.
 import wikipedia_qt.History
 import wikipedia_qt.ContentDisplay
 import wikipedia_qt.Header
+import wikipedia_qt.Home
 
 ApplicationWindow {
     id: root
@@ -30,7 +31,7 @@ ApplicationWindow {
             id: stackView
             Layout.fillWidth: true
             Layout.fillHeight: true
-            initialItem: searchView
+            initialItem: homeComponent
 
             // Define the search view (root view)
             Component {
@@ -54,6 +55,11 @@ ApplicationWindow {
                 }
             }
 
+            Component {
+                id: homeComponent
+                HomeScreen {}
+            }
+
             // Define the history view component
             Component {
                 id: historyComponent
@@ -68,6 +74,7 @@ ApplicationWindow {
         NavigationState.addView(Constants.searchView, searchView);
         NavigationState.addView(Constants.contentView, articleComponent);
         NavigationState.addView(Constants.historyView, historyComponent);
+        NavigationState.addView(Constants.homeView, homeComponent);
         // Install the event filter on the root ApplicationWindow
         NavigationState.installEventFilter(root);
 

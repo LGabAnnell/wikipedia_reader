@@ -49,6 +49,18 @@ ToolBar {
             }
             text: "Home"
             onClicked: {
+                header.changeView(Constants.homeView);
+            }
+        }
+        ToolButton {
+            height: parent.height
+            contentItem: Image {
+                source: "image://svg/search"
+                fillMode: Image.PreserveAspectFit
+                sourceSize: Qt.size(24, 24)
+            }
+            text: "Search"
+            onClicked: function () {
                 header.changeView(Constants.searchView);
             }
         }
