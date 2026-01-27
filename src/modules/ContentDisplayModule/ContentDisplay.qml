@@ -46,7 +46,6 @@ Item {
             Layout.preferredHeight: 60
             Layout.leftMargin: 10
             Layout.rightMargin: 10
-            Layout.topMargin: 10
             spacing: 10
             z: 1
             visible: false
@@ -59,12 +58,19 @@ Item {
                 onTextChanged: function () {
                     contentDisplay.searchRequested(text, articleSection.getText(0, articleSection.text.length));
                 }
-                onAccepted: contentDisplay.navigateToNextResult()
+
+                Keys.onReturnPressed: function (event) {
+                    if (event.modifiers & Qt.ShiftModifier) {
+                        contentDisplay.navigateToPreviousResult();
+                        return;
+                    }
+                    
+                    contentDisplay.navigateToNextResult();
+                }
             }
 
             Text {
-                text: contentDisplay.totalResults > 0 ?
-                      contentDisplay.currentResultIndex + " of " + contentDisplay.totalResults : ""
+                text: contentDisplay.totalResults > 0 ? contentDisplay.currentResultIndex + " of " + contentDisplay.totalResults : ""
                 color: "white"
                 font.pixelSize: 14
                 verticalAlignment: Text.AlignVCenter
@@ -197,10 +203,3 @@ Item {
         }
     }
 }
-
-
-
-
-
-
-

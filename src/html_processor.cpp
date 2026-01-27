@@ -68,20 +68,11 @@ QString HtmlProcessor::processHtml(const QString &htmlContent) {
 
     QString style = QString(css.readAll()).arg(QPalette().text().color().name());
     QString processedHtml = QString(R"""(
-        <!DOCTYPE html>
-        <html>
-        <head>
             <style>
                 %1
             </style>
-        </head>
-        <body>
     )""").arg(style) +
-    QString(printer.CStr()) +
-    R"""(
-        </body>
-        </html>
-    )""";
+                            QString(printer.CStr());
 
     return processedHtml;
 }
