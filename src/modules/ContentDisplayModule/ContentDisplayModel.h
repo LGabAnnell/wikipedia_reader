@@ -6,7 +6,7 @@
 #include <QQmlEngine>
 #include <QList>
 
-struct SearchIndices {
+struct search_indices {
     Q_GADGET
         QML_ELEMENT
         Q_PROPERTY(qsizetype start MEMBER start);
@@ -51,7 +51,7 @@ signals:
      * @brief Signal emitted when search results are available.
      * @param results The list of search results.
      */
-    void searchResultsAvailable(const QList<SearchIndices> &results);
+    void searchResultsAvailable(const QList<search_indices> &results);
 
     /**
      * @brief Signal emitted when navigating to a specific search result.
@@ -71,13 +71,13 @@ private:
     void connectSearchSignals();
 
     // Helper method to perform the search
-    QList<SearchIndices> searchForText(const QString &searchText, const QString &text);
+    QList<search_indices> searchForText(const QString &searchText, const QString &text);
 
     // List of items to search through
     QStringList m_items;
 
     // Store the current search results
-    QList<SearchIndices> m_searchResults;
+    QList<search_indices> m_searchResults;
 
     // Index of the currently selected search result
     int m_currentResultIndex = -1;

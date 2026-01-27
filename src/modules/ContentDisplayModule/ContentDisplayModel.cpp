@@ -11,7 +11,7 @@ void ContentDisplayModel::connectSearchSignals() {
     // Connect signals and slots for search functionality.
     connect(this, &ContentDisplayModel::searchRequested, this, [this](const QString &searchText, const QString &text) {
         // Perform the search and emit searchResultsAvailable with the results.
-        QList<SearchIndices> indices = searchForText(searchText, text);
+        QList<search_indices> indices = searchForText(searchText, text);
         m_searchResults = indices;
         m_currentResultIndex = indices.isEmpty() ? -1 : 0;
         emit searchResultsAvailable(indices);
@@ -20,8 +20,8 @@ void ContentDisplayModel::connectSearchSignals() {
     });
 }
 
-QList<SearchIndices> ContentDisplayModel::searchForText(const QString &searchText, const QString &text) {
-    QList<SearchIndices> indices = {};
+QList<search_indices> ContentDisplayModel::searchForText(const QString &searchText, const QString &text) {
+    QList<search_indices> indices = {};
     if (searchText.isEmpty()) {
         return indices;
     }
@@ -35,7 +35,7 @@ QList<SearchIndices> ContentDisplayModel::searchForText(const QString &searchTex
             int endIndex = startIndex + searchText.length();
 
             // Add the start and end indices to the list
-            indices.append(SearchIndices({ .start = startIndex, .end = endIndex}));
+            indices.append(search_indices({ .start = startIndex, .end = endIndex}));
 
             // Move to the next position after the found occurrence
             startIndex += searchText.length();
@@ -51,7 +51,7 @@ void ContentDisplayModel::navigateToNextResult() {
     }
 
     m_currentResultIndex = (m_currentResultIndex + 1) % m_searchResults.size();
-    SearchIndices result = m_searchResults[m_currentResultIndex];
+    search_indices result = m_searchResults[m_currentResultIndex];
     emit navigateToResult(result.start, result.end);
     emit currentResultIndexChanged();
 }
@@ -62,7 +62,7 @@ void ContentDisplayModel::navigateToPreviousResult() {
     }
 
     m_currentResultIndex = (m_currentResultIndex - 1 + m_searchResults.size()) % m_searchResults.size();
-    SearchIndices result = m_searchResults[m_currentResultIndex];
+    search_indices result = m_searchResults[m_currentResultIndex];
     emit navigateToResult(result.start, result.end);
     emit currentResultIndexChanged();
 }
