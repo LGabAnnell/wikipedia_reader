@@ -5,10 +5,11 @@ import QtQuick.Layouts
 
 import wikipedia_qt
 
-ColumnLayout {
+Column {
     id: onThisDaySection
     Layout.fillWidth: true
     spacing: 10
+    padding: 20
 
     property alias model: repeater.model
 

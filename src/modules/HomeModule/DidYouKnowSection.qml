@@ -5,11 +5,12 @@ import QtQuick.Layouts
 
 import wikipedia_qt
 
-ColumnLayout {
+Column {
     id: didYouKnowSection
     // Layout.fillWidth: true
     // width: parent.width
     spacing: 10
+    padding: 20
     property SystemPalette sysPalette: SystemPalette {}
 
     property alias model: repeater.model
@@ -51,19 +52,4 @@ ColumnLayout {
             }
         }
     }
-
-    // Label {
-    //     Layout.fillWidth: true  // Ensure the Label fills the width
-    //     text: "Archive • By email • More featured articles • About"
-    //     font.pixelSize: 12
-    //     color: "#002bb8"
-
-    //     MouseArea {
-    //         anchors.fill: parent
-    //         cursorShape: Qt.PointingHandCursor
-    //         onClicked: {
-    //             // Navigate to archive page
-    //         }
-    //     }
-    // }
 }

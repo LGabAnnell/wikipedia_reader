@@ -14,12 +14,12 @@ Item {
         anchors.fill: parent
         clip: true
         ScrollBar.vertical.interactive: true
-        ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+        ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
         HomeModel {
             id: homeModel
         }
-        
+
         ColumnLayout {
             id: mainColumn
             spacing: 20
@@ -27,6 +27,31 @@ Item {
             NewsSection {
                 id: newsSection
                 model: homeModel.newsItems
+                Layout.preferredWidth: scrollView.width - 40
+            }
+
+            // Add a white separator line
+            Rectangle {
+                Layout.preferredWidth: scrollView.width
+                height: 1
+                color: "white"
+            }
+
+            OnThisDaySection {
+                id: onThisDaySection
+                model: homeModel.onThisDayItems
+                Layout.preferredWidth: scrollView.width - 40
+            }
+
+            Rectangle {
+                Layout.preferredWidth: scrollView.width
+                height: 1
+                color: "white"
+            }
+
+            DidYouKnowSection {
+                id: didYouKnowSection
+                model: homeModel.didYouKnowItems
                 Layout.preferredWidth: scrollView.width - 40
             }
         }
