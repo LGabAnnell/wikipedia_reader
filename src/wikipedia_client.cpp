@@ -274,6 +274,7 @@ void WikipediaClient::getOnThisDayEvents() {
     QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/%1/%2")
                   .arg(today.month(), 2, 10, QLatin1Char('0'))
                   .arg(today.day(), 2, 10, QLatin1Char('0')));
+    qDebug() << "Fetching On This Day events from URL:" << url.toString();
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() { onOnThisDayEventsReply(reply); });
@@ -308,8 +309,8 @@ void WikipediaClient::onNewsItemsReply(QNetworkReply *reply) {
             ni.title = article["title"].toString();
             ni.description = article["extract"].toString();
             ni.url = article["content_urls"].toObject()["desktop"].toObject()["page"].toString();
-            ni.imageUrl = article.contains("thumbnail") ? 
-                article["thumbnail"].toObject()["source"].toString() : 
+            ni.imageUrl = article.contains("thumbnail") ?
+                article["thumbnail"].toObject()["source"].toString() :
                 "qrc:/images/news_placeholder.jpg";
             newsItems.append(ni);
         }
@@ -331,10 +332,12 @@ void WikipediaClient::onOnThisDayEventsReply(QNetworkReply *reply) {
     QByteArray data = reply->readAll();
     QJsonDocument doc = QJsonDocument::fromJson(data);
     QJsonObject root = doc.object();
-    
+
     QVector<on_this_day_event> onThisDayEvents;
-    if (root.contains("onthisday")) {
-        QJsonArray events = root["onthisday"].toArray();
+
+    // Check if the response contains the "selected" array which has the on-this-day events
+    if (root.contains("selected") && root["selected"].isArray()) {
+        QJsonArray events = root["selected"].toArray();
         for (const auto &event : events) {
             QJsonObject eventObj = event.toObject();
             on_this_day_event otd;
@@ -359,6 +362,10 @@ void WikipediaClient::onOnThisDayEventsReply(QNetworkReply *reply) {
             }
             onThisDayEvents.append(otd);
         }
+    } else {
+        qWarning() << "No 'selected' events found in on-this-day API response";
+        // Log the actual response for debugging
+        qWarning() << "API Response:" << QString(data);
     }
 
     emit onThisDayEventsReceived(onThisDayEvents);
@@ -375,7 +382,7 @@ void WikipediaClient::onRandomArticleTitleReply(QNetworkReply *reply) {
     QByteArray data = reply->readAll();
     QJsonDocument doc = QJsonDocument::fromJson(data);
     QJsonObject root = doc.object();
-    
+
     if (root.contains("items")) {
         QJsonArray items = root["items"].toArray();
         if (!items.isEmpty()) {
@@ -383,7 +390,7 @@ void WikipediaClient::onRandomArticleTitleReply(QNetworkReply *reply) {
             fetchArticleContent(title);
         }
     }
-    
+
     reply->deleteLater();
 }
 
@@ -404,15 +411,15 @@ void WikipediaClient::onArticleContentReply(QNetworkReply *reply, const QString 
     QByteArray data = reply->readAll();
     QJsonDocument doc = QJsonDocument::fromJson(data);
     QJsonObject root = doc.object();
-    
+
     QVector<did_you_know_item> didYouKnowItems;
     did_you_know_item dyk;
     dyk.text = root.contains("extract") ? root["extract"].toString() : "";
-    dyk.url = root.contains("content_urls") ? 
-        root["content_urls"].toObject()["desktop"].toObject()["page"].toString() : 
+    dyk.url = root.contains("content_urls") ?
+        root["content_urls"].toObject()["desktop"].toObject()["page"].toString() :
         "";
     didYouKnowItems.append(dyk);
-    
+
     emit didYouKnowItemsReceived(didYouKnowItems);
     reply->deleteLater();
 }

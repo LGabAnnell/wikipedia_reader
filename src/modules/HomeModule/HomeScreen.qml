@@ -16,6 +16,8 @@ Item {
         ScrollBar.vertical.interactive: true
         ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
+        property SystemPalette sysPalette: SystemPalette {}
+
         HomeModel {
             id: homeModel
         }
@@ -34,7 +36,7 @@ Item {
             Rectangle {
                 Layout.preferredWidth: scrollView.width
                 height: 1
-                color: "white"
+                color: scrollView.sysPalette.text
             }
 
             OnThisDaySection {
@@ -46,7 +48,7 @@ Item {
             Rectangle {
                 Layout.preferredWidth: scrollView.width
                 height: 1
-                color: "white"
+                color: scrollView.sysPalette.text
             }
 
             DidYouKnowSection {
