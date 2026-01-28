@@ -25,15 +25,6 @@ HomeModel::HomeModel(QObject *parent) : QObject(parent) {
             this, &HomeModel::handleDidYouKnowItemsReceived);
 }
 
-HomeModel* HomeModel::create(QQmlEngine *engine, QJSEngine *scriptEngine) {
-    Q_UNUSED(engine);
-    Q_UNUSED(scriptEngine);
-    
-    // Create a singleton instance
-    static HomeModel* instance = new HomeModel();
-    return instance;
-}
-
 QString HomeModel::featuredArticleTitle() const {
     return m_featuredArticleTitle;
 }
@@ -50,15 +41,57 @@ QString HomeModel::featuredArticleUrl() const {
     return m_featuredArticleUrl;
 }
 
+// QML-compatible getter (QVariantList)
 QVariantList HomeModel::newsItems() const {
+    QVariantList variantList;
+    for (const auto &item : m_newsItems) {
+        QVariantMap newsItem;
+        newsItem["title"] = item.title;
+        newsItem["imageUrl"] = item.imageUrl;
+        newsItem["description"] = item.description;
+        newsItem["url"] = QString("https://en.wikipedia.org/wiki?curid=%1").arg(item.url);
+        variantList.append(newsItem);
+    }
+    return variantList;
+}
+
+// QML-compatible getter (QVariantList)
+QVariantList HomeModel::onThisDayEvents() const {
+    QVariantList variantList;
+    for (const auto &event : m_onThisDayEvents) {
+        QVariantMap eventItem;
+        eventItem["year"] = event.year;
+        eventItem["event"] = event.event;
+        eventItem["url"] = event.url;
+        variantList.append(eventItem);
+    }
+    return variantList;
+}
+
+// QML-compatible getter (QVariantList)
+QVariantList HomeModel::didYouKnowItems() const {
+    QVariantList variantList;
+    for (const auto &item : m_didYouKnowItems) {
+        QVariantMap dykItem;
+        dykItem["text"] = item.text;
+        dykItem["url"] = item.url;
+        variantList.append(dykItem);
+    }
+    return variantList;
+}
+
+// Strongly-typed getter for internal use
+QVector<news_item> HomeModel::getNewsItemsTyped() const {
     return m_newsItems;
 }
 
-QVariantList HomeModel::onThisDayEvents() const {
+// Strongly-typed getter for internal use
+QVector<on_this_day_event> HomeModel::getOnThisDayEventsTyped() const {
     return m_onThisDayEvents;
 }
 
-QVariantList HomeModel::didYouKnowItems() const {
+// Strongly-typed getter for internal use
+QVector<did_you_know_item> HomeModel::getDidYouKnowItemsTyped() const {
     return m_didYouKnowItems;
 }
 
@@ -100,37 +133,16 @@ void HomeModel::handleError(const QString &error) {
 }
 
 void HomeModel::handleNewsItemsReceived(const QVector<news_item> &items) {
-    m_newsItems.clear();
-    for (const auto &item : items) {
-        QVariantMap newsItem;
-        newsItem["title"] = item.title;
-        newsItem["imageUrl"] = item.imageUrl;
-        newsItem["description"] = item.description;
-        newsItem["url"] = QString("https://en.wikipedia.org/wiki?curid=%1").arg(item.url);
-        m_newsItems.append(newsItem);
-    }
+    m_newsItems = items;
     emit dataUpdated();
 }
 
 void HomeModel::handleOnThisDayEventsReceived(const QVector<on_this_day_event> &events) {
-    m_onThisDayEvents.clear();
-    for (const auto &event : events) {
-        QVariantMap eventItem;
-        eventItem["year"] = event.year;
-        eventItem["event"] = event.event;
-        eventItem["url"] = event.url;
-        m_onThisDayEvents.append(eventItem);
-    }
+    m_onThisDayEvents = events;
     emit dataUpdated();
 }
 
 void HomeModel::handleDidYouKnowItemsReceived(const QVector<did_you_know_item> &items) {
-    m_didYouKnowItems.clear();
-    for (const auto &item : items) {
-        QVariantMap dykItem;
-        dykItem["text"] = item.text;
-        dykItem["url"] = item.url;
-        m_didYouKnowItems.append(dykItem);
-    }
+    m_didYouKnowItems = items;
     emit dataUpdated();
 }

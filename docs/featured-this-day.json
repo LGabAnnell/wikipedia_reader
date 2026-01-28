@@ -1,0 +1,365 @@
+{
+    "tfa": {
+        "type": "standard",
+        "title": "Al-Muti'",
+        "displaytitle": "al-Muti'",
+        "namespace": {
+            "id": 0,
+            "text": ""
+        },
+        "wikibase_item": "Q284730",
+        "titles": {
+            "canonical": "Al-Muti'",
+            "normalized": "Al-Muti'",
+            "display": "al-Muti'"
+        },
+        "pageid": 1091260,
+        "thumbnail": {
+            "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/MansurISamanidCoinHistoryofIran.jpg/800px-MansurISamanidCoinHistoryofIran.jpg",
+            "width": 640,
+            "height": 314
+        },
+        "originalimage": {
+            "source": "https://upload.wikimedia.org/wikipedia/commons/3/38/MansurISamanidCoinHistoryofIran.jpg",
+            "width": 800,
+            "height": 393
+        },
+        "lang": "en",
+        "dir": "ltr",
+        "revision": "1330778382",
+        "tid": "0a014b60-e7e1-11f0-aad5-8ad7369a2783",
+        "timestamp": "2026-01-02T13:43:37Z",
+        "description": "Abbasid Caliph in Baghdad (r. 946–974)",
+        "description_source": "local",
+        "content_urls": {
+            "desktop": {
+                "page": "https://en.wikipedia.org/wiki/Al-Muti'",
+                "revisions": "https://en.wikipedia.org/wiki/Al-Muti'?action=history",
+                "edit": "https://en.wikipedia.org/wiki/Al-Muti'?action=edit",
+                "talk": "https://en.wikipedia.org/wiki/Talk:Al-Muti'"
+            },
+            "mobile": {
+                "page": "https://en.wikipedia.org/wiki/Al-Muti'",
+                "revisions": "https://en.wikipedia.org/wiki/Special:History/Al-Muti'",
+                "edit": "https://en.wikipedia.org/wiki/Al-Muti'?action=edit",
+                "talk": "https://en.wikipedia.org/wiki/Talk:Al-Muti'"
+            }
+        },
+        "extract": "Abū ʾl-Qāsim al-Faḍl ibn al-Muqtadir, better known by his regnal name of al-Muṭīʿ li-ʾllāh, was the Abbasid caliph in Baghdad from 946 to 974, ruling under the tutelage of the Buyid emirs.",
+        "extract_html": "<p><b>Abū ʾl-Qāsim al-Faḍl ibn al-Muqtadir</b>, better known by his regnal name of <b>al-Muṭīʿ li-ʾllāh</b>, was the Abbasid caliph in Baghdad from 946 to 974, ruling under the tutelage of the Buyid emirs.</p>",
+        "normalizedtitle": "Al-Muti'"
+    },
+    "mostread": {
+        "date": "2025-12-31Z",
+        "articles": [
+            {
+                "views": 60214,
+                "rank": 50,
+                "view_history": [
+                    {
+                        "date": "2025-12-27Z",
+                        "views": 61382
+                    },
+                    {
+                        "date": "2025-12-28Z",
+                        "views": 59088
+                    },
+                    {
+                        "date": "2025-12-29Z",
+                        "views": 54720
+                    },
+                    {
+                        "date": "2025-12-30Z",
+                        "views": 54902
+                    },
+                    {
+                        "date": "2025-12-31Z",
+                        "views": 60214
+                    }
+                ],
+                "type": "standard",
+                "title": "6-7_meme",
+                "displaytitle": "<span class=\"mw-page-title-main\">6-7 meme</span>",
+                "namespace": {
+                    "id": 0,
+                    "text": ""
+                },
+                "wikibase_item": "Q136163131",
+                "titles": {
+                    "canonical": "6-7_meme",
+                    "normalized": "6-7 meme",
+                    "display": "<span class=\"mw-page-title-main\">6-7 meme</span>"
+                },
+                "pageid": 80838096,
+                "thumbnail": {
+                    "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Six-seven_jack-o-lantern%2C_Toronto_2025.jpg/330px-Six-seven_jack-o-lantern%2C_Toronto_2025.jpg",
+                    "width": 330,
+                    "height": 220
+                },
+                "originalimage": {
+                    "source": "https://upload.wikimedia.org/wikipedia/commons/6/60/Six-seven_jack-o-lantern%2C_Toronto_2025.jpg",
+                    "width": 6000,
+                    "height": 4000
+                },
+                "lang": "en",
+                "dir": "ltr",
+                "revision": "1335163141",
+                "tid": "4d1ac7f4-fbad-11f0-8474-d942d339548c",
+                "timestamp": "2026-01-27T18:23:39Z",
+                "description": "2025 Internet meme and slang term",
+                "description_source": "local",
+                "content_urls": {
+                    "desktop": {
+                        "page": "https://en.wikipedia.org/wiki/6-7_meme",
+                        "revisions": "https://en.wikipedia.org/wiki/6-7_meme?action=history",
+                        "edit": "https://en.wikipedia.org/wiki/6-7_meme?action=edit",
+                        "talk": "https://en.wikipedia.org/wiki/Talk:6-7_meme"
+                    },
+                    "mobile": {
+                        "page": "https://en.wikipedia.org/wiki/6-7_meme",
+                        "revisions": "https://en.wikipedia.org/wiki/Special:History/6-7_meme",
+                        "edit": "https://en.wikipedia.org/wiki/6-7_meme?action=edit",
+                        "talk": "https://en.wikipedia.org/wiki/Talk:6-7_meme"
+                    }
+                },
+                "extract": "6-7 is an Internet meme and slang term that emerged in 2025 on TikTok and Instagram Reels, and later spread to YouTube Shorts. It has no fixed meaning.",
+                "extract_html": "<p><b>6-7</b> is an Internet meme and slang term that emerged in 2025 on TikTok and Instagram Reels, and later spread to YouTube Shorts. It has no fixed meaning.</p>",
+                "normalizedtitle": "6-7 meme"
+            }
+        ]
+    },
+    "image": {
+        "title": "File:Fireworks on New Year's Eve in a small Swabian village (1), brightened.jpg",
+        "thumbnail": {
+            "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Fireworks_on_New_Year%27s_Eve_in_a_small_Swabian_village_%281%29%2C_brightened.jpg/960px-Fireworks_on_New_Year%27s_Eve_in_a_small_Swabian_village_%281%29%2C_brightened.jpg",
+            "width": 640,
+            "height": 360
+        },
+        "image": {
+            "source": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Fireworks_on_New_Year%27s_Eve_in_a_small_Swabian_village_%281%29%2C_brightened.jpg",
+            "width": 6366,
+            "height": 3581
+        },
+        "file_page": "https://commons.wikimedia.org/wiki/File:Fireworks_on_New_Year%27s_Eve_in_a_small_Swabian_village_(1),_brightened.jpg",
+        "artist": {
+            "html": "<a href=\"//commons.wikimedia.org/wiki/User:AWeith\" title=\"User:AWeith\">Andreas Weith</a>",
+            "text": "Andreas Weith"
+        },
+        "credit": {
+            "html": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+            "text": "Own work"
+        },
+        "license": {
+            "type": "CC BY-SA 4.0",
+            "code": "cc-by-sa-4.0",
+            "url": "https://creativecommons.org/licenses/by-sa/4.0"
+        },
+        "description": {
+            "html": "New Year's fireworks over the <a rel=\"mw:WikiLink/Interwiki\" href=\"https://en.wikipedia.org/wiki/Swabia\" title=\"en:Swabia\" class=\"extiw\">Swabian</a> village <a rel=\"mw:WikiLink/Interwiki\" href=\"https://en.wikipedia.org/wiki/Eberhardzell\" title=\"w:Eberhardzell\" class=\"extiw\">Eberhardzell</a> near <a rel=\"mw:WikiLink/Interwiki\" href=\"https://en.wikipedia.org/wiki/Biberach%20an%20der%20Riss\" title=\"w:Biberach an der Riss\" class=\"extiw\">Biberach an der Riss</a>. Today is <a rel=\"mw:WikiLink/Interwiki\" href=\"https://en.wikipedia.org/wiki/New%20Year's%20Day\" title=\"w:New Year's Day\" class=\"extiw\">New Year's Day</a>.",
+            "text": "New Year's fireworks over the Swabian village Eberhardzell near Biberach an der Riss. Today is New Year's Day.",
+            "lang": "en"
+        },
+        "wb_entity_id": "M65253643",
+        "structured": {
+            "captions": {}
+        }
+    },
+    "onthisday": [
+        {
+            "text": "The NASA space probe New Horizons flew by the trans-Neptunian object Arrokoth, making it the farthest object visited by a spacecraft.",
+            "pages": [
+                {
+                    "type": "standard",
+                    "title": "NASA",
+                    "displaytitle": "<span class=\"mw-page-title-main\">NASA</span>",
+                    "namespace": {
+                        "id": 0,
+                        "text": ""
+                    },
+                    "wikibase_item": "Q23548",
+                    "titles": {
+                        "canonical": "NASA",
+                        "normalized": "NASA",
+                        "display": "<span class=\"mw-page-title-main\">NASA</span>"
+                    },
+                    "pageid": 18426568,
+                    "thumbnail": {
+                        "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/NASA_seal.svg/330px-NASA_seal.svg.png",
+                        "width": 330,
+                        "height": 330
+                    },
+                    "originalimage": {
+                        "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/NASA_seal.svg/330px-NASA_seal.svg.png",
+                        "width": 272,
+                        "height": 272
+                    },
+                    "lang": "en",
+                    "dir": "ltr",
+                    "revision": "1334821366",
+                    "tid": "ce0084d9-fa30-11f0-92cd-12b8877c9125",
+                    "timestamp": "2026-01-25T20:59:57Z",
+                    "description": "American space and aeronautics agency",
+                    "description_source": "local",
+                    "content_urls": {
+                        "desktop": {
+                            "page": "https://en.wikipedia.org/wiki/NASA",
+                            "revisions": "https://en.wikipedia.org/wiki/NASA?action=history",
+                            "edit": "https://en.wikipedia.org/wiki/NASA?action=edit",
+                            "talk": "https://en.wikipedia.org/wiki/Talk:NASA"
+                        },
+                        "mobile": {
+                            "page": "https://en.wikipedia.org/wiki/NASA",
+                            "revisions": "https://en.wikipedia.org/wiki/Special:History/NASA",
+                            "edit": "https://en.wikipedia.org/wiki/NASA?action=edit",
+                            "talk": "https://en.wikipedia.org/wiki/Talk:NASA"
+                        }
+                    },
+                    "extract": "The National Aeronautics and Space Administration is an independent agency of the U.S. federal government responsible for the United States' civil space program and for research in aeronautics and space exploration. Headquartered in Washington, D.C., NASA operates ten field centers across the United States and is organized into mission directorates for Science, Space Operations, Exploration Systems Development, Space Technology, Aeronautics Research, and Mission Support. Established in 1958, NASA succeeded the National Advisory Committee for Aeronautics (NACA) to give the American space development effort a distinct civilian orientation, emphasizing peaceful applications in space science. It has since led most of America's space exploration programs, including Project Mercury, Project Gemini, the 1968–1972 Apollo program missions, the Skylab space station, and the Space Shuttle.",
+                    "extract_html": "<p>The <b>National Aeronautics and Space Administration</b> is an independent agency of the U.S. federal government responsible for the United States' civil space program and for research in aeronautics and space exploration. Headquartered in Washington, D.C., NASA operates ten field centers across the United States and is organized into mission directorates for Science, Space Operations, Exploration Systems Development, Space Technology, Aeronautics Research, and Mission Support. Established in 1958, NASA succeeded the National Advisory Committee for Aeronautics (NACA) to give the American space development effort a distinct civilian orientation, emphasizing peaceful applications in space science. It has since led most of America's space exploration programs, including Project Mercury, Project Gemini, the 1968–1972 Apollo program missions, the Skylab space station, and the Space Shuttle.</p>",
+                    "normalizedtitle": "NASA"
+                },
+                {
+                    "type": "standard",
+                    "title": "New_Horizons",
+                    "displaytitle": "<i>New Horizons</i>",
+                    "namespace": {
+                        "id": 0,
+                        "text": ""
+                    },
+                    "wikibase_item": "Q48461",
+                    "titles": {
+                        "canonical": "New_Horizons",
+                        "normalized": "New Horizons",
+                        "display": "<i>New Horizons</i>"
+                    },
+                    "pageid": 390905,
+                    "thumbnail": {
+                        "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/New_Horizons_spacecraft_model_1.png/330px-New_Horizons_spacecraft_model_1.png",
+                        "width": 330,
+                        "height": 308
+                    },
+                    "originalimage": {
+                        "source": "https://upload.wikimedia.org/wikipedia/commons/e/ee/New_Horizons_spacecraft_model_1.png",
+                        "width": 800,
+                        "height": 746
+                    },
+                    "lang": "en",
+                    "dir": "ltr",
+                    "revision": "1334586823",
+                    "tid": "7032475c-f923-11f0-8174-a5c159e3633c",
+                    "timestamp": "2026-01-24T12:51:45Z",
+                    "description": "NASA spacecraft (2006–Present)",
+                    "description_source": "local",
+                    "content_urls": {
+                        "desktop": {
+                            "page": "https://en.wikipedia.org/wiki/New_Horizons",
+                            "revisions": "https://en.wikipedia.org/wiki/New_Horizons?action=history",
+                            "edit": "https://en.wikipedia.org/wiki/New_Horizons?action=edit",
+                            "talk": "https://en.wikipedia.org/wiki/Talk:New_Horizons"
+                        },
+                        "mobile": {
+                            "page": "https://en.wikipedia.org/wiki/New_Horizons",
+                            "revisions": "https://en.wikipedia.org/wiki/Special:History/New_Horizons",
+                            "edit": "https://en.wikipedia.org/wiki/New_Horizons?action=edit",
+                            "talk": "https://en.wikipedia.org/wiki/Talk:New_Horizons"
+                        }
+                    },
+                    "extract": "New Horizons is an interplanetary space probe launched as a part of NASA's New Frontiers program. It was launched in 2006, becoming the first spacecraft to perform a flyby study of the Pluto system in 2015. A secondary mission contained a flyby and study of one or more other Kuiper belt objects (KBOs) in the decade to follow, where it flew past 486958 Arrokoth in 2019. It was the first space probe to ever take high-resolution photographs of Pluto in 2015.",
+                    "extract_html": "<p><i><b>New Horizons</b></i> is an interplanetary space probe launched as a part of NASA's New Frontiers program. It was launched in 2006, becoming the first spacecraft to perform a flyby study of the Pluto system in 2015. A secondary mission contained a flyby and study of one or more other Kuiper belt objects (KBOs) in the decade to follow, where it flew past 486958 Arrokoth in 2019. It was the first space probe to ever take high-resolution photographs of Pluto in 2015.</p>",
+                    "normalizedtitle": "New Horizons"
+                },
+                {
+                    "type": "standard",
+                    "title": "Trans-Neptunian_object",
+                    "displaytitle": "<span class=\"mw-page-title-main\">Trans-Neptunian object</span>",
+                    "namespace": {
+                        "id": 0,
+                        "text": ""
+                    },
+                    "wikibase_item": "Q6592",
+                    "titles": {
+                        "canonical": "Trans-Neptunian_object",
+                        "normalized": "Trans-Neptunian object",
+                        "display": "<span class=\"mw-page-title-main\">Trans-Neptunian object</span>"
+                    },
+                    "pageid": 30549,
+                    "lang": "en",
+                    "dir": "ltr",
+                    "revision": "1332700691",
+                    "tid": "e7ccc07b-f05f-11f0-bad7-2a159b177dce",
+                    "timestamp": "2026-01-13T09:11:55Z",
+                    "description": "Solar system objects beyond Neptune",
+                    "description_source": "local",
+                    "content_urls": {
+                        "desktop": {
+                            "page": "https://en.wikipedia.org/wiki/Trans-Neptunian_object",
+                            "revisions": "https://en.wikipedia.org/wiki/Trans-Neptunian_object?action=history",
+                            "edit": "https://en.wikipedia.org/wiki/Trans-Neptunian_object?action=edit",
+                            "talk": "https://en.wikipedia.org/wiki/Talk:Trans-Neptunian_object"
+                        },
+                        "mobile": {
+                            "page": "https://en.wikipedia.org/wiki/Trans-Neptunian_object",
+                            "revisions": "https://en.wikipedia.org/wiki/Special:History/Trans-Neptunian_object",
+                            "edit": "https://en.wikipedia.org/wiki/Trans-Neptunian_object?action=edit",
+                            "talk": "https://en.wikipedia.org/wiki/Talk:Trans-Neptunian_object"
+                        }
+                    },
+                    "extract": "A trans-Neptunian object (TNO), also written transneptunian object, is any minor planet in the Solar System that orbits the Sun at a greater average distance than Neptune, which has an orbital semi-major axis of 30.1 astronomical units (AU).",
+                    "extract_html": "<p>A <b>trans-Neptunian object</b> (<b>TNO</b>), also written <b>transneptunian object</b>, is any minor planet in the Solar System that orbits the Sun at a greater average distance than Neptune, which has an orbital semi-major axis of 30.1 astronomical units (AU).</p>",
+                    "normalizedtitle": "Trans-Neptunian object"
+                },
+                {
+                    "type": "standard",
+                    "title": "486958_Arrokoth",
+                    "displaytitle": "<span class=\"mw-page-title-main\">486958 Arrokoth</span>",
+                    "namespace": {
+                        "id": 0,
+                        "text": ""
+                    },
+                    "wikibase_item": "Q18325885",
+                    "titles": {
+                        "canonical": "486958_Arrokoth",
+                        "normalized": "486958 Arrokoth",
+                        "display": "<span class=\"mw-page-title-main\">486958 Arrokoth</span>"
+                    },
+                    "pageid": 44163394,
+                    "thumbnail": {
+                        "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/UltimaThule_CA06_color_vertical.png/330px-UltimaThule_CA06_color_vertical.png",
+                        "width": 330,
+                        "height": 471
+                    },
+                    "originalimage": {
+                        "source": "https://upload.wikimedia.org/wikipedia/commons/8/8c/UltimaThule_CA06_color_vertical.png",
+                        "width": 1302,
+                        "height": 1860
+                    },
+                    "lang": "en",
+                    "dir": "ltr",
+                    "revision": "1334649699",
+                    "tid": "8f07fce2-f96a-11f0-96e8-bb2c9e511d39",
+                    "timestamp": "2026-01-24T21:20:51Z",
+                    "description": "Kuiper belt object",
+                    "description_source": "local",
+                    "content_urls": {
+                        "desktop": {
+                            "page": "https://en.wikipedia.org/wiki/486958_Arrokoth",
+                            "revisions": "https://en.wikipedia.org/wiki/486958_Arrokoth?action=history",
+                            "edit": "https://en.wikipedia.org/wiki/486958_Arrokoth?action=edit",
+                            "talk": "https://en.wikipedia.org/wiki/Talk:486958_Arrokoth"
+                        },
+                        "mobile": {
+                            "page": "https://en.wikipedia.org/wiki/486958_Arrokoth",
+                            "revisions": "https://en.wikipedia.org/wiki/Special:History/486958_Arrokoth",
+                            "edit": "https://en.wikipedia.org/wiki/486958_Arrokoth?action=edit",
+                            "talk": "https://en.wikipedia.org/wiki/Talk:486958_Arrokoth"
+                        }
+                    },
+                    "extract": "486958 Arrokoth (provisional designation 2014 MU69; formerly nicknamed Ultima Thule) is a small, icy Kuiper belt object orbiting the Sun beyond Neptune and Pluto. It became the farthest object in the Solar System visited by a spacecraft when the NASA space probe New Horizons flew past it on 1 January 2019. Arrokoth was discovered on 26 June 2014 by astronomer Marc Buie and the New Horizons Search Team, who had been using the Hubble Space Telescope to find Kuiper belt objects that New Horizons could visit.",
+                    "extract_html": "<p><b>486958 Arrokoth</b> (provisional designation <b><span class=\"nowrap\">2014 MU<sub>69</sub></span></b>; formerly nicknamed <b>Ultima Thule</b>) is a small, icy Kuiper belt object orbiting the Sun beyond Neptune and Pluto. It became the farthest object in the Solar System visited by a spacecraft when the NASA space probe <i>New Horizons</i> flew past it on 1 January 2019. Arrokoth was discovered on 26 June 2014 by astronomer Marc Buie and the <span><i>New Horizons</i> Search Team</span>, who had been using the Hubble Space Telescope to find Kuiper belt objects that <i>New Horizons</i> could visit.</p>",
+                    "normalizedtitle": "486958 Arrokoth"
+                }
+            ],
+            "year": 2019
+        }
+    ]
+}

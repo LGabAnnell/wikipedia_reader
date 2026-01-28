@@ -18,6 +18,9 @@ qt6_add_qml_module(HomeModule
     VERSION 1.0
     QML_FILES
         HomeScreen.qml
+        DidYouKnowSection.qml
+        OnThisDaySection.qml
+        NewsSection.qml
     SOURCES
         HomeModel.cpp
         HomeModel.h

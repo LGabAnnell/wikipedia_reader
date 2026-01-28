@@ -57,7 +57,10 @@ ApplicationWindow {
 
             Component {
                 id: homeComponent
-                HomeScreen {}
+                HomeScreen {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                }
             }
 
             // Define the history view component

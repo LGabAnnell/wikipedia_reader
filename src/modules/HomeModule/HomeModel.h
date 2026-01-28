@@ -11,7 +11,6 @@
 class HomeModel : public QObject
 {
     Q_OBJECT
-    QML_SINGLETON
     QML_NAMED_ELEMENT(HomeModel)
     // Featured article properties
     Q_PROPERTY(QString featuredArticleTitle READ featuredArticleTitle NOTIFY featuredArticleUpdated)
@@ -19,22 +18,19 @@ class HomeModel : public QObject
     Q_PROPERTY(QString featuredArticleImageUrl READ featuredArticleImageUrl NOTIFY featuredArticleImageUpdated)
     Q_PROPERTY(QString featuredArticleUrl READ featuredArticleUrl NOTIFY featuredArticleUpdated)
 
-    // In the news properties
+    // In the news properties (QVariantList for QML compatibility)
     Q_PROPERTY(QVariantList newsItems READ newsItems NOTIFY dataUpdated)
 
-    // On this day properties
+    // On this day properties (QVariantList for QML compatibility)
     Q_PROPERTY(QVariantList onThisDayEvents READ onThisDayEvents NOTIFY dataUpdated)
 
-    // Did you know properties
+    // Did you know properties (QVariantList for QML compatibility)
     Q_PROPERTY(QVariantList didYouKnowItems READ didYouKnowItems NOTIFY dataUpdated)
 
 public:
     explicit HomeModel(QObject *parent = nullptr);
 
-    // Singleton instance creator for QML
-    static HomeModel* create(QQmlEngine *engine, QJSEngine *scriptEngine);
-
-    // Getters for QML properties
+    // Getters for QML properties (QVariantList for QML compatibility)
     Q_INVOKABLE QString featuredArticleTitle() const;
     Q_INVOKABLE QString featuredArticleExtract() const;
     Q_INVOKABLE QString featuredArticleImageUrl() const;
@@ -42,6 +38,11 @@ public:
     Q_INVOKABLE QVariantList newsItems() const;
     Q_INVOKABLE QVariantList onThisDayEvents() const;
     Q_INVOKABLE QVariantList didYouKnowItems() const;
+
+    // Strongly-typed getters for internal use
+    QVector<news_item> getNewsItemsTyped() const;
+    QVector<on_this_day_event> getOnThisDayEventsTyped() const;
+    QVector<did_you_know_item> getDidYouKnowItemsTyped() const;
 
     // Fetch data from Wikipedia
     Q_INVOKABLE void fetchHomeData();
@@ -67,9 +68,11 @@ private:
     QString m_featuredArticleExtract;
     QString m_featuredArticleImageUrl;
     QString m_featuredArticleUrl;
-    QVariantList m_newsItems;
-    QVariantList m_onThisDayEvents;
-    QVariantList m_didYouKnowItems;
+
+    // Strongly-typed data members
+    QVector<news_item> m_newsItems;
+    QVector<on_this_day_event> m_onThisDayEvents;
+    QVector<did_you_know_item> m_didYouKnowItems;
 };
 
 #endif // HOMEMODEL_H

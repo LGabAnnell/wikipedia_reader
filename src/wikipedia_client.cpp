@@ -289,6 +289,7 @@ void WikipediaClient::getDidYouKnowItems() {
 
 void WikipediaClient::onNewsItemsReply(QNetworkReply *reply) {
     if (reply->error() != QNetworkReply::NoError) {
+        qWarning() << "Error fetching news:" << reply->errorString();
         emit errorOccurred(tr("Error fetching news: %1").arg(reply->errorString()));
         reply->deleteLater();
         return;
@@ -299,17 +300,21 @@ void WikipediaClient::onNewsItemsReply(QNetworkReply *reply) {
     QJsonObject root = doc.object();
 
     QVector<news_item> newsItems;
-    if (root.contains("news")) {
-        QJsonArray items = root["news"].toArray();
+    if (root.contains("mostread")) {
+        QJsonArray items = root["mostread"].toObject()["articles"].toArray();
         for (const auto &item : items) {
-            QJsonObject newsItem = item.toObject();
+            QJsonObject article = item.toObject();
             news_item ni;
-            ni.title = newsItem["story"].toString();
-            ni.description = newsItem["links"].toArray()[0].toObject()["extract"].toString();
-            ni.url = newsItem["links"].toArray()[0].toObject()["pageid"].toString();
-            ni.imageUrl = "qrc:/images/news_placeholder.jpg"; // Placeholder
+            ni.title = article["title"].toString();
+            ni.description = article["extract"].toString();
+            ni.url = article["content_urls"].toObject()["desktop"].toObject()["page"].toString();
+            ni.imageUrl = article.contains("thumbnail") ? 
+                article["thumbnail"].toObject()["source"].toString() : 
+                "qrc:/images/news_placeholder.jpg";
             newsItems.append(ni);
         }
+    } else {
+        qWarning() << "mostread field not found in API response";
     }
 
     emit newsItemsReceived(newsItems);
@@ -328,14 +333,30 @@ void WikipediaClient::onOnThisDayEventsReply(QNetworkReply *reply) {
     QJsonObject root = doc.object();
     
     QVector<on_this_day_event> onThisDayEvents;
-    if (root.contains("selected")) {
-        QJsonArray events = root["selected"].toArray();
+    if (root.contains("onthisday")) {
+        QJsonArray events = root["onthisday"].toArray();
         for (const auto &event : events) {
             QJsonObject eventObj = event.toObject();
             on_this_day_event otd;
             otd.year = eventObj["year"].toInt();
             otd.event = eventObj["text"].toString();
-            otd.url = eventObj["pages"].toArray()[0].toObject()["content_urls"].toObject()["desktop"].toObject()["page"].toString();
+
+            // Extract the URL from the first page in the "pages" array
+            if (eventObj.contains("pages") && eventObj["pages"].isArray()) {
+                QJsonArray pages = eventObj["pages"].toArray();
+                if (!pages.isEmpty()) {
+                    QJsonObject firstPage = pages[0].toObject();
+                    if (firstPage.contains("content_urls")) {
+                        QJsonObject contentUrls = firstPage["content_urls"].toObject();
+                        if (contentUrls.contains("desktop")) {
+                            QJsonObject desktopUrls = contentUrls["desktop"].toObject();
+                            if (desktopUrls.contains("page")) {
+                                otd.url = desktopUrls["page"].toString();
+                            }
+                        }
+                    }
+                }
+            }
             onThisDayEvents.append(otd);
         }
     }
@@ -386,8 +407,10 @@ void WikipediaClient::onArticleContentReply(QNetworkReply *reply, const QString 
     
     QVector<did_you_know_item> didYouKnowItems;
     did_you_know_item dyk;
-    dyk.text = root["extract"].toString();
-    dyk.url = root["content_urls"].toObject()["desktop"].toObject()["page"].toString();
+    dyk.text = root.contains("extract") ? root["extract"].toString() : "";
+    dyk.url = root.contains("content_urls") ? 
+        root["content_urls"].toObject()["desktop"].toObject()["page"].toString() : 
+        "";
     didYouKnowItems.append(dyk);
     
     emit didYouKnowItemsReceived(didYouKnowItems);
