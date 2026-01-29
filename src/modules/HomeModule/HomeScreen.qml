@@ -41,7 +41,7 @@ Item {
 
             OnThisDaySection {
                 id: onThisDaySection
-                model: homeModel.onThisDayItems
+                model: homeModel.onThisDayEvents
                 Layout.preferredWidth: scrollView.width - 40
             }
 

@@ -268,13 +268,12 @@ void WikipediaClient::getNewsItems() {
     connect(reply, &QNetworkReply::finished, this, [this, reply]() { onNewsItemsReply(reply); });
 }
 
-void WikipediaClient::getOnThisDayEvents() {
+void WikipediaClient::getOnThisDayEvents(int month, int day) {
     // Use Wikipedia's REST API for "On This Day"
     QDate today = QDate::currentDate();
     QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/%1/%2")
                   .arg(today.month(), 2, 10, QLatin1Char('0'))
                   .arg(today.day(), 2, 10, QLatin1Char('0')));
-    qDebug() << "Fetching On This Day events from URL:" << url.toString();
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() { onOnThisDayEventsReply(reply); });
@@ -355,10 +354,20 @@ void WikipediaClient::onOnThisDayEventsReply(QNetworkReply *reply) {
                             QJsonObject desktopUrls = contentUrls["desktop"].toObject();
                             if (desktopUrls.contains("page")) {
                                 otd.url = desktopUrls["page"].toString();
+                            } else {
+                                qWarning() << "'page' key not found in desktop URLs";
                             }
+                        } else {
+                            qWarning() << "'desktop' key not found in content URLs";
                         }
+                    } else {
+                        qWarning() << "'content_urls' key not found in first page";
                     }
+                } else {
+                    qWarning() << "Pages array is empty";
                 }
+            } else {
+                qWarning() << "'pages' key not found in event or is not an array";
             }
             onThisDayEvents.append(otd);
         }
@@ -423,4 +432,6 @@ void WikipediaClient::onArticleContentReply(QNetworkReply *reply, const QString 
     emit didYouKnowItemsReceived(didYouKnowItems);
     reply->deleteLater();
 }
+
+
 

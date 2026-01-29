@@ -19,13 +19,13 @@ class HomeModel : public QObject
     Q_PROPERTY(QString featuredArticleUrl READ featuredArticleUrl NOTIFY featuredArticleUpdated)
 
     // In the news properties (QVariantList for QML compatibility)
-    Q_PROPERTY(QVariantList newsItems READ newsItems NOTIFY dataUpdated)
+    Q_PROPERTY(QVector<news_item> newsItems READ newsItems NOTIFY dataUpdated)
 
     // On this day properties (QVariantList for QML compatibility)
-    Q_PROPERTY(QVariantList onThisDayEvents READ onThisDayEvents NOTIFY dataUpdated)
+    Q_PROPERTY(QVector<on_this_day_event> onThisDayEvents READ onThisDayEvents NOTIFY dataUpdated)
 
     // Did you know properties (QVariantList for QML compatibility)
-    Q_PROPERTY(QVariantList didYouKnowItems READ didYouKnowItems NOTIFY dataUpdated)
+    Q_PROPERTY(QVector<did_you_know_item> didYouKnowItems READ didYouKnowItems NOTIFY dataUpdated)
 
 public:
     explicit HomeModel(QObject *parent = nullptr);
@@ -35,9 +35,15 @@ public:
     Q_INVOKABLE QString featuredArticleExtract() const;
     Q_INVOKABLE QString featuredArticleImageUrl() const;
     Q_INVOKABLE QString featuredArticleUrl() const;
-    Q_INVOKABLE QVariantList newsItems() const;
-    Q_INVOKABLE QVariantList onThisDayEvents() const;
-    Q_INVOKABLE QVariantList didYouKnowItems() const;
+    Q_INVOKABLE QVector<news_item> newsItems() const {
+        return m_newsItems;
+    }
+    Q_INVOKABLE QVector<on_this_day_event> onThisDayEvents() const {
+        return m_onThisDayEvents;
+    }
+    Q_INVOKABLE QVector<did_you_know_item> didYouKnowItems() const {
+        return m_didYouKnowItems;
+    }
 
     // Strongly-typed getters for internal use
     QVector<news_item> getNewsItemsTyped() const;

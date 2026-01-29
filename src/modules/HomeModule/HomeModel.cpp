@@ -41,45 +41,6 @@ QString HomeModel::featuredArticleUrl() const {
     return m_featuredArticleUrl;
 }
 
-// QML-compatible getter (QVariantList)
-QVariantList HomeModel::newsItems() const {
-    QVariantList variantList;
-    for (const auto &item : m_newsItems) {
-        QVariantMap newsItem;
-        newsItem["title"] = item.title;
-        newsItem["imageUrl"] = item.imageUrl;
-        newsItem["description"] = item.description;
-        newsItem["url"] = QString("https://en.wikipedia.org/wiki?curid=%1").arg(item.url);
-        variantList.append(newsItem);
-    }
-    return variantList;
-}
-
-// QML-compatible getter (QVariantList)
-QVariantList HomeModel::onThisDayEvents() const {
-    QVariantList variantList;
-    for (const auto &event : m_onThisDayEvents) {
-        QVariantMap eventItem;
-        eventItem["year"] = event.year;
-        eventItem["event"] = event.event;
-        eventItem["url"] = event.url;
-        variantList.append(eventItem);
-    }
-    return variantList;
-}
-
-// QML-compatible getter (QVariantList)
-QVariantList HomeModel::didYouKnowItems() const {
-    QVariantList variantList;
-    for (const auto &item : m_didYouKnowItems) {
-        QVariantMap dykItem;
-        dykItem["text"] = item.text;
-        dykItem["url"] = item.url;
-        variantList.append(dykItem);
-    }
-    return variantList;
-}
-
 // Strongly-typed getter for internal use
 QVector<news_item> HomeModel::getNewsItemsTyped() const {
     return m_newsItems;
@@ -101,7 +62,11 @@ void HomeModel::fetchHomeData() {
 
     // Fetch real data from Wikipedia
     m_wikipediaClient->getNewsItems();
-    m_wikipediaClient->getOnThisDayEvents();
+
+    // Pass the current month and day to getOnThisDayEvents
+    QDate currentDate = QDate::currentDate();
+    m_wikipediaClient->getOnThisDayEvents(currentDate.month(), currentDate.day());
+
     m_wikipediaClient->getDidYouKnowItems();
 }
 
@@ -139,6 +104,9 @@ void HomeModel::handleNewsItemsReceived(const QVector<news_item> &items) {
 
 void HomeModel::handleOnThisDayEventsReceived(const QVector<on_this_day_event> &events) {
     m_onThisDayEvents = events;
+    for (const auto &event : m_onThisDayEvents) {
+        qDebug() << "Event:" << event.year << event.event;
+    }
     emit dataUpdated();
 }
 
@@ -146,3 +114,4 @@ void HomeModel::handleDidYouKnowItemsReceived(const QVector<did_you_know_item> &
     m_didYouKnowItems = items;
     emit dataUpdated();
 }
+

@@ -123,14 +123,10 @@ public:
 
     // New methods for HomeModel
     void getNewsItems();
-    void getOnThisDayEvents();
+    void getOnThisDayEvents(int month, int day); // Removed parameterless version
     void getDidYouKnowItems();
-
     // Fetch news items from the featured feed
     void getNewsItems(const QDate &date);
-
-    // Fetch on-this-day events
-    void getOnThisDayEvents(int month, int day);
 
 signals:
     // Existing signals
