@@ -21,6 +21,8 @@ Column {
         id: newsItemsColumn
         spacing: 15
 
+        property SystemPalette sysPalette: SystemPalette {}
+
         Repeater {
             id: repeater
             delegate: Item {
@@ -48,12 +50,13 @@ Column {
                         id: columnNews
                         spacing: 5
 
-                        Label {
-                            text: "• " + modelData.title
+                        Text {
+                            text: "<style>a { text-decoration: none; }</style><a href=\"" + modelData.title + "\">" + modelData.title + "</a>"
                             font.pixelSize: 14
                             font.bold: true
-                            color: "#002bb8"
                             wrapMode: Text.WordWrap
+                            textFormat: Text.RichText
+                            color: newsItemsColumn.sysPalette.text
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor

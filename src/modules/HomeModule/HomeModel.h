@@ -6,26 +6,27 @@
 #include <QVariantList>
 #include <QQmlEngine>
 #include <QJSEngine>
+#include <QPointer>
 #include "wikipedia_client.h"
 
 class HomeModel : public QObject
 {
     Q_OBJECT
-    QML_NAMED_ELEMENT(HomeModel)
-    // Featured article properties
-    Q_PROPERTY(QString featuredArticleTitle READ featuredArticleTitle NOTIFY featuredArticleUpdated)
-    Q_PROPERTY(QString featuredArticleExtract READ featuredArticleExtract NOTIFY featuredArticleUpdated)
-    Q_PROPERTY(QString featuredArticleImageUrl READ featuredArticleImageUrl NOTIFY featuredArticleImageUpdated)
-    Q_PROPERTY(QString featuredArticleUrl READ featuredArticleUrl NOTIFY featuredArticleUpdated)
+        QML_NAMED_ELEMENT(HomeModel)
+        // Featured article properties
+        Q_PROPERTY(QString featuredArticleTitle READ featuredArticleTitle NOTIFY featuredArticleUpdated)
+        Q_PROPERTY(QString featuredArticleExtract READ featuredArticleExtract NOTIFY featuredArticleUpdated)
+        Q_PROPERTY(QString featuredArticleImageUrl READ featuredArticleImageUrl NOTIFY featuredArticleImageUpdated)
+        Q_PROPERTY(QString featuredArticleUrl READ featuredArticleUrl NOTIFY featuredArticleUpdated)
 
-    // In the news properties (QVariantList for QML compatibility)
-    Q_PROPERTY(QVector<news_item> newsItems READ newsItems NOTIFY dataUpdated)
+        // In the news properties (QVariantList for QML compatibility)
+        Q_PROPERTY(QVector<news_item> newsItems READ newsItems NOTIFY dataUpdated)
 
-    // On this day properties (QVariantList for QML compatibility)
-    Q_PROPERTY(QVector<on_this_day_event> onThisDayEvents READ onThisDayEvents NOTIFY dataUpdated)
+        // On this day properties (QVariantList for QML compatibility)
+        Q_PROPERTY(QVector<on_this_day_event> onThisDayEvents READ onThisDayEvents NOTIFY dataUpdated)
 
-    // Did you know properties (QVariantList for QML compatibility)
-    Q_PROPERTY(QVector<did_you_know_item> didYouKnowItems READ didYouKnowItems NOTIFY dataUpdated)
+        // Did you know properties (QVariantList for QML compatibility)
+        Q_PROPERTY(QVector<did_you_know_item> didYouKnowItems READ didYouKnowItems NOTIFY dataUpdated)
 
 public:
     explicit HomeModel(QObject *parent = nullptr);
@@ -35,20 +36,18 @@ public:
     Q_INVOKABLE QString featuredArticleExtract() const;
     Q_INVOKABLE QString featuredArticleImageUrl() const;
     Q_INVOKABLE QString featuredArticleUrl() const;
+
     Q_INVOKABLE QVector<news_item> newsItems() const {
         return m_newsItems;
     }
+
     Q_INVOKABLE QVector<on_this_day_event> onThisDayEvents() const {
         return m_onThisDayEvents;
     }
+
     Q_INVOKABLE QVector<did_you_know_item> didYouKnowItems() const {
         return m_didYouKnowItems;
     }
-
-    // Strongly-typed getters for internal use
-    QVector<news_item> getNewsItemsTyped() const;
-    QVector<on_this_day_event> getOnThisDayEventsTyped() const;
-    QVector<did_you_know_item> getDidYouKnowItemsTyped() const;
 
     // Fetch data from Wikipedia
     Q_INVOKABLE void fetchHomeData();
@@ -67,7 +66,7 @@ private slots:
     void handleDidYouKnowItemsReceived(const QVector<did_you_know_item> &items);
 
 private:
-    WikipediaClient *m_wikipediaClient;
+    QPointer<WikipediaClient> m_wikipediaClient;
 
     // Data members
     QString m_featuredArticleTitle;

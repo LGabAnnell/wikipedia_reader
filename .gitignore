@@ -90,3 +90,4 @@ CMakeLists.txt.user*
 /CMakeCache.txt
 /.qmlls.ini
 **qmldir
+**.qmlls.ini

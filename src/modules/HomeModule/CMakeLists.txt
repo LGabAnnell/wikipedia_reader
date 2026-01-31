@@ -2,6 +2,8 @@
 
 cmake_minimum_required(VERSION 3.16)
 
+qt_standard_project_setup(REQUIRES 6.8)
+
 set(QT_QML_GENERATE_QMLLS_INI ON)
 
 # Enable AUTOMOC for Qt meta-object compiler

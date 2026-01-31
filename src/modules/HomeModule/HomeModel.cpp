@@ -41,21 +41,6 @@ QString HomeModel::featuredArticleUrl() const {
     return m_featuredArticleUrl;
 }
 
-// Strongly-typed getter for internal use
-QVector<news_item> HomeModel::getNewsItemsTyped() const {
-    return m_newsItems;
-}
-
-// Strongly-typed getter for internal use
-QVector<on_this_day_event> HomeModel::getOnThisDayEventsTyped() const {
-    return m_onThisDayEvents;
-}
-
-// Strongly-typed getter for internal use
-QVector<did_you_know_item> HomeModel::getDidYouKnowItemsTyped() const {
-    return m_didYouKnowItems;
-}
-
 void HomeModel::fetchHomeData() {
     // Fetch featured article of the day
     m_wikipediaClient->getFeaturedArticleOfTheDay();
@@ -104,9 +89,6 @@ void HomeModel::handleNewsItemsReceived(const QVector<news_item> &items) {
 
 void HomeModel::handleOnThisDayEventsReceived(const QVector<on_this_day_event> &events) {
     m_onThisDayEvents = events;
-    for (const auto &event : m_onThisDayEvents) {
-        qDebug() << "Event:" << event.year << event.event;
-    }
     emit dataUpdated();
 }
 

@@ -71,8 +71,7 @@ QString HtmlProcessor::processHtml(const QString &htmlContent) {
             <style>
                 %1
             </style>
-    )""").arg(style) +
-                            QString(printer.CStr());
+    )""").arg(style) + QString(printer.CStr());
 
     return processedHtml;
 }
