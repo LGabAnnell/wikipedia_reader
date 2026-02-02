@@ -1,22 +1,22 @@
 // src/components/searchbar/SearchBarModel.cpp
 #include "SearchBarModel.h"
-#include "wikipedia_client.h"
+#include "wikipedia_search_client.h"
+#include "wikipedia_page_client.h"
+#include "wikipedia_models.h"
 #include "GlobalState.h"
 
 SearchBarModel::SearchBarModel(QObject *parent) : QObject(parent) {
     m_isSearching = false;
     m_searchText = "";
-    m_wikipediaClient = new WikipediaClient(this);
+    m_searchClient = new WikipediaSearchClient(this);
     m_globalState = GlobalState::instance();
-    connect(m_wikipediaClient, &WikipediaClient::searchCompleted,
+    connect(m_searchClient, &WikipediaSearchClient::searchCompleted,
                 m_globalState, [this] (const QVector<search_result> results) {
                     m_isSearching = false;
                     emit isSearchingChanged(m_isSearching);
                     m_globalState->setSearchResults(results);
                 });
-    connect(m_wikipediaClient, &WikipediaClient::pageReceived,
-            m_globalState, &GlobalState::setCurrentPage);
-    connect(m_wikipediaClient, &WikipediaClient::errorOccurred,
+    connect(m_searchClient, &WikipediaSearchClient::errorOccurred,
             this, &SearchBarModel::handleError);
 }
 
@@ -48,8 +48,8 @@ void SearchBarModel::performSearch() {
             m_globalState->clearErrorMessage();
         }
 
-        if (m_wikipediaClient) {
-            m_wikipediaClient->search(m_searchText);
+        if (m_searchClient) {
+            m_searchClient->search(m_searchText);
         }
     }
 }

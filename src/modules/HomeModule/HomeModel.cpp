@@ -2,26 +2,31 @@
 #include <QDate>
 #include <QDebug>
 #include <QString>
-#include "wikipedia_client.h"
+#include "wikipedia_featured_client.h"
+#include "wikipedia_home_client.h"
+#include "wikipedia_page_client.h"
+#include "wikipedia_models.h"
 
 HomeModel::HomeModel(QObject *parent) : QObject(parent) {
-    // Initialize Wikipedia client
-    m_wikipediaClient = new WikipediaClient(this);
+    // Initialize Wikipedia clients
+    m_featuredClient = new WikipediaFeaturedClient(this);
+    m_homeClient = new WikipediaHomeClient(this);
+    m_pageClient = new WikipediaPageClient(this);
 
-    // Connect signals from WikipediaClient
-    connect(m_wikipediaClient, &WikipediaClient::featuredArticleReceived,
+    // Connect signals from WikipediaFeaturedClient
+    connect(m_featuredClient, &WikipediaFeaturedClient::featuredArticleReceived,
             this, &HomeModel::handleFeaturedArticleReceived);
-    connect(m_wikipediaClient, &WikipediaClient::pageWithImagesReceived,
+    connect(m_pageClient, &WikipediaPageClient::pageWithImagesReceived,
             this, &HomeModel::handlePageWithImagesReceived);
-    connect(m_wikipediaClient, &WikipediaClient::errorOccurred,
+    connect(m_featuredClient, &WikipediaFeaturedClient::errorOccurred,
             this, &HomeModel::handleError);
 
     // Connect new signals for News, On This Day, and Did You Know
-    connect(m_wikipediaClient, &WikipediaClient::newsItemsReceived,
+    connect(m_homeClient, &WikipediaHomeClient::newsItemsReceived,
             this, &HomeModel::handleNewsItemsReceived);
-    connect(m_wikipediaClient, &WikipediaClient::onThisDayEventsReceived,
+    connect(m_homeClient, &WikipediaHomeClient::onThisDayEventsReceived,
             this, &HomeModel::handleOnThisDayEventsReceived);
-    connect(m_wikipediaClient, &WikipediaClient::didYouKnowItemsReceived,
+    connect(m_homeClient, &WikipediaHomeClient::didYouKnowItemsReceived,
             this, &HomeModel::handleDidYouKnowItemsReceived);
 }
 
@@ -43,16 +48,16 @@ QString HomeModel::featuredArticleUrl() const {
 
 void HomeModel::fetchHomeData() {
     // Fetch featured article of the day
-    m_wikipediaClient->getFeaturedArticleOfTheDay();
+    m_featuredClient->getFeaturedArticleOfTheDay();
 
     // Fetch real data from Wikipedia
-    m_wikipediaClient->getNewsItems();
+    m_homeClient->getNewsItems();
 
     // Pass the current month and day to getOnThisDayEvents
     QDate currentDate = QDate::currentDate();
-    m_wikipediaClient->getOnThisDayEvents(currentDate.month(), currentDate.day());
+    m_homeClient->getOnThisDayEvents(currentDate.month(), currentDate.day());
 
-    m_wikipediaClient->getDidYouKnowItems();
+    m_homeClient->getDidYouKnowItems();
 }
 
 void HomeModel::handleFeaturedArticleReceived(const QString &title, const QString &extract, const int &pageid) {
@@ -64,7 +69,7 @@ void HomeModel::handleFeaturedArticleReceived(const QString &title, const QStrin
     m_featuredArticleImageUrl = "qrc:/images/featured_article_placeholder.jpg";
 
     // Fetch the page with images to get the actual image URL
-    m_wikipediaClient->getPageWithImages(pageid);
+    m_pageClient->getPageWithImages(pageid);
 
     emit featuredArticleUpdated();
 }

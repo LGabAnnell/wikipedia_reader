@@ -55,7 +55,10 @@ include_directories(
 qt_add_executable(appwikipedia_qt
     src/main.cpp
     src/state/GlobalState.cpp
-    src/wikipedia_client.cpp
+    src/wikipedia_search_client.cpp
+    src/wikipedia_page_client.cpp
+    src/wikipedia_featured_client.cpp
+    src/wikipedia_home_client.cpp
     src/html_processor.cpp
     src/state/HistoryState.cpp
     src/state/NavigationState.cpp

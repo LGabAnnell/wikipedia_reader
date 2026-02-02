@@ -5,7 +5,7 @@
 #include <QString>
 #include <QQmlEngine>
 #include <QVector>
-#include "wikipedia_client.h"
+#include "wikipedia_models.h"
 
 class SidebarModel : public QObject {
     Q_OBJECT

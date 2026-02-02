@@ -8,7 +8,7 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>
-#include "wikipedia_client.h" // For history_item
+#include "wikipedia_models.h" // For history_item
 
 class HistoryDatabase : public QObject {
     Q_OBJECT

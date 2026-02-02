@@ -1,6 +1,10 @@
 // src/GlobalState.cpp
 #include "GlobalState.h"
-#include "wikipedia_client.h"
+#include "wikipedia_search_client.h"
+#include "wikipedia_page_client.h"
+#include "wikipedia_featured_client.h"
+#include "wikipedia_home_client.h"
+#include "wikipedia_models.h"
 
 QPointer<GlobalState> GlobalState::m_instance = nullptr; // Definition
 
@@ -10,14 +14,17 @@ GlobalState::GlobalState(QObject *parent, HistoryState *historyState) :
     m_historyState(historyState) {
 
     m_instance = this;
-    m_wikipediaClient = new WikipediaClient(this);
+    m_searchClient = new WikipediaSearchClient(this);
+    m_pageClient = new WikipediaPageClient(this);
+    m_featuredClient = new WikipediaFeaturedClient(this);
+    m_homeClient = new WikipediaHomeClient(this);
 
-    // Connect WikipediaClient signals to GlobalState
-    connect(m_wikipediaClient, &WikipediaClient::pageReceived,
+    // Connect WikipediaPageClient signals to GlobalState
+    connect(m_pageClient, &WikipediaPageClient::pageReceived,
             this, &GlobalState::setCurrentPage);
-    connect(m_wikipediaClient, &WikipediaClient::errorOccurred,
+    connect(m_pageClient, &WikipediaPageClient::errorOccurred,
             this, &GlobalState::handleArticleLoadError);
-    connect(m_wikipediaClient, &WikipediaClient::featuredArticleReceived,
+    connect(m_featuredClient, &WikipediaFeaturedClient::featuredArticleReceived,
             this, [this](const QString &title, const QString &extract, const int &pageid) {
                 // Create a page object from the featured article data
                 page p;
@@ -27,7 +34,7 @@ GlobalState::GlobalState(QObject *parent, HistoryState *historyState) :
                 setCurrentPage(p);
             });
 
-    // m_wikipediaClient->getFeaturedArticleOfTheDay();
+    // m_featuredClient->getFeaturedArticleOfTheDay();
 }
 
 QString GlobalState::currentPageTitle() const {
@@ -88,7 +95,7 @@ void GlobalState::clearErrorMessage() {
 }
 
 void GlobalState::loadArticleByPageId(int pageId) {
-    if (m_wikipediaClient) {
+    if (m_pageClient) {
         // Check if the article is already in the cache
         if (m_articleCache.contains(pageId)) {
             // Use the cached article
@@ -98,7 +105,7 @@ void GlobalState::loadArticleByPageId(int pageId) {
             // Fetch the article from the network
             setIsLoading(true);
             clearErrorMessage();
-            m_wikipediaClient->getPageById(pageId);
+            m_pageClient->getPageById(pageId);
         }
     }
 }

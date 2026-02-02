@@ -7,7 +7,11 @@
 #include <QString>
 #include <QQmlEngine>
 #include <QPointer>
-#include "wikipedia_client.h"
+#include "wikipedia_search_client.h"
+#include "wikipedia_page_client.h"
+#include "wikipedia_featured_client.h"
+#include "wikipedia_home_client.h"
+#include "wikipedia_models.h"
 #include "HistoryState.h"
 
 class GlobalState : public QObject {
@@ -61,7 +65,10 @@ private:
     bool m_isLoading;
     QString m_errorMessage;
     static QPointer<GlobalState> m_instance;
-    WikipediaClient* m_wikipediaClient;
+    WikipediaSearchClient* m_searchClient;
+    WikipediaPageClient* m_pageClient;
+    WikipediaFeaturedClient* m_featuredClient;
+    WikipediaHomeClient* m_homeClient;
     HistoryState* m_historyState;
     QMap<int, page> m_articleCache; // Cache for loaded articles
 

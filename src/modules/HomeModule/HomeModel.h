@@ -7,7 +7,10 @@
 #include <QQmlEngine>
 #include <QJSEngine>
 #include <QPointer>
-#include "wikipedia_client.h"
+#include "wikipedia_featured_client.h"
+#include "wikipedia_home_client.h"
+#include "wikipedia_page_client.h"
+#include "wikipedia_models.h"
 
 class HomeModel : public QObject
 {
@@ -66,7 +69,9 @@ private slots:
     void handleDidYouKnowItemsReceived(const QVector<did_you_know_item> &items);
 
 private:
-    QPointer<WikipediaClient> m_wikipediaClient;
+    QPointer<WikipediaFeaturedClient> m_featuredClient;
+    QPointer<WikipediaHomeClient> m_homeClient;
+    QPointer<WikipediaPageClient> m_pageClient;
 
     // Data members
     QString m_featuredArticleTitle;

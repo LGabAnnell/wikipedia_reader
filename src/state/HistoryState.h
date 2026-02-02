@@ -6,7 +6,7 @@
 #include <QString>
 #include <QDateTime>
 #include <QQmlEngine>
-#include "wikipedia_client.h" // For history_item
+#include "wikipedia_models.h" // For history_item
 
 class HistoryDatabase; // Forward declaration
 
