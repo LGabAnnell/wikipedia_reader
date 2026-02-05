@@ -12,6 +12,8 @@
 #include "wikipedia_page_client.h"
 #include "wikipedia_models.h"
 
+
+
 class HomeModel : public QObject
 {
     Q_OBJECT

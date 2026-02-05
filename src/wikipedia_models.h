@@ -26,10 +26,12 @@ public:
 class page
 {
     Q_GADGET
+    QML_VALUE_TYPE(page)
     QML_ELEMENT
     Q_PROPERTY(QString title MEMBER title)
     Q_PROPERTY(QString extract MEMBER extract)
     Q_PROPERTY(int pageid MEMBER pageid)
+    Q_PROPERTY(QStringList imageUrls MEMBER imageUrls)
 public:
     QString title;
     QString extract;

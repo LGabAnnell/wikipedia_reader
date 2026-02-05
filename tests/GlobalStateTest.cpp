@@ -50,6 +50,7 @@ private slots:
         page.title = "Test Page";
         page.extract = "Test Extract";
         page.pageid = 456;
+        page.imageUrls = QStringList(); // Initialize imageUrls as an empty list
 
         // Set and verify
         globalState.setCurrentPage(page);
@@ -83,6 +84,7 @@ private slots:
         QCOMPARE(searchResultsSpy.count(), 1);
 
         page page;
+        page.imageUrls = QStringList(); // Initialize imageUrls as an empty list
         globalState.setCurrentPage(page);
         QCOMPARE(currentPageSpy.count(), 1);
 

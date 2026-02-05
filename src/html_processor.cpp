@@ -61,12 +61,12 @@ QString HtmlProcessor::processHtml(const QString &htmlContent) {
     tinyxml2::XMLPrinter printer;
     doc.Print(&printer);
 
-    QFile css("styles/table_style.css");
+    QFile css(":/styles/table_style.css");
     if (!css.open(QIODevice::ReadOnly)) {
         return QString(printer.CStr());
     }
 
-    QString style = QString(css.readAll()).arg(QPalette().text().color().name());
+    QString style = QString(css.readAll()).arg(QPalette().text().color().name()); // Default to black if palette is unavailable
     QString processedHtml = QString(R"""(
             <style>
                 %1

@@ -38,6 +38,7 @@ void WikipediaPageClient::onPageReply(QNetworkReply *reply, const QString &title
                 page.title = it.value().toObject()["title"].toString();
                 page.extract = it.value().toObject()["extract"].toString();
                 page.pageid = it.key().toInt();
+                page.imageUrls = QStringList(); // Initialize imageUrls as an empty list
                 emit pageReceived(page);
                 break;
             }
@@ -72,6 +73,7 @@ void WikipediaPageClient::getPageById(int pageid) {
             page.extract = pages["text"].toString();
             page.extract = HtmlProcessor::processHtml(pages["text"].toString());
             page.pageid = pageid;
+            page.imageUrls = QStringList(); // Initialize imageUrls as an empty list
             emit pageReceived(page);
         } else {
             emit errorOccurred(reply->errorString());
@@ -113,6 +115,7 @@ void WikipediaPageClient::onPageWithImagesReply(QNetworkReply *reply, int pageid
                 page.title = pageObj["title"].toString();
                 page.extract = pageObj["extract"].toString();
                 page.pageid = pageid;
+                page.imageUrls = QStringList(); // Initialize imageUrls as an empty list
 
                 // Extract image titles
                 if (pageObj.contains("images")) {

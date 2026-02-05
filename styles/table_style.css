@@ -8,3 +8,11 @@ table {
     border-collapse: collapse;
     vertical-align: middle;
 }
+
+td {
+    padding: 10px;
+}
+
+th {
+    padding: 10px;
+}

@@ -49,6 +49,7 @@ public:
 public slots:
     void setSearchResults(const QVector<search_result> &results);
     void setCurrentPage(const page &page);
+    void setCurrentPageFromData(const QString &title, const QString &extract, const QString &url);
     void setIsLoading(bool loading);
     void setErrorMessage(const QString &message);
     void clearErrorMessage();

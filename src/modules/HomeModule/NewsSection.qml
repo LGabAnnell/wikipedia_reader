@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+
 import wikipedia_qt
 
 Column {
@@ -61,10 +62,11 @@ Column {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    GlobalState.currentPageTitle = modelData.title;
-                                    GlobalState.currentPageExtract = modelData.description;
-                                    GlobalState.currentPageUrl = modelData.url;
-                                    NavigationState.navigateToView(Constants.contentView());
+                                    if (modelData.pageId > 0) {
+                                        GlobalState.loadArticleByPageId(modelData.pageId);
+                                        // Get the StackView from NavigationState and push the article view
+                                        NavigationState.navigateToContent();
+                                    }
                                 }
                             }
                         }

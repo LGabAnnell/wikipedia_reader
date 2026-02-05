@@ -55,7 +55,6 @@ void SearchBarModel::performSearch() {
 }
 
 void SearchBarModel::handleError(const QString &error) {
-    qWarning() << "Search error:" << error;
     if (m_globalState) {
         m_globalState->setIsLoading(false);
         m_globalState->setErrorMessage(error);

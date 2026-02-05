@@ -31,6 +31,7 @@ GlobalState::GlobalState(QObject *parent, HistoryState *historyState) :
                 p.title = title;
                 p.extract = extract;
                 p.pageid = pageid;
+                p.imageUrls = QStringList(); // Initialize imageUrls as an empty list
                 setCurrentPage(p);
             });
 
@@ -77,6 +78,15 @@ void GlobalState::setCurrentPage(const page &page) {
     }
 
     emit currentPageChanged();
+}
+
+void GlobalState::setCurrentPageFromData(const QString &title, const QString &extract, const QString &url) {
+    page newPage;
+    newPage.title = title;
+    newPage.extract = extract;
+    newPage.pageid = 0; // Set a default pageid or fetch it if needed
+    newPage.imageUrls = QStringList(); // Initialize imageUrls as an empty list
+    setCurrentPage(newPage);
 }
 
 void GlobalState::setIsLoading(bool loading) {

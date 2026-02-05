@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-import wikipedia_qt 1.0
+import wikipedia_qt
 import wikipedia_qt.ContentDisplay 1.0
 
 Item {
@@ -170,9 +170,9 @@ Item {
 
             function scrollToCursor() {
                 // Get the cursor rectangle in the TextEdit's coordinate system
-                var cursorRect = articleSection.cursorRectangle;
+                const cursorRect = articleSection.cursorRectangle;
                 // Calculate the position to scroll to
-                var scrollToY = cursorRect.y - scrollView.height / 2;
+                let scrollToY = cursorRect.y - scrollView.height / 2;
                 // Ensure the position is within valid bounds
                 scrollToY = Math.max(0, Math.min(scrollToY, scrollView.contentHeight - scrollView.height));
                 // Use the ScrollBar's value property to set the scroll position
