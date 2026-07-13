@@ -51,20 +51,20 @@ Column {
                         id: columnNews
                         spacing: 5
 
-                        Text {
-                            text: "<style>a { text-decoration: none; }</style><a href=\"" + modelData.title + "\">" + modelData.title + "</a>"
+                        TextEdit {
+                            text: "<style>a { text-decoration: none; color: inherit; }</style><a href=\"page://" + modelData.pageid + "\">" + modelData.title + "</a>"
                             font.pixelSize: 14
                             font.bold: true
-                            wrapMode: Text.WordWrap
-                            textFormat: Text.RichText
+                            wrapMode: TextEdit.WordWrap
+                            textFormat: TextEdit.RichText
                             color: newsItemsColumn.sysPalette.text
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (modelData.pageId > 0) {
-                                        GlobalState.loadArticleByPageId(modelData.pageId);
-                                        // Get the StackView from NavigationState and push the article view
+                            readOnly: true
+                            selectByMouse: true
+                            onLinkActivated: function(link) {
+                                if (link.startsWith("page://")) {
+                                    var pageId = parseInt(link.substring(7));
+                                    if (pageId > 0) {
+                                        GlobalState.loadArticleByPageId(pageId);
                                         NavigationState.navigateToContent();
                                     }
                                 }

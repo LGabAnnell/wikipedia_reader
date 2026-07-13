@@ -42,20 +42,22 @@ Column {
                     Layout.fillWidth: true
                     spacing: 5
 
-                    Label {
+                    TextEdit {
                         Layout.fillWidth: true
-                        text: "• " + modelData.event
+                        text: "• <a href=\"page://" + modelData.pageid + "\">" + modelData.event + "</a>"
                         font.pixelSize: 14
-                        wrapMode: Text.Wrap
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                GlobalState.currentPageTitle = "On this day: " + modelData.year;
-                                GlobalState.currentPageExtract = modelData.event;
-                                GlobalState.currentPageUrl = modelData.url;
-                                NavigationState.navigateToView(Constants.contentView());
+                        wrapMode: TextEdit.Wrap
+                        textFormat: TextEdit.RichText
+                        color: parent.color
+                        readOnly: true
+                        selectByMouse: true
+                        onLinkActivated: function(link) {
+                            if (link.startsWith("page://")) {
+                                var pageId = parseInt(link.substring(7));
+                                if (pageId > 0) {
+                                    GlobalState.loadArticleByPageId(pageId);
+                                    NavigationState.navigateToContent();
+                                }
                             }
                         }
                     }

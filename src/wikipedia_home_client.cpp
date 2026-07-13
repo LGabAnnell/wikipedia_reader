@@ -55,6 +55,7 @@ void WikipediaHomeClient::onNewsItemsReply(QNetworkReply *reply) {
             ni.title = article["title"].toString();
             ni.description = article["extract"].toString();
             ni.url = article["content_urls"].toObject()["desktop"].toObject()["page"].toString();
+            ni.pageid = article["pageid"].toInt();
             ni.imageUrl = article.contains("thumbnail") ?
                 article["thumbnail"].toObject()["source"].toString() :
                 "qrc:/images/news_placeholder.jpg";
@@ -88,11 +89,15 @@ void WikipediaHomeClient::onOnThisDayEventsReply(QNetworkReply *reply) {
             on_this_day_event otd;
             otd.year = eventObj["year"].toInt();
             otd.event = eventObj["text"].toString();
+            otd.pageid = 0; // Default value
 
             if (eventObj.contains("pages") && eventObj["pages"].isArray()) {
                 QJsonArray pages = eventObj["pages"].toArray();
                 if (!pages.isEmpty()) {
                     QJsonObject firstPage = pages[0].toObject();
+                    if (firstPage.contains("pageid")) {
+                        otd.pageid = firstPage["pageid"].toInt();
+                    }
                     if (firstPage.contains("content_urls")) {
                         QJsonObject contentUrls = firstPage["content_urls"].toObject();
                         if (contentUrls.contains("desktop")) {
@@ -171,6 +176,7 @@ void WikipediaHomeClient::onArticleContentReply(QNetworkReply *reply, const QStr
     dyk.url = root.contains("content_urls") ?
         root["content_urls"].toObject()["desktop"].toObject()["page"].toString() :
         "";
+    dyk.pageid = root.contains("pageid") ? root["pageid"].toInt() : 0;
     didYouKnowItems.append(dyk);
 
     emit didYouKnowItemsReceived(didYouKnowItems);

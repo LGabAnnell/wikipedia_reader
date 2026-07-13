@@ -32,23 +32,21 @@ Column {
             delegate: TextEdit {
                 readOnly: true
                 selectByMouse: true
-                text: "• " + modelData.text
+                text: "• <a href=\"page://" + modelData.pageid + "\">" + modelData.text + "</a>"
                 font.pixelSize: 14
-                wrapMode: Text.Wrap
+                wrapMode: TextEdit.Wrap
+                textFormat: TextEdit.RichText
                 color: didYouKnowSection.sysPalette.text
                 Layout.preferredWidth: didYouKnowSection.width
-                // Layout.fillWidth: true  // Ensure the TextEdit fills the width
-                // width: parent.width  // Explicitly set width to parent width
-                // MouseArea {
-                //     anchors.fill: parent
-                //     cursorShape: Qt.PointingHandCursor
-                //     onClicked: {
-                //         GlobalState.currentPageTitle = "Did you know: " + modelData.text;
-                //         GlobalState.currentPageExtract = modelData.text;
-                //         GlobalState.currentPageUrl = modelData.url;
-                //         NavigationState.navigateToView(Constants.contentView());
-                //     }
-                // }
+                onLinkActivated: function(link) {
+                    if (link.startsWith("page://")) {
+                        var pageId = parseInt(link.substring(7));
+                        if (pageId > 0) {
+                            GlobalState.loadArticleByPageId(pageId);
+                            NavigationState.navigateToContent();
+                        }
+                    }
+                }
             }
         }
     }

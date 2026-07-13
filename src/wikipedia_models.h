@@ -65,11 +65,13 @@ class news_item
     Q_PROPERTY(QString imageUrl MEMBER imageUrl)
     Q_PROPERTY(QString description MEMBER description)
     Q_PROPERTY(QString url MEMBER url)
+    Q_PROPERTY(int pageid MEMBER pageid)
 public:
     QString title;
     QString imageUrl;
     QString description;
     QString url;
+    int pageid;
 };
 
 // Data structure for an "On This Day" event
@@ -80,10 +82,12 @@ class on_this_day_event
     Q_PROPERTY(int year MEMBER year)
     Q_PROPERTY(QString event MEMBER event)
     Q_PROPERTY(QString url MEMBER url)
+    Q_PROPERTY(int pageid MEMBER pageid)
 public:
     int year;
     QString event;
     QString url;
+    int pageid;
 };
 
 // Data structure for a "Did You Know" item
@@ -93,9 +97,11 @@ class did_you_know_item
     QML_ELEMENT
     Q_PROPERTY(QString text MEMBER text)
     Q_PROPERTY(QString url MEMBER url)
+    Q_PROPERTY(int pageid MEMBER pageid)
 public:
     QString text;
     QString url;
+    int pageid;
 };
 
 // Data structure for a history item
