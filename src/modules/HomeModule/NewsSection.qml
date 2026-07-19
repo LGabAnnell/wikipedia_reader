@@ -51,15 +51,13 @@ Column {
                         id: columnNews
                         spacing: 5
 
-                        TextEdit {
-                            text: "<style>a { text-decoration: none; color: inherit; }</style><a href=\"page://" + modelData.pageid + "\">" + modelData.title + "</a>"
+                        Text {
+                            text: "<a href=\"page://" + modelData.pageid + "\">" + modelData.title + "</a>"
                             font.pixelSize: 14
                             font.bold: true
-                            wrapMode: TextEdit.WordWrap
-                            textFormat: TextEdit.RichText
+                            wrapMode: Text.WordWrap
+                            textFormat: Text.RichText
                             color: newsItemsColumn.sysPalette.text
-                            readOnly: true
-                            selectByMouse: true
                             onLinkActivated: function(link) {
                                 if (link.startsWith("page://")) {
                                     var pageId = parseInt(link.substring(7));
