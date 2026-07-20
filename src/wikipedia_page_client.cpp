@@ -99,6 +99,37 @@ void WikipediaPageClient::getPageWithImages(int pageid) {
     });
 }
 
+void WikipediaPageClient::resolveTitleToPageId(const QString &title) {
+    QUrl url(baseUrl);
+    QUrlQuery urlQuery;
+    urlQuery.addQueryItem("action", "query");
+    urlQuery.addQueryItem("format", "json");
+    urlQuery.addQueryItem("titles", title);
+    urlQuery.addQueryItem("prop", "pageprops|pageids");
+    url.setQuery(urlQuery);
+
+    QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QByteArray response = reply->readAll();
+            QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
+            QJsonObject jsonObj = jsonDoc.object();
+            QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
+
+            for (auto it = pages.begin(); it != pages.end(); ++it) {
+                int pageid = it.value().toObject()["pageid"].toInt();
+                if (pageid > 0) {
+                    emit pageIdResolved(pageid);
+                    break;
+                }
+            }
+        } else {
+            emit errorOccurred(reply->errorString());
+        }
+        reply->deleteLater();
+    });
+}
+
 void WikipediaPageClient::onPageWithImagesReply(QNetworkReply *reply, int pageid) {
     if (reply->error() == QNetworkReply::NoError) {
         QByteArray response = reply->readAll();

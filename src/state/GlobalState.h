@@ -31,6 +31,7 @@ class GlobalState : public QObject {
 
 public:
     Q_INVOKABLE void loadArticleByPageId(int pageId);
+    Q_INVOKABLE void loadArticleByTitle(const QString &title);
     explicit GlobalState(QObject *parent = nullptr, HistoryState* historyState = nullptr);
 
     // Page property accessors

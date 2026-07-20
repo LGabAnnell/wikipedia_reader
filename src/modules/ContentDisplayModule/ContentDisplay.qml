@@ -13,6 +13,10 @@ Item {
     signal backRequested
     property string articleText: ""
 
+    onArticleTextChanged: {
+        scrollView.ScrollBar.vertical.position = 0;
+    }
+
     BusyIndicator {
         id: loadingIndicator
         anchors.centerIn: parent
@@ -144,7 +148,10 @@ Item {
 
                     onLinkHovered: {}
                     onLinkActivated: function (link) {
-                        console.warn("Clicked on link" + link);
+                        if (link.startsWith("/wiki/")) {
+                            var title = link.substring(6).replace(/_/g, " ");
+                            GlobalState.loadArticleByTitle(title);
+                        }
                     }
                 }
 

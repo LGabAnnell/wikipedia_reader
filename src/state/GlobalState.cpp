@@ -24,6 +24,13 @@ GlobalState::GlobalState(QObject *parent, HistoryState *historyState) :
             this, &GlobalState::setCurrentPage);
     connect(m_pageClient, &WikipediaPageClient::errorOccurred,
             this, &GlobalState::handleArticleLoadError);
+
+    // Connect title resolution to load by page id
+    connect(m_pageClient, &WikipediaPageClient::pageIdResolved,
+            this, [this](int pageid) {
+                m_pageClient->getPageById(pageid);
+            });
+
     connect(m_featuredClient, &WikipediaFeaturedClient::featuredArticleReceived,
             this, [this](const QString &title, const QString &extract, const int &pageid) {
                 // Create a page object from the featured article data
@@ -117,6 +124,14 @@ void GlobalState::loadArticleByPageId(int pageId) {
             clearErrorMessage();
             m_pageClient->getPageById(pageId);
         }
+    }
+}
+
+void GlobalState::loadArticleByTitle(const QString &title) {
+    if (m_pageClient) {
+        setIsLoading(true);
+        clearErrorMessage();
+        m_pageClient->resolveTitleToPageId(title);
     }
 }
 

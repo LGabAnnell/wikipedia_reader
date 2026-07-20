@@ -34,12 +34,15 @@ QList<search_indices> ContentDisplayModel::searchForText(const QString &searchTe
             // Calculate the end index
             int endIndex = startIndex + searchText.length();
 
+
+
             // Add the start and end indices to the list
             indices.append(search_indices({ .start = startIndex, .end = endIndex}));
 
             // Move to the next position after the found occurrence
             startIndex += searchText.length();
         }
+        
     }
 
     return indices;

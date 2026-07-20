@@ -22,10 +22,12 @@ public:
     void getPage(const QString &title);
     void getPageById(int pageid);
     void getPageWithImages(int pageid);
+    void resolveTitleToPageId(const QString &title);
 
 signals:
     void pageReceived(const page &page);
     void pageWithImagesReceived(const page &page);
+    void pageIdResolved(int pageid);
     void errorOccurred(const QString &error);
 
 private slots:
