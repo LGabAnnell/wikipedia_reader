@@ -12,6 +12,7 @@ Column {
     padding: 20
 
     property alias model: repeater.model
+    property SystemPalette sysPalette: SystemPalette {}
 
     Label {
         Layout.fillWidth: true
@@ -48,7 +49,7 @@ Column {
                         font.pixelSize: 14
                         wrapMode: TextEdit.Wrap
                         textFormat: TextEdit.RichText
-                        color: parent.color
+                        color: onThisDaySection.sysPalette.text
                         readOnly: true
                         selectByMouse: true
                         onLinkActivated: function(link) {
