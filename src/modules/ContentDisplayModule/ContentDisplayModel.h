@@ -34,6 +34,9 @@ public:
     // Method to navigate to the previous search result
     Q_INVOKABLE void navigateToPreviousResult();
 
+    // Method to perform search and return results
+    Q_INVOKABLE QList<search_indices> performSearch(const QString &searchText, const QString &text);
+
     // Getter for currentResultIndex
     int currentResultIndex() const { return m_currentResultIndex + 1; }
 
@@ -67,12 +70,6 @@ signals:
     void totalResultsChanged();
 
 private:
-    // Helper method to connect search signals and slots
-    void connectSearchSignals();
-
-    // Helper method to perform the search
-    QList<search_indices> searchForText(const QString &searchText, const QString &text);
-
     // List of items to search through
     QStringList m_items;
 

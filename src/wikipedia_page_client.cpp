@@ -52,12 +52,12 @@ void WikipediaPageClient::onPageReply(QNetworkReply *reply, const QString &title
 void WikipediaPageClient::getPageById(int pageid) {
     QUrl url(baseUrl);
     QUrlQuery urlQuery;
-    urlQuery.addQueryItem("action", "parse");
+    urlQuery.addQueryItem("action", "query");
     urlQuery.addQueryItem("format", "json");
-    urlQuery.addQueryItem("prop", "text");
-    urlQuery.addQueryItem("disableeditsection", "true");
-    urlQuery.addQueryItem("formatversion", "2");
-    urlQuery.addQueryItem("pageid", QString::number(pageid));
+    urlQuery.addQueryItem("prop", "extracts|images");
+    urlQuery.addQueryItem("pageids", QString::number(pageid));
+    urlQuery.addQueryItem("explaintext", "1");
+    urlQuery.addQueryItem("imlimit", "50");
     url.setQuery(urlQuery);
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
@@ -66,15 +66,31 @@ void WikipediaPageClient::getPageById(int pageid) {
             QByteArray response = reply->readAll();
             QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
             QJsonObject jsonObj = jsonDoc.object();
-            QJsonObject pages = jsonObj["parse"].toObject();
+            QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
 
             page page;
-            page.title = pages["title"].toString();
-            page.extract = pages["text"].toString();
-            page.extract = HtmlProcessor::processHtml(pages["text"].toString());
-            page.pageid = pageid;
-            page.imageUrls = QStringList(); // Initialize imageUrls as an empty list
-            emit pageReceived(page);
+            QStringList imageTitles;
+
+            for (auto it = pages.begin(); it != pages.end(); ++it) {
+                if (it.key().toInt() == pageid) {
+                    QJsonObject pageObj = it.value().toObject();
+                    page.title = pageObj["title"].toString();
+                    page.extract = pageObj["extract"].toString();
+                    page.pageid = pageid;
+                    page.imageUrls = QStringList();
+
+                    if (pageObj.contains("images")) {
+                        QJsonArray images = pageObj["images"].toArray();
+                        for (const QJsonValue &image : std::as_const(images)) {
+                            imageTitles.append(image.toObject().value("title").toString());
+                        }
+                    }
+                    break;
+                }
+            }
+
+            fetchImageUrlsFromTitles(imageTitles, page.imageUrls);
+            fetchPageContentWithImages(pageid, page);
         } else {
             emit errorOccurred(reply->errorString());
         }
@@ -207,4 +223,33 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
         }
     }
     reply->deleteLater();
+}
+
+void WikipediaPageClient::fetchPageContentWithImages(int pageid, const page &pageData) {
+    QUrl url(baseUrl);
+    QUrlQuery urlQuery;
+    urlQuery.addQueryItem("action", "parse");
+    urlQuery.addQueryItem("format", "json");
+    urlQuery.addQueryItem("prop", "text");
+    urlQuery.addQueryItem("disableeditsection", "true");
+    urlQuery.addQueryItem("formatversion", "2");
+    urlQuery.addQueryItem("pageid", QString::number(pageid));
+    url.setQuery(urlQuery);
+
+    QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, pageData]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QByteArray response = reply->readAll();
+            QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
+            QJsonObject jsonObj = jsonDoc.object();
+            QJsonObject pages = jsonObj["parse"].toObject();
+
+            page page = pageData;
+            page.extract = HtmlProcessor::processHtml(pages["text"].toString());
+            emit pageReceived(page);
+        } else {
+            emit errorOccurred(reply->errorString());
+        }
+        reply->deleteLater();
+    });
 }

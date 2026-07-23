@@ -10,7 +10,7 @@ void HtmlProcessor::removeImgNodes(tinyxml2::XMLElement *element) {
 
     // Remove img nodes
     for (tinyxml2::XMLElement *img = element->FirstChildElement("img");
-         img != nullptr; img = element->FirstChildElement("img")) {
+         img != nullptr; img = img->NextSiblingElement("img")) {
         element->DeleteChild(img);
     }
 
@@ -26,7 +26,7 @@ void HtmlProcessor::removeStyleNodes(tinyxml2::XMLElement *element) {
 
     // Remove style nodes
     for (tinyxml2::XMLElement *style = element->FirstChildElement("style");
-         style != nullptr; style = element->FirstChildElement("style")) {
+         style != nullptr; style = style->NextSiblingElement("style")) {
         element->DeleteChild(style);
     }
 
@@ -50,13 +50,54 @@ void HtmlProcessor::removeStyleAttributes(tinyxml2::XMLElement *node) {
     }
 }
 
+void HtmlProcessor::processImageNodes(tinyxml2::XMLElement *element) {
+    if (element == nullptr) return;
+
+    // Process img nodes
+    for (tinyxml2::XMLElement *img = element->FirstChildElement("img");
+         img != nullptr; img = img->NextSiblingElement("img")) {
+        
+        const char* src = img->Attribute("src");
+        if (src) {
+            QString srcStr = QString::fromUtf8(src);
+            
+            // Wikipedia images often use //upload.wikimedia.org - convert to https
+            if (srcStr.startsWith("//")) {
+                QString httpsSrc = "https:" + srcStr;
+                img->SetAttribute("src", httpsSrc.toStdString().c_str());
+            }
+            // Wikipedia images sometimes use /wiki/Special:FilePath - these won't work
+            // but the parse API should return proper URLs
+        }
+        
+        // Ensure img has proper display attributes
+        // Add max-width for responsive images
+        const char* style = img->Attribute("style");
+        QString styleStr = style ? QString::fromUtf8(style) : "";
+        if (!styleStr.contains("max-width")) {
+            if (styleStr.isEmpty()) {
+                img->SetAttribute("style", "max-width: 100%; height: auto;");
+            } else {
+                QString newStyle = styleStr + " max-width: 100%; height: auto;";
+                img->SetAttribute("style", newStyle.toStdString().c_str());
+            }
+        }
+    }
+
+    // Recursively process child elements
+    for (tinyxml2::XMLElement *child = element->FirstChildElement();
+         child != nullptr; child = child->NextSiblingElement()) {
+        processImageNodes(child);
+    }
+}
+
 QString HtmlProcessor::processHtml(const QString &htmlContent) {
     tinyxml2::XMLDocument doc;
     doc.Parse(htmlContent.toStdString().c_str());
 
-    removeImgNodes(doc.RootElement());
     removeStyleNodes(doc.RootElement());
     removeStyleAttributes(doc.RootElement());
+    processImageNodes(doc.RootElement());
 
     tinyxml2::XMLPrinter printer;
     doc.Print(&printer);

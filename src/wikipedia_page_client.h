@@ -38,6 +38,7 @@ private:
     QNetworkAccessManager *networkManager;
     QString baseUrl;
     void fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls);
+    void fetchPageContentWithImages(int pageid, const page &pageData);
 };
 
 #endif // WIKIPEDIA_PAGE_CLIENT_H

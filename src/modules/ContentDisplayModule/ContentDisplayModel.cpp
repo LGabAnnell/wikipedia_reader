@@ -4,25 +4,16 @@
 #include <QFile>
 
 ContentDisplayModel::ContentDisplayModel(QObject *parent) : QObject(parent) {
-    connectSearchSignals();
 }
 
-void ContentDisplayModel::connectSearchSignals() {
-    // Connect signals and slots for search functionality.
-    connect(this, &ContentDisplayModel::searchRequested, this, [this](const QString &searchText, const QString &text) {
-        // Perform the search and emit searchResultsAvailable with the results.
-        QList<search_indices> indices = searchForText(searchText, text);
+QList<search_indices> ContentDisplayModel::performSearch(const QString &searchText, const QString &text) {
+    QList<search_indices> indices = {};
+    if (searchText.isEmpty()) {
         m_searchResults = indices;
-        m_currentResultIndex = indices.isEmpty() ? -1 : 0;
+        m_currentResultIndex = -1;
         emit searchResultsAvailable(indices);
         emit totalResultsChanged();
         emit currentResultIndexChanged();
-    });
-}
-
-QList<search_indices> ContentDisplayModel::searchForText(const QString &searchText, const QString &text) {
-    QList<search_indices> indices = {};
-    if (searchText.isEmpty()) {
         return indices;
     }
 
@@ -34,8 +25,6 @@ QList<search_indices> ContentDisplayModel::searchForText(const QString &searchTe
             // Calculate the end index
             int endIndex = startIndex + searchText.length();
 
-
-
             // Add the start and end indices to the list
             indices.append(search_indices({ .start = startIndex, .end = endIndex}));
 
@@ -44,6 +33,12 @@ QList<search_indices> ContentDisplayModel::searchForText(const QString &searchTe
         }
         
     }
+
+    m_searchResults = indices;
+    m_currentResultIndex = indices.isEmpty() ? -1 : 0;
+    emit searchResultsAvailable(indices);
+    emit totalResultsChanged();
+    emit currentResultIndexChanged();
 
     return indices;
 }

@@ -2,9 +2,16 @@ a {
     text-decoration: none;
 }
 
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 10px auto;
+}
+
 table {
     border: 1px solid;
-    border-color: %1; /* border color, set by system palette */
+    border-color: %1;
     border-collapse: collapse;
     vertical-align: middle;
 }

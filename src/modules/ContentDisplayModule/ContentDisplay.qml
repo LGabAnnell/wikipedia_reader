@@ -60,7 +60,7 @@ Item {
                 placeholderText: "Search..."
                 z: 1
                 onTextChanged: function () {
-                    contentDisplay.searchRequested(text, articleSection.getText(0, articleSection.text.length));
+                    contentDisplay.performSearch(text, articleSection.getText(0, articleSection.text.length));
                 }
 
                 Keys.onReturnPressed: function (event) {
