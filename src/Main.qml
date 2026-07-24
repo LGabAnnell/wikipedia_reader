@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import wikipedia_qt // For NavigationState, GlobalState, etc.
 import wikipedia_qt.History
 import wikipedia_qt.ContentDisplay
+import wikipedia_qt.ImageDisplay
 import wikipedia_qt.Header
 import wikipedia_qt.Home
 
@@ -68,6 +69,15 @@ ApplicationWindow {
                 id: historyComponent
                 History {}
             }
+
+            // Define the image gallery view component
+            Component {
+                id: imageGalleryComponent
+                ImageHome {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                }
+            }
         }
     }
 
@@ -78,6 +88,7 @@ ApplicationWindow {
         NavigationState.addView(Constants.contentView, articleComponent);
         NavigationState.addView(Constants.historyView, historyComponent);
         NavigationState.addView(Constants.homeView, homeComponent);
+        NavigationState.addView(Constants.imageGalleryView, imageGalleryComponent);
         // Install the event filter on the root ApplicationWindow
         NavigationState.installEventFilter(root);
 

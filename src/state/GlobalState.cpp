@@ -22,6 +22,8 @@ GlobalState::GlobalState(QObject *parent, HistoryState *historyState) :
     // Connect WikipediaPageClient signals to GlobalState
     connect(m_pageClient, &WikipediaPageClient::pageReceived,
             this, &GlobalState::setCurrentPage);
+    connect(m_pageClient, &WikipediaPageClient::pageWithImagesReceived,
+            this, &GlobalState::setCurrentPage);
     connect(m_pageClient, &WikipediaPageClient::errorOccurred,
             this, &GlobalState::handleArticleLoadError);
 
@@ -59,6 +61,10 @@ int GlobalState::currentPageId() const {
 
 QVector<search_result> GlobalState::searchResults() const {
     return m_searchResults;
+}
+
+QStringList GlobalState::currentPageImageUrls() const {
+    return m_currentPage.imageUrls;
 }
 
 bool GlobalState::isLoading() const {
@@ -132,6 +138,13 @@ void GlobalState::loadArticleByTitle(const QString &title) {
         setIsLoading(true);
         clearErrorMessage();
         m_pageClient->resolveTitleToPageId(title);
+    }
+}
+
+void GlobalState::copyToClipboard(const QString &text) {
+    QClipboard *clipboard = QGuiApplication::clipboard();
+    if (clipboard) {
+        clipboard->setText(text);
     }
 }
 

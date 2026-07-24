@@ -10,8 +10,10 @@ void HtmlProcessor::removeImgNodes(tinyxml2::XMLElement *element) {
 
     // Remove img nodes
     for (tinyxml2::XMLElement *img = element->FirstChildElement("img");
-         img != nullptr; img = img->NextSiblingElement("img")) {
+         img != nullptr; ) {
+        tinyxml2::XMLElement *next = img->NextSiblingElement("img");
         element->DeleteChild(img);
+        img = next;
     }
 
     // Recursively process child elements
@@ -26,8 +28,10 @@ void HtmlProcessor::removeStyleNodes(tinyxml2::XMLElement *element) {
 
     // Remove style nodes
     for (tinyxml2::XMLElement *style = element->FirstChildElement("style");
-         style != nullptr; style = style->NextSiblingElement("style")) {
+         style != nullptr; ) {
+        tinyxml2::XMLElement *next = style->NextSiblingElement("style");
         element->DeleteChild(style);
+        style = next;
     }
 
     // Recursively process child elements
@@ -95,9 +99,11 @@ QString HtmlProcessor::processHtml(const QString &htmlContent) {
     tinyxml2::XMLDocument doc;
     doc.Parse(htmlContent.toStdString().c_str());
 
-    removeStyleNodes(doc.RootElement());
-    removeStyleAttributes(doc.RootElement());
-    processImageNodes(doc.RootElement());
+    for (tinyxml2::XMLElement* child = doc.FirstChildElement(); child != nullptr; child = child->NextSiblingElement()) {
+        removeStyleNodes(child);
+        removeStyleAttributes(child);
+        removeImgNodes(child);
+    }
 
     tinyxml2::XMLPrinter printer;
     doc.Print(&printer);

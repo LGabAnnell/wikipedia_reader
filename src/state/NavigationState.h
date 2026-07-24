@@ -27,6 +27,7 @@ public:
     Q_INVOKABLE void navigateToContent();
     Q_INVOKABLE void navigateToHistory();
     Q_INVOKABLE void navigateToSearch();
+    Q_INVOKABLE void navigateToImageGallery();
 
     Q_INVOKABLE void navigateToView(const QString &view);
     Q_INVOKABLE void addView(QString view, QQmlComponent *component);

@@ -70,6 +70,16 @@ void NavigationState::navigateToSearch() {
     navigateToView(Constants::searchView());
 }
 
+void NavigationState::navigateToImageGallery() {
+    if (!m_stackView) {
+        qWarning() << "StackView is not set!";
+        return;
+    }
+
+    // Emit signal to indicate navigation to image gallery
+    navigateToView(Constants::imageGalleryView());
+}
+
 void NavigationState::navigateToView(const QString &view) {
     emit pushView(views.at(view));
 }

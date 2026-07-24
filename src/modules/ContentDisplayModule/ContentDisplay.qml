@@ -97,6 +97,34 @@ Item {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 40
+            Layout.leftMargin: 10
+            Layout.rightMargin: 10
+            spacing: 10
+
+            Button {
+                id: galleryButton
+                text: "Gallery"
+                Layout.alignment: Qt.AlignRight
+                visible: GlobalState.currentPageTitle.length > 0
+                onClicked: {
+                    NavigationState.navigateToImageGallery();
+                }
+            }
+
+            Button {
+                id: copyHtmlButton
+                text: "Copy HTML"
+                Layout.alignment: Qt.AlignRight
+                visible: GlobalState.currentPageTitle.length > 0 && mainContent.articleText.length > 0
+                onClicked: {
+                    GlobalState.copyToClipboard(mainContent.articleText)
+                }
+            }
+        }
+
         ScrollView {
             id: scrollView
             Layout.fillWidth: true

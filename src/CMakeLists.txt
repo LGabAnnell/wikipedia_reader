@@ -44,4 +44,5 @@ qt_add_qml_module(wikipedia_qt
         HistoryModule
         ContentDisplayModule
         HeaderModule
+        ImageDisplayModule
 )

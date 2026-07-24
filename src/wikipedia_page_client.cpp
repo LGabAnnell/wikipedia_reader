@@ -89,7 +89,6 @@ void WikipediaPageClient::getPageById(int pageid) {
                 }
             }
 
-            fetchImageUrlsFromTitles(imageTitles, page.imageUrls);
             fetchPageContentWithImages(pageid, page);
         } else {
             emit errorOccurred(reply->errorString());

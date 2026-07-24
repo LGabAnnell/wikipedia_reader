@@ -7,6 +7,8 @@
 #include <QString>
 #include <QQmlEngine>
 #include <QPointer>
+#include <QClipboard>
+#include <QGuiApplication>
 #include "wikipedia_search_client.h"
 #include "wikipedia_page_client.h"
 #include "wikipedia_featured_client.h"
@@ -32,6 +34,7 @@ class GlobalState : public QObject {
 public:
     Q_INVOKABLE void loadArticleByPageId(int pageId);
     Q_INVOKABLE void loadArticleByTitle(const QString &title);
+    Q_INVOKABLE void copyToClipboard(const QString &text);
     explicit GlobalState(QObject *parent = nullptr, HistoryState* historyState = nullptr);
 
     // Page property accessors
@@ -39,9 +42,13 @@ public:
     QString currentPageExtract() const;
     int currentPageId() const;
     QVector<search_result> searchResults() const;
+    QStringList currentPageImageUrls() const;
 
     bool isLoading() const;
     QString errorMessage() const;
+
+    // Accessor for WikipediaPageClient
+    WikipediaPageClient* pageClient() const { return m_pageClient; }
 
     static QPointer<GlobalState> instance() {
         return m_instance;
