@@ -27,6 +27,8 @@ class GlobalState : public QObject {
     Q_PROPERTY(QString currentPageExtract READ currentPageExtract NOTIFY currentPageChanged)
     Q_PROPERTY(int currentPageId READ currentPageId NOTIFY currentPageChanged)
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
+    Q_PROPERTY(QVector<section> currentPageSections READ currentPageSections NOTIFY sectionsChanged)
+    Q_PROPERTY(bool isLoadingSections READ isLoadingSections NOTIFY loadingSectionsChanged)
 
     // Add error message property
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
@@ -35,6 +37,7 @@ public:
     Q_INVOKABLE void loadArticleByPageId(int pageId);
     Q_INVOKABLE void loadArticleByTitle(const QString &title);
     Q_INVOKABLE void copyToClipboard(const QString &text);
+    Q_INVOKABLE void fetchSectionsForCurrentPage();
     explicit GlobalState(QObject *parent = nullptr, HistoryState* historyState = nullptr);
 
     // Page property accessors
@@ -43,8 +46,10 @@ public:
     int currentPageId() const;
     QVector<search_result> searchResults() const;
     QStringList currentPageImageUrls() const;
+    QVector<section> currentPageSections() const;
 
     bool isLoading() const;
+    bool isLoadingSections() const;
     QString errorMessage() const;
 
     // Accessor for WikipediaPageClient
@@ -59,6 +64,8 @@ public slots:
     void setCurrentPage(const page &page);
     void setCurrentPageFromData(const QString &title, const QString &extract, const QString &url);
     void setIsLoading(bool loading);
+    void setSections(const QVector<section> &sections);
+    void setLoadingSections(bool loading);
     void setErrorMessage(const QString &message);
     void clearErrorMessage();
 
@@ -66,12 +73,16 @@ signals:
     void searchResultsChanged();
     void currentPageChanged();
     void isLoadingChanged();
+    void sectionsChanged();
+    void loadingSectionsChanged();
     void errorMessageChanged();
 
 private:
     QVector<search_result> m_searchResults;
     page m_currentPage;
+    QVector<section> m_currentPageSections;
     bool m_isLoading;
+    bool m_isLoadingSections;
     QString m_errorMessage;
     static QPointer<GlobalState> m_instance;
     WikipediaSearchClient* m_searchClient;
@@ -86,6 +97,7 @@ private:
 
 private slots:
     void handleArticleLoadError(const QString &error);
+    void handleSectionsLoadError(const QString &error);
 };
 
 #endif // GLOBALSTATE_H

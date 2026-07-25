@@ -23,16 +23,19 @@ public:
     void getPageById(int pageid);
     void getPageWithImages(int pageid);
     void resolveTitleToPageId(const QString &title);
+    void getSections(const QString &title);
 
 signals:
     void pageReceived(const page &page);
     void pageWithImagesReceived(const page &page);
     void pageIdResolved(int pageid);
+    void sectionsReceived(const QVector<section> &sections);
     void errorOccurred(const QString &error);
 
 private slots:
     void onPageReply(QNetworkReply *reply, const QString &title);
     void onPageWithImagesReply(QNetworkReply *reply, int pageid);
+    void onSectionsReply(QNetworkReply *reply, const QString &title);
 
 private:
     QNetworkAccessManager *networkManager;

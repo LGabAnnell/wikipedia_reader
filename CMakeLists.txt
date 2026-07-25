@@ -31,6 +31,7 @@ set(QML_DIRS
     "src/modules/HomeModule"
     "src/modules/ContentDisplayModule"
     "src/modules/ImageDisplayModule"
+    "src/modules/SectionModule"
 )
 
 # Convert the list to a string with semicolons
@@ -54,6 +55,7 @@ include_directories(
     src/modules/HeaderModule
     src/modules/HomeModule
     src/modules/ImageDisplayModule
+    src/modules/SectionModule
 )
 
 qt_add_executable(appwikipedia_qt
@@ -92,6 +94,7 @@ add_subdirectory(src/modules/ContentDisplayModule)
 add_subdirectory(src/modules/HeaderModule)
 add_subdirectory(src/modules/HomeModule)
 add_subdirectory(src/modules/ImageDisplayModule)
+add_subdirectory(src/modules/SectionModule)
 add_subdirectory(src)
 
 set_target_properties(appwikipedia_qt PROPERTIES
@@ -119,6 +122,7 @@ PRIVATE
     HeaderModule
     HomeModule
     ImageDisplayModule
+    SectionModule
     tinyxml2
 )
 

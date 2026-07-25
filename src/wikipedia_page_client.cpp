@@ -252,3 +252,53 @@ void WikipediaPageClient::fetchPageContentWithImages(int pageid, const page &pag
         reply->deleteLater();
     });
 }
+
+void WikipediaPageClient::getSections(const QString &title) {
+    QUrl url(baseUrl);
+    QUrlQuery urlQuery;
+    urlQuery.addQueryItem("action", "parse");
+    urlQuery.addQueryItem("format", "json");
+    urlQuery.addQueryItem("prop", "tocdata");
+    urlQuery.addQueryItem("page", title);
+    url.setQuery(urlQuery);
+
+    QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, title]() {
+        this->onSectionsReply(reply, title);
+    });
+}
+
+void WikipediaPageClient::onSectionsReply(QNetworkReply *reply, const QString &title) {
+    if (reply->error() == QNetworkReply::NoError) {
+        QByteArray response = reply->readAll();
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
+        QJsonObject jsonObj = jsonDoc.object();
+        
+        QVector<section> sections;
+        
+        if (jsonObj.contains("parse") && jsonObj["parse"].toObject().contains("tocdata")) {
+            QJsonObject tocdata = jsonObj["parse"].toObject()["tocdata"].toObject();
+            
+            if (tocdata.contains("sections") && tocdata["sections"].isArray()) {
+                QJsonArray sectionsArray = tocdata["sections"].toArray();
+                
+                for (const QJsonValue &sectionValue : std::as_const(sectionsArray)) {
+                    QJsonObject sectionObj = sectionValue.toObject();
+                    
+                    section sec;
+                    sec.title = sectionObj["line"].toString();
+                    sec.level = sectionObj["toclevel"].toInt();
+                    sec.anchor = sectionObj["anchor"].toString();
+                    sec.index = sectionObj["index"].toString().toInt();
+                    
+                    sections.append(sec);
+                }
+            }
+        }
+        
+        emit sectionsReceived(sections);
+    } else {
+        emit errorOccurred(reply->errorString());
+    }
+    reply->deleteLater();
+}

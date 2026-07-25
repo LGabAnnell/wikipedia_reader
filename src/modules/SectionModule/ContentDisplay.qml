@@ -5,7 +5,6 @@ import QtQuick.Layouts
 
 import wikipedia_qt
 import wikipedia_qt.ContentDisplay 1.0
-import wikipedia_qt.Section 1.0
 
 Item {
     id: mainContent
@@ -13,19 +12,9 @@ Item {
     height: parent ? parent.height : 0
     signal backRequested
     property string articleText: ""
-    property bool sectionsPanelVisible: false
 
     onArticleTextChanged: {
         scrollView.ScrollBar.vertical.position = 0;
-    }
-    
-    // Fetch sections when page changes
-    Connections {
-        target: GlobalState
-        function onCurrentPageChanged() {
-            // Reset sections panel visibility when page changes
-            mainContent.sectionsPanelVisible = false
-        }
     }
 
     BusyIndicator {
@@ -132,16 +121,6 @@ Item {
                 visible: GlobalState.currentPageTitle.length > 0 && mainContent.articleText.length > 0
                 onClicked: {
                     GlobalState.copyToClipboard(mainContent.articleText)
-                }
-            }
-
-            Button {
-                id: sectionsButton
-                text: "Sections"
-                Layout.alignment: Qt.AlignRight
-                visible: GlobalState.currentPageTitle.length > 0
-                onClicked: {
-                    mainContent.sectionsPanelVisible = !mainContent.sectionsPanelVisible
                 }
             }
         }
@@ -256,91 +235,6 @@ Item {
             articleSection.cursorPosition = start;
             articleSection.select(start, end);
             scrollView.scrollToCursor();
-        }
-    }
-
-    // Sections overlay panel
-    Rectangle {
-        id: sectionsOverlay
-        width: mainContent.width * 0.5
-        height: mainContent.height
-        color: "#1e1e1e"
-        anchors.right: mainContent.right
-        anchors.top: mainContent.top
-        anchors.bottom: mainContent.bottom
-        z: 100
-        visible: mainContent.sectionsPanelVisible
-        border.color: "#333333"
-        border.width: 1
-        
-        x: mainContent.sectionsPanelVisible ? 0 : width
-        
-        // Animation for sliding in/out
-        PropertyAnimation {
-            id: slideAnimation
-            target: sectionsOverlay
-            property: "x"
-            to: mainContent.sectionsPanelVisible ? 0 : width
-            duration: 300
-            easing.type: Easing.InOutQuad
-        }
-        
-        // Close button
-        Button {
-            id: closeSectionsButton
-            text: "×"
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.margins: 10
-            width: 40
-            height: 40
-            onClicked: mainContent.sectionsPanelVisible = false
-            z: 101
-            background: Rectangle {
-                color: hovered ? "#333333" : "#2e2e2e"
-                radius: 5
-            }
-            contentItem: Text {
-                text: "×"
-                color: "white"
-                font.pixelSize: 18
-            }
-        }
-        
-        // Section component
-        Section {
-            id: sectionComponent
-            anchors.fill: parent
-            anchors.margins: 50
-            anchors.topMargin: 50
-            anchors.bottomMargin: 10
-            
-            onSectionClicked: function(section) {
-                mainContent.sectionsPanelVisible = false
-                // Scroll to section anchor if it exists in the article
-                if (section.anchor && articleSection.text.includes(section.anchor)) {
-                    var anchorIndex = articleSection.text.indexOf("<a name=\"" + section.anchor + "\">")
-                    if (anchorIndex !== -1) {
-                        articleSection.cursorPosition = anchorIndex
-                        scrollView.ScrollBar.vertical.position = 0
-                        // Scroll to the section
-                        var scrollPos = anchorIndex / articleSection.text.length
-                        scrollView.ScrollBar.vertical.position = scrollPos
-                    }
-                }
-            }
-        }
-    }
-
-    // Close sections panel on escape key when visible
-    Shortcut {
-        sequences: ["Escape"]
-        onActivated: {
-            if (mainContent.sectionsPanelVisible) {
-                mainContent.sectionsPanelVisible = false
-            } else if (searchBar.visible) {
-                searchBar.visible = false
-            }
         }
     }
 }
