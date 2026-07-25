@@ -8,6 +8,7 @@ import wikipedia_qt.ContentDisplay
 import wikipedia_qt.ImageDisplay
 import wikipedia_qt.Header
 import wikipedia_qt.Home
+import wikipedia_qt.Section
 
 ApplicationWindow {
     id: root

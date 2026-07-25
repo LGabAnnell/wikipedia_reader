@@ -11,6 +11,7 @@ QPointer<GlobalState> GlobalState::m_instance = nullptr; // Definition
 GlobalState::GlobalState(QObject *parent, HistoryState *historyState) :
     QObject(parent),
     m_isLoading(false),
+    m_isLoadingSections(false),
     m_historyState(historyState) {
 
     m_instance = this;
@@ -24,6 +25,8 @@ GlobalState::GlobalState(QObject *parent, HistoryState *historyState) :
             this, &GlobalState::setCurrentPage);
     connect(m_pageClient, &WikipediaPageClient::pageWithImagesReceived,
             this, &GlobalState::setCurrentPage);
+    connect(m_pageClient, &WikipediaPageClient::sectionsReceived,
+            this, &GlobalState::setSections);
     connect(m_pageClient, &WikipediaPageClient::errorOccurred,
             this, &GlobalState::handleArticleLoadError);
 
@@ -67,8 +70,16 @@ QStringList GlobalState::currentPageImageUrls() const {
     return m_currentPage.imageUrls;
 }
 
+QVector<section> GlobalState::currentPageSections() const {
+    return m_currentPageSections;
+}
+
 bool GlobalState::isLoading() const {
     return m_isLoading;
+}
+
+bool GlobalState::isLoadingSections() const {
+    return m_isLoadingSections;
 }
 
 QString GlobalState::errorMessage() const {
@@ -107,6 +118,17 @@ void GlobalState::setIsLoading(bool loading) {
     emit isLoadingChanged();
 }
 
+void GlobalState::setSections(const QVector<section> &sections) {
+    m_currentPageSections = sections;
+    setLoadingSections(false);
+    emit sectionsChanged();
+}
+
+void GlobalState::setLoadingSections(bool loading) {
+    m_isLoadingSections = loading;
+    emit loadingSectionsChanged();
+}
+
 void GlobalState::setErrorMessage(const QString &message) {
     m_errorMessage = message;
     emit errorMessageChanged();
@@ -141,6 +163,14 @@ void GlobalState::loadArticleByTitle(const QString &title) {
     }
 }
 
+void GlobalState::fetchSectionsForCurrentPage() {
+    if (m_pageClient && !m_currentPage.title.isEmpty()) {
+        setLoadingSections(true);
+        clearErrorMessage();
+        m_pageClient->getSections(m_currentPage.title);
+    }
+}
+
 void GlobalState::copyToClipboard(const QString &text) {
     QClipboard *clipboard = QGuiApplication::clipboard();
     if (clipboard) {
@@ -150,5 +180,10 @@ void GlobalState::copyToClipboard(const QString &text) {
 
 void GlobalState::handleArticleLoadError(const QString &error) {
     setIsLoading(false);
+    setErrorMessage(error);
+}
+
+void GlobalState::handleSectionsLoadError(const QString &error) {
+    setLoadingSections(false);
     setErrorMessage(error);
 }

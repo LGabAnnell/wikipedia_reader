@@ -118,4 +118,20 @@ public:
     QDateTime timestamp;
 };
 
+// Data structure for a section in a Wikipedia article
+class section
+{
+    Q_GADGET
+    QML_ELEMENT
+    Q_PROPERTY(QString title MEMBER title)
+    Q_PROPERTY(int level MEMBER level)
+    Q_PROPERTY(QString anchor MEMBER anchor)
+    Q_PROPERTY(int index MEMBER index)
+public:
+    QString title;
+    int level;
+    QString anchor;
+    int index;
+};
+
 #endif // WIKIPEDIA_MODELS_H
