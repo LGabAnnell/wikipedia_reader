@@ -229,10 +229,12 @@ Item {
                 const cursorRect = articleSection.cursorRectangle;
                 // Calculate the position to scroll to
                 let scrollToY = cursorRect.y - scrollView.height / 2;
+                console.log("Cursor rect", cursorRect.y, "Scroll to Y", scrollToY);
                 // Ensure the position is within valid bounds
                 scrollToY = Math.max(0, Math.min(scrollToY, scrollView.contentHeight - scrollView.height));
                 // Use the ScrollBar's value property to set the scroll position
                 scrollView.ScrollBar.vertical.position = scrollToY / (scrollView.contentHeight - scrollView.height);
+                console.log("Scrolling to position", cursorRect.y);
             }
         }
     }
@@ -316,17 +318,18 @@ Item {
             anchors.bottomMargin: 10
             
             onSectionClicked: function(section) {
+                console.log("Section clicked:", section.title)
                 mainContent.sectionsPanelVisible = false
-                // Scroll to section anchor if it exists in the article
-                if (section.anchor && articleSection.text.includes(section.anchor)) {
-                    var anchorIndex = articleSection.text.indexOf("<a name=\"" + section.anchor + "\">")
-                    if (anchorIndex !== -1) {
-                        articleSection.cursorPosition = anchorIndex
-                        scrollView.ScrollBar.vertical.position = 0
-                        // Scroll to the section
-                        var scrollPos = anchorIndex / articleSection.text.length
-                        scrollView.ScrollBar.vertical.position = scrollPos
-                    }
+                // Scroll to section using anchor-based navigation
+                var html = articleSection.text
+                var cursorPos = contentDisplay.findSectionPosition(html, section.anchor)
+                
+                if (cursorPos !== -1) {
+                    articleSection.cursorPosition = cursorPos
+                    articleSection.select(cursorPos, cursorPos + 1)
+                    scrollView.scrollToCursor()
+                } else {
+                    console.log("Could not find section anchor:", section.anchor, "title:", section.title)
                 }
             }
         }

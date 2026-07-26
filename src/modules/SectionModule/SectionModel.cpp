@@ -1,6 +1,8 @@
 #include "SectionModel.h"
 #include "wikipedia_page_client.h"
 
+#include <iostream>
+
 SectionModel::SectionModel(QObject *parent) : QObject(parent), m_isLoading(false) {
     // Get the WikipediaPageClient instance from GlobalState
     // We'll create it here for now, but ideally it should be shared
@@ -13,7 +15,12 @@ SectionModel::SectionModel(QObject *parent) : QObject(parent), m_isLoading(false
 }
 
 QVector<section> SectionModel::sections() const {
-    return m_sections;
+    for (const auto &sec : m_sections) {
+    qDebug() << "Section:" << sec.anchor << "\n"
+             << "Anchor: " << sec.anchor << "Line:" << sec.title;
+      }
+
+  return m_sections;
 }
 
 bool SectionModel::isLoading() const {

@@ -51,47 +51,47 @@ Item {
             Layout.margins: 10
         }
         
-        // Sections list
-        ListView {
-            id: sectionsList
+        // Container for sections list and overlay
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            model: sectionModel.sections
-            delegate: ItemDelegate {
-                text: modelData.title
-                font.pixelSize: 14 - (modelData.level > 2 ? modelData.level - 2 : 0)
-                padding: 10
-                leftPadding: 10 + (modelData.level - 1) * 20
-                onClicked: root.sectionClicked(modelData)
-                
-                // Style based on level
-                background: Rectangle {
-                    color: pressed ? "#333333" : (hovered ? "#222222" : "transparent")
-                }
-                
-                contentItem: Text {
+            
+            ListView {
+                id: sectionsList
+                anchors.fill: parent
+                model: sectionModel.sections
+                delegate: ItemDelegate {
                     text: modelData.title
-                    color: "white"
                     font.pixelSize: 14 - (modelData.level > 2 ? modelData.level - 2 : 0)
-                    font.bold: modelData.level <= 2
-                    elide: Text.ElideRight
+                    padding: 10
+                    leftPadding: 10 + (modelData.level - 1) * 20
+                    onClicked: root.sectionClicked(modelData)
+                    
+                    contentItem: Text {
+                        text: modelData.title
+                        color: "white"
+                        font.pixelSize: 14 - (modelData.level > 2 ? modelData.level - 2 : 0)
+                        font.bold: modelData.level <= 2
+                        elide: Text.ElideRight
+                    }
                 }
             }
-        }
-        
-        // Empty message overlay
-        Rectangle {
-            id: emptyMessage
-            visible: sectionModel.sections.length === 0 && !sectionModel.isLoading
-            anchors.fill: sectionsList
-            color: "transparent"
             
-            Text {
-                text: "No sections found"
-                color: "#888888"
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
+            // Empty message overlay
+            Rectangle {
+                id: emptyMessage
+                visible: sectionModel.sections.length === 0 && !sectionModel.isLoading
                 anchors.fill: parent
+                color: "transparent"
+                z: 1
+                
+                Text {
+                    text: "No sections found"
+                    color: "#888888"
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    anchors.fill: parent
+                }
             }
         }
     }

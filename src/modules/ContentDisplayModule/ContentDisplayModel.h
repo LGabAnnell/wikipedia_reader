@@ -37,6 +37,9 @@ public:
     // Method to perform search and return results
     Q_INVOKABLE QList<search_indices> performSearch(const QString &searchText, const QString &text);
 
+    // Method to find section position by anchor
+    Q_INVOKABLE int findSectionPosition(const QString &html, const QString &anchor);
+
     // Getter for currentResultIndex
     int currentResultIndex() const { return m_currentResultIndex + 1; }
 
