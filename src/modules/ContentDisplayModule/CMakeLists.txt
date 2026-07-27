@@ -24,5 +24,5 @@ qt_add_qml_module(ContentDisplayModule
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt/ContentDisplay
 )
 
-target_link_libraries(ContentDisplayModule PRIVATE Qt::Quick Qt::Core Qt::Network)
+target_link_libraries(ContentDisplayModule PRIVATE Qt::Quick Qt::Core Qt::Network Qt::Gui)
 

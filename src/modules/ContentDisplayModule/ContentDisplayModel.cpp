@@ -3,6 +3,10 @@
 #include <algorithm>
 #include <QFile>
 #include <QUrl>
+#include <QTextDocument>
+#include <QTextBlock>
+#include <QTextCursor>
+#include <QTextCharFormat>
 
 ContentDisplayModel::ContentDisplayModel(QObject *parent) : QObject(parent) {
 }
@@ -45,71 +49,46 @@ QList<search_indices> ContentDisplayModel::performSearch(const QString &searchTe
 }
 
 int ContentDisplayModel::findSectionPosition(const QString &html, const QString &anchor) {
-    // Search for the anchor in id attributes: id="anchor" or id='anchor'
-    QString pattern1 = "id=\"" + anchor + "\"";
-    QString pattern2 = "id='" + anchor + "'";
+    QTextDocument doc;
+    doc.setHtml(html);
+
+    // Try multiple variations of the anchor name
+    QStringList targets;
+    targets << anchor;
     
-    qDebug() << "findSectionPosition: searching for pattern1:" << pattern1 << "pattern2:" << pattern2;
-    qDebug() << "HTML contains Political_career?" << html.contains("Political_career");
-    qDebug() << "HTML contains id=\"Political_career\"?" << html.contains("id=\"Political_career\"");
+    // Wikipedia replaces spaces with underscores in anchors
+    QString underscored = anchor;
+    underscored.replace(' ', '_');
+    targets << underscored;
     
-    int pos = html.indexOf(pattern1);
-    if (pos == -1) {
-        pos = html.indexOf(pattern2);
-    }
+    // Try with XML entities for special chars (e.g., &#8211; for en-dash, &#8212; for em-dash)
+    QString xmlEscaped = anchor;
+    xmlEscaped.replace(QChar(0x2013), "&#8211;");  // en-dash
+    xmlEscaped.replace(QChar(0x2014), "&#8212;");  // em-dash
+    targets << xmlEscaped;
     
-    // If not found, try with spaces replaced by underscores (Wikipedia does this)
-    if (pos == -1) {
-        QString underscoreAnchor = anchor;
-        underscoreAnchor.replace(' ', '_');
-        pattern1 = "id=\"" + underscoreAnchor + "\"";
-        pattern2 = "id='" + underscoreAnchor + "'";
-        pos = html.indexOf(pattern1);
-        if (pos == -1) {
-            pos = html.indexOf(pattern2);
+    QString xmlEscapedUnderscored = underscored;
+    xmlEscapedUnderscored.replace(QChar(0x2013), "&#8211;");
+    xmlEscapedUnderscored.replace(QChar(0x2014), "&#8212;");
+    targets << xmlEscapedUnderscored;
+
+    for (QTextBlock block = doc.begin(); block != doc.end(); block = block.next()) {
+        for (auto it = block.begin(); !it.atEnd(); ++it) {
+            QTextFragment frag = it.fragment();
+            if (!frag.isValid()) continue;
+
+            QTextCharFormat fmt = frag.charFormat();
+            if (fmt.isAnchor()) {
+                const QStringList names = fmt.anchorNames();
+                for (const QString &name : names) {
+                    if (targets.contains(name)) {
+                        return frag.position();
+                    }
+                }
+            }
         }
     }
-    
-    // If still not found, try with XML entities for special chars (e.g., &#8211; for en-dash)
-    if (pos == -1) {
-        QString xmlEscaped = anchor;
-        xmlEscaped.replace(QChar(0x2013), "&#8211;");  // en-dash
-        xmlEscaped.replace(QChar(0x2014), "&#8212;");  // em-dash
-        pattern1 = "id=\"" + xmlEscaped + "\"";
-        pattern2 = "id='" + xmlEscaped + "'";
-        pos = html.indexOf(pattern1);
-        if (pos == -1) {
-            pos = html.indexOf(pattern2);
-        }
-    }
-    
-    if (pos == -1) {
-        return -1;
-    }
-    
-    // Find the end of the opening tag (the '>' character)
-    int tagEnd = html.indexOf('>', pos);
-    if (tagEnd == -1) {
-        return -1;
-    }
-    
-    // The text position is after the '>' character, so start counting from there
-    // We need to count all non-tag characters in the HTML up to the '>' of the opening tag
-    // This gives us the text position where the section content starts
-    int textPos = 0;
-    bool inTag = false;
-    for (int i = 0; i <= tagEnd; i++) {
-        if (html[i] == '<') {
-            inTag = true;
-        } else if (html[i] == '>') {
-            inTag = false;
-        } else if (!inTag) {
-            // This character is outside a tag, so it's part of the text content
-            textPos++;
-        }
-    }
-    
-    return textPos;
+    return -1;
 }
 
 void ContentDisplayModel::navigateToNextResult() {
