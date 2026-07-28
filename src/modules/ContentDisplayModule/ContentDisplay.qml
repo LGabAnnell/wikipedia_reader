@@ -15,6 +15,12 @@ Item {
 
     signal backRequested
 
+    property Timer searchDebounceTimer: Timer {
+        interval: 200
+        repeat: false
+        onTriggered: contentDisplay.performSearch(searchField.text, articleSection.getText(0, articleSection.text.length))
+    }
+
     height: parent ? parent.height : 0
     width: parent ? parent.width : 0
 
@@ -44,13 +50,6 @@ Item {
         onActivated: {
             searchBar.visible = true;
             searchField.forceActiveFocus();
-        }
-    }
-    Shortcut {
-        sequences: ["Escape"]
-
-        onActivated: {
-            searchBar.visible = false;
         }
     }
     ColumnLayout {
@@ -86,11 +85,11 @@ Item {
                     contentDisplay.navigateToNextResult();
                 }
                 onTextChanged: function () {
-                    contentDisplay.performSearch(text, articleSection.getText(0, articleSection.text.length));
+                    searchDebounceTimer.restart();
                 }
             }
             Text {
-                color: "white"
+                color: articleDisplay.sysPalette.text
                 font.pixelSize: 14
                 text: contentDisplay.totalResults > 0 ? contentDisplay.currentResultIndex + " of " + contentDisplay.totalResults : ""
                 verticalAlignment: Text.AlignVCenter
@@ -99,6 +98,7 @@ Item {
                 id: upButton
 
                 text: "↑"
+                Accessible.name: "Previous search result"
 
                 onClicked: {
                     contentDisplay.navigateToPreviousResult();
@@ -108,6 +108,7 @@ Item {
                 id: downButton
 
                 text: "↓"
+                Accessible.name: "Next search result"
 
                 onClicked: {
                     contentDisplay.navigateToNextResult();
@@ -121,10 +122,10 @@ Item {
             Layout.rightMargin: 10
             spacing: 10
 
+            Item { Layout.fillWidth: true }
             Button {
                 id: galleryButton
 
-                Layout.alignment: Qt.AlignRight
                 text: "Gallery"
                 visible: GlobalState.currentPageTitle.length > 0
 
@@ -135,7 +136,6 @@ Item {
             Button {
                 id: copyHtmlButton
 
-                Layout.alignment: Qt.AlignRight
                 text: "Copy HTML"
                 visible: GlobalState.currentPageTitle.length > 0 && mainContent.articleText.length > 0
 
@@ -146,9 +146,9 @@ Item {
             Button {
                 id: sectionsButton
 
-                Layout.alignment: Qt.AlignRight
                 text: "Sections"
                 visible: GlobalState.currentPageTitle.length > 0
+                Accessible.name: "Open sections panel"
 
                 onClicked: {
                     mainContent.sectionsPanelVisible = !mainContent.sectionsPanelVisible;
@@ -158,22 +158,12 @@ Item {
         ScrollView {
             id: scrollView
 
-            function scrollToCursor() {
+            function scrollToCursor(offset) {
                 // Get the cursor rectangle in the TextEdit's coordinate system
                 const cursorRect = articleSection.cursorRectangle;
-                // Calculate the position to scroll to
-                let scrollToY = cursorRect.y - scrollView.height / 2;
-                // Ensure the position is within valid bounds
-                scrollToY = Math.max(0, Math.min(scrollToY, scrollView.contentHeight - scrollView.height));
-                // Use the ScrollBar's value property to set the scroll position
-                scrollView.ScrollBar.vertical.position = scrollToY / (scrollView.contentHeight - scrollView.height);
-            }
-
-            function scrollToCursorTop() {
-                // Get the cursor rectangle in the TextEdit's coordinate system
-                const cursorRect = articleSection.cursorRectangle;
-                // Calculate the position to scroll to
-                let scrollToY = cursorRect.y - cursorRect.height;// - scrollView.height;
+                // Calculate the position to scroll to with optional offset
+                // offset is subtracted from cursorRect.y (default: cursorRect.height for top alignment)
+                let scrollToY = cursorRect.y - (offset || cursorRect.height);
                 // Ensure the position is within valid bounds
                 scrollToY = Math.max(0, Math.min(scrollToY, scrollView.contentHeight - scrollView.height));
                 // Use the ScrollBar's value property to set the scroll position
@@ -234,6 +224,8 @@ Item {
                         if (link.startsWith("/wiki/")) {
                             var title = link.substring(6).replace(/_/g, " ");
                             GlobalState.loadArticleByTitle(title);
+                        } else {
+                            Qt.openUrlExternally(link);
                         }
                     }
                     onLinkHovered: {}
@@ -249,7 +241,7 @@ Item {
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    color: "red"
+                    color: articleDisplay.sysPalette.negativeText || articleDisplay.sysPalette.text
                     text: GlobalState.errorMessage
                     visible: GlobalState.errorMessage.length > 0
                     width: parent.width
@@ -264,7 +256,7 @@ Item {
         onNavigateToResult: function (start, end) {
             articleSection.cursorPosition = start;
             articleSection.select(start, end);
-            scrollView.scrollToCursor();
+            scrollView.scrollToCursor(scrollView.height / 2);
         }
         onSearchResultsAvailable: function (indices) {
             if (indices.length === 0) {
@@ -276,7 +268,7 @@ Item {
             articleSection.select(indices[0].start, indices[0].end);
 
             // Manually set the contentY property of the Flickable
-            scrollView.scrollToCursor();
+            scrollView.scrollToCursor(scrollView.height / 2);
         }
     }
 
@@ -287,25 +279,17 @@ Item {
         anchors.bottom: mainContent.bottom
         anchors.right: mainContent.right
         anchors.top: mainContent.top
-        border.color: "#333333"
+        border.color: articleDisplay.sysPalette.midlight
         border.width: 1
-        color: "#1e1e1e"
+        color: articleDisplay.sysPalette.window
         height: mainContent.height
         visible: mainContent.sectionsPanelVisible
-        width: mainContent.width * 0.5
+        width: Math.min(mainContent.width * 0.5, 400)
         x: mainContent.sectionsPanelVisible ? 0 : width
-        z: 100
-
-        // Animation for sliding in/out
-        PropertyAnimation {
-            id: slideAnimation
-
-            duration: 300
-            easing.type: Easing.InOutQuad
-            property: "x"
-            target: sectionsOverlay
-            to: mainContent.sectionsPanelVisible ? 0 : width
+        Behavior on x {
+            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
         }
+        z: 100
 
         // Close button
         Button {
@@ -318,13 +302,14 @@ Item {
             text: "×"
             width: 40
             z: 101
+            Accessible.name: "Close sections panel"
 
             background: Rectangle {
-                color: hovered ? "#333333" : "#2e2e2e"
+                color: hovered ? articleDisplay.sysPalette.midlight : articleDisplay.sysPalette.window
                 radius: 5
             }
             contentItem: Text {
-                color: "white"
+                color: articleDisplay.sysPalette.text
                 font.pixelSize: 18
                 text: "×"
             }
@@ -342,7 +327,6 @@ Item {
             anchors.topMargin: 50
 
             onSectionClicked: function (section) {
-                console.log("Section clicked:", section.title);
                 mainContent.sectionsPanelVisible = false;
                 // Scroll to section using anchor-based navigation
                 var html = articleSection.text;
@@ -351,9 +335,7 @@ Item {
                 if (cursorPos !== -1) {
                     articleSection.cursorPosition = cursorPos;
                     articleSection.select(cursorPos, cursorPos);
-                    scrollView.scrollToCursorTop();
-                } else {
-                    console.log("Could not find section anchor:", section.anchor, "title:", section.title);
+                    scrollView.scrollToCursor();
                 }
             }
         }
