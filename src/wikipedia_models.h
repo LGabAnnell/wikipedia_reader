@@ -26,7 +26,6 @@ public:
 class page
 {
     Q_GADGET
-    QML_VALUE_TYPE(page)
     QML_ELEMENT
     Q_PROPERTY(QString title MEMBER title)
     Q_PROPERTY(QString extract MEMBER extract)
