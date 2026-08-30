@@ -21,7 +21,6 @@ Item {
     
     ColumnLayout {
         anchors.fill: parent
-        spacing: 5
         
         // Header
         Label {
@@ -61,12 +60,10 @@ Item {
                 anchors.fill: parent
                 model: sectionModel.sections
                 delegate: ItemDelegate {
-                    text: modelData.title
-                    font.pixelSize: 14 - (modelData.level > 2 ? modelData.level - 2 : 0)
-                    padding: 10
-                    leftPadding: 10 + (modelData.level - 1) * 20
+                    id: sectionDelegate
+                    width: ListView.view.width
                     onClicked: root.sectionClicked(modelData)
-                    
+
                     contentItem: Text {
                         text: modelData.title
                         color: "white"

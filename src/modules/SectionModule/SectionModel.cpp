@@ -7,18 +7,14 @@ SectionModel::SectionModel(QObject *parent) : QObject(parent), m_isLoading(false
     // Get the WikipediaPageClient instance from GlobalState
     // We'll create it here for now, but ideally it should be shared
     m_pageClient = new WikipediaPageClient(this);
-    
-    connect(m_pageClient, &WikipediaPageClient::sectionsReceived, 
+
+    connect(m_pageClient, &WikipediaPageClient::sectionsReceived, // NOLINT(clang-diagnostic-error)
             this, &SectionModel::handleSectionsReceived);
-    connect(m_pageClient, &WikipediaPageClient::errorOccurred, 
+    connect(m_pageClient, &WikipediaPageClient::errorOccurred,
             this, &SectionModel::handleError);
 }
 
 QVector<section> SectionModel::sections() const {
-    for (const auto &sec : m_sections) {
-    qDebug() << "Section:" << sec.anchor << "\n"
-             << "Anchor: " << sec.anchor << "Line:" << sec.title;
-      }
 
   return m_sections;
 }
