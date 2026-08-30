@@ -23,8 +23,11 @@ GlobalState::GlobalState(QObject *parent, HistoryState *historyState) :
     // Connect WikipediaPageClient signals to GlobalState
     connect(m_pageClient, &WikipediaPageClient::pageReceived,
             this, &GlobalState::setCurrentPage);
-    connect(m_pageClient, &WikipediaPageClient::pageWithImagesReceived,
-            this, &GlobalState::setCurrentPage);
+    // NOTE: pageWithImagesReceived is intentionally NOT connected to setCurrentPage.
+    // getPageWithImages uses explaintext=1, so its extract is plain text; letting it
+    // overwrite the current page would strip the article's HTML formatting (and poison
+    // the article cache with the plain-text version). The image gallery gets its data
+    // via ImageHomeModel's own connection to pageWithImagesReceived.
     connect(m_pageClient, &WikipediaPageClient::sectionsReceived,
             this, &GlobalState::setSections);
     connect(m_pageClient, &WikipediaPageClient::errorOccurred,

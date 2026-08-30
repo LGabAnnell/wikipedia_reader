@@ -159,15 +159,16 @@ Item {
             id: scrollView
 
             function scrollToCursor(offset) {
-                // Get the cursor rectangle in the TextEdit's coordinate system
                 const cursorRect = articleSection.cursorRectangle;
-                // Calculate the position to scroll to with optional offset
-                // offset is subtracted from cursorRect.y (default: cursorRect.height for top alignment)
-                let scrollToY = cursorRect.y - (offset || cursorRect.height);
-                // Ensure the position is within valid bounds
+                // Map into articleDisplay (the Column), NOT scrollView.contentItem —
+                // articleDisplay scrolls together with articleSection, so this gives
+                // an absolute, scroll-independent position within the content.
+                const contentPoint = articleSection.mapToItem(articleDisplay, 0, cursorRect.y);
+
+                let scrollToY = contentPoint.y - (offset || cursorRect.height);
                 scrollToY = Math.max(0, Math.min(scrollToY, scrollView.contentHeight - scrollView.height));
-                // Use the ScrollBar's value property to set the scroll position
-                scrollView.ScrollBar.vertical.position = scrollToY / (scrollView.contentHeight - scrollView.height);
+
+                scrollView.contentItem.contentY = scrollToY;
             }
 
             Layout.fillHeight: true
