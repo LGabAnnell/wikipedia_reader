@@ -2,13 +2,9 @@
 #include "SidebarModel.h"
 #include <QDebug>
 
-SidebarModel::SidebarModel(QObject *parent) : QObject(parent) {
-    m_currentView = "home";
-}
+SidebarModel::SidebarModel(QObject *parent) : QObject(parent) { m_currentView = "home"; }
 
-QString SidebarModel::currentView() const {
-    return m_currentView;
-}
+QString SidebarModel::currentView() const { return m_currentView; }
 
 void SidebarModel::setCurrentView(const QString &view) {
     if (m_currentView != view) {
@@ -17,9 +13,7 @@ void SidebarModel::setCurrentView(const QString &view) {
     }
 }
 
-QVector<search_result> SidebarModel::searchResults() const {
-    return m_searchResults;
-}
+QVector<search_result> SidebarModel::searchResults() const { return m_searchResults; }
 
 void SidebarModel::setSearchResults(const QVector<search_result> &results) {
     m_searchResults = results;

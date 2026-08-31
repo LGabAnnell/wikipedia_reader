@@ -2,22 +2,22 @@
 #ifndef NAVIGATIONSTATE_H
 #define NAVIGATIONSTATE_H
 
-#include <QObject>
-#include <QQuickItem>
 #include <QEvent>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPointer>
+#include <QQuickItem>
 
 #include "constants.h"
 
 class NavigationState : public QObject {
     Q_OBJECT
     QML_ELEMENT
-    Q_PROPERTY(QQuickItem* stackView READ stackView WRITE setStackView NOTIFY stackViewChanged)
+    Q_PROPERTY(QQuickItem *stackView READ stackView WRITE setStackView NOTIFY stackViewChanged)
 
-public:
+  public:
     explicit NavigationState(QObject *parent = nullptr);
-    QQuickItem* stackView() const;
+    QQuickItem *stackView() const;
     QString currentView() const;
 
     // Install the event filter on a QObject (e.g., QQuickWindow or QQuickItem)
@@ -32,23 +32,23 @@ public:
     Q_INVOKABLE void navigateToView(const QString &view);
     Q_INVOKABLE void addView(QString view, QQmlComponent *component);
 
-signals:
+  signals:
     void stackViewChanged();
     void currentViewChanged();
     void pushView(const QQmlComponent *view);
     void replaceView(const QQmlComponent *view);
     void backButtonPressed(); // Emitted when the mouse back button is pressed
 
-public slots:
-    void setStackView(QQuickItem* stackView);
+  public slots:
+    void setStackView(QQuickItem *stackView);
     void setCurrentView(const QString &view);
 
-protected:
+  protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
-private:
+  private:
     QPointer<QQuickItem> m_stackView;
-    std::map<QString, QQmlComponent*> views;
+    std::map<QString, QQmlComponent *> views;
 };
 
 #endif // NAVIGATIONSTATE_H

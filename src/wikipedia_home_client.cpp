@@ -1,10 +1,10 @@
 // wikipedia_home_client.cpp
 #include "wikipedia_home_client.h"
-#include <QUrlQuery>
 #include <QUrl>
+#include <QUrlQuery>
 
-WikipediaHomeClient::WikipediaHomeClient(QObject *parent) : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
-}
+WikipediaHomeClient::WikipediaHomeClient(QObject *parent)
+    : QObject(parent), networkManager(new QNetworkAccessManager(this)) {}
 
 WikipediaHomeClient::~WikipediaHomeClient() = default;
 
@@ -20,8 +20,8 @@ void WikipediaHomeClient::getNewsItems() {
 void WikipediaHomeClient::getOnThisDayEvents(int month, int day) {
     QDate today = QDate::currentDate();
     QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/%1/%2")
-                  .arg(today.month(), 2, 10, QLatin1Char('0'))
-                  .arg(today.day(), 2, 10, QLatin1Char('0')));
+                 .arg(today.month(), 2, 10, QLatin1Char('0'))
+                 .arg(today.day(), 2, 10, QLatin1Char('0')));
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() { onOnThisDayEventsReply(reply); });
@@ -56,9 +56,8 @@ void WikipediaHomeClient::onNewsItemsReply(QNetworkReply *reply) {
             ni.description = article["extract"].toString();
             ni.url = article["content_urls"].toObject()["desktop"].toObject()["page"].toString();
             ni.pageid = article["pageid"].toInt();
-            ni.imageUrl = article.contains("thumbnail") ?
-                article["thumbnail"].toObject()["source"].toString() :
-                "qrc:/images/news_placeholder.jpg";
+            ni.imageUrl = article.contains("thumbnail") ? article["thumbnail"].toObject()["source"].toString()
+                                                        : "qrc:/images/news_placeholder.jpg";
             newsItems.append(ni);
         }
     } else {
@@ -173,9 +172,8 @@ void WikipediaHomeClient::onArticleContentReply(QNetworkReply *reply, const QStr
     QVector<did_you_know_item> didYouKnowItems;
     did_you_know_item dyk;
     dyk.text = root.contains("extract") ? root["extract"].toString() : "";
-    dyk.url = root.contains("content_urls") ?
-        root["content_urls"].toObject()["desktop"].toObject()["page"].toString() :
-        "";
+    dyk.url =
+        root.contains("content_urls") ? root["content_urls"].toObject()["desktop"].toObject()["page"].toString() : "";
     dyk.pageid = root.contains("pageid") ? root["pageid"].toInt() : 0;
     didYouKnowItems.append(dyk);
 

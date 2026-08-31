@@ -2,11 +2,11 @@
 #ifndef HISTORYMODEL_H
 #define HISTORYMODEL_H
 
-#include <QObject>
-#include <QVector>
-#include <QString>
 #include <QDateTime>
+#include <QObject>
 #include <QQmlEngine>
+#include <QString>
+#include <QVector>
 
 // History item structure
 struct history_item {
@@ -21,21 +21,21 @@ class HistoryModel : public QObject {
 
     Q_PROPERTY(QVector<history_item> history READ history NOTIFY historyChanged)
 
-public:
+  public:
     explicit HistoryModel(QObject *parent = nullptr);
 
     // History property accessor
     QVector<history_item> history() const;
 
-public slots:
+  public slots:
     void addToHistory(const QString &title, int pageId);
     void clearHistory();
     void removeFromHistory(int index);
 
-signals:
+  signals:
     void historyChanged();
 
-private:
+  private:
     QVector<history_item> m_history;
     static const int MAX_HISTORY_ITEMS = 50;
 

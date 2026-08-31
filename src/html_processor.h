@@ -7,7 +7,7 @@
 #include <tinyxml2.h>
 
 class HtmlProcessor {
-public:
+  public:
     static void removeImgNodes(tinyxml2::XMLElement *element);
     static void removeStyleNodes(tinyxml2::XMLElement *element);
     static void removeStyleAttributes(tinyxml2::XMLElement *node);

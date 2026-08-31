@@ -10,22 +10,14 @@ SectionModel::SectionModel(QObject *parent) : QObject(parent), m_isLoading(false
 
     connect(m_pageClient, &WikipediaPageClient::sectionsReceived, // NOLINT(clang-diagnostic-error)
             this, &SectionModel::handleSectionsReceived);
-    connect(m_pageClient, &WikipediaPageClient::errorOccurred,
-            this, &SectionModel::handleError);
+    connect(m_pageClient, &WikipediaPageClient::errorOccurred, this, &SectionModel::handleError);
 }
 
-QVector<section> SectionModel::sections() const {
+QVector<section> SectionModel::sections() const { return m_sections; }
 
-  return m_sections;
-}
+bool SectionModel::isLoading() const { return m_isLoading; }
 
-bool SectionModel::isLoading() const {
-    return m_isLoading;
-}
-
-QString SectionModel::errorMessage() const {
-    return m_errorMessage;
-}
+QString SectionModel::errorMessage() const { return m_errorMessage; }
 
 void SectionModel::fetchSections(const QString &title) {
     if (!title.isEmpty()) {
@@ -33,7 +25,7 @@ void SectionModel::fetchSections(const QString &title) {
         m_errorMessage.clear();
         emit loadingChanged();
         emit errorChanged();
-        
+
         m_pageClient->getSections(title);
     }
 }

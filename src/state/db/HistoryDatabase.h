@@ -1,19 +1,19 @@
 #ifndef HISTORYDATABASE_H
 #define HISTORYDATABASE_H
 
-#include <QObject>
-#include <QVector>
-#include <QString>
-#include <QDateTime>
-#include <QSqlDatabase>
-#include <QSqlQuery>
-#include <QSqlError>
 #include "wikipedia_models.h" // For history_item
+#include <QDateTime>
+#include <QObject>
+#include <QSqlDatabase>
+#include <QSqlError>
+#include <QSqlQuery>
+#include <QString>
+#include <QVector>
 
 class HistoryDatabase : public QObject {
     Q_OBJECT
 
-public:
+  public:
     explicit HistoryDatabase(QObject *parent = nullptr);
     ~HistoryDatabase();
 
@@ -24,11 +24,11 @@ public:
     bool clearHistory();
     bool removeOldestItems(int limit);
 
-signals:
+  signals:
     void databaseError(const QString &errorMessage);
     void databaseInitialized();
 
-private:
+  private:
     bool executeQuery(QSqlQuery &query, const QString &queryText, const QString &operationDescription);
     bool ensureTableExists();
     bool ensureIndexExists();

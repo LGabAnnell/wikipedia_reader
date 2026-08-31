@@ -15,43 +15,31 @@ class Constants : public QObject {
     Q_PROPERTY(QString imageGalleryView READ imageGalleryView CONSTANT)
     Q_PROPERTY(QString imageView READ imageView CONSTANT)
 
-public:
-    static Constants* create(QQmlEngine *, QJSEngine *) {
+  public:
+    static Constants *create(QQmlEngine *, QJSEngine *) {
         if (!m_instance) {
             m_instance = new Constants();
         }
         return m_instance;
     }
 
-    static QString historyView() {
-        return "history";
-    }
+    static QString historyView() { return "history"; }
 
-    static QString contentView() {
-        return "content";
-    }
+    static QString contentView() { return "content"; }
 
-    static QString searchView() {
-        return "search";
-    }
+    static QString searchView() { return "search"; }
 
-    static QString homeView() {
-        return "home";
-    }
+    static QString homeView() { return "home"; }
 
-    static QString imageGalleryView() {
-        return "imageGallery";
-    }
+    static QString imageGalleryView() { return "imageGallery"; }
 
-    static QString imageView() {
-        return "image";
-    }
+    static QString imageView() { return "image"; }
 
     // Delete copy constructor and assignment operator to prevent copies
-    Constants(const Constants&) = delete;
-    Constants& operator=(const Constants&) = delete;
+    Constants(const Constants &) = delete;
+    Constants &operator=(const Constants &) = delete;
 
-private:
+  private:
     Constants() {};
     static Constants *m_instance;
 };

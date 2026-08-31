@@ -2,20 +2,19 @@
 #ifndef WIKIPEDIA_PAGE_CLIENT_H
 #define WIKIPEDIA_PAGE_CLIENT_H
 
-#include <QObject>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
+#include "wikipedia_models.h"
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QJsonArray>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QObject>
 #include <QString>
 #include <QVector>
-#include "wikipedia_models.h"
 
-class WikipediaPageClient : public QObject
-{
+class WikipediaPageClient : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit WikipediaPageClient(QObject *parent = nullptr);
     ~WikipediaPageClient();
 
@@ -25,22 +24,23 @@ public:
     void resolveTitleToPageId(const QString &title);
     void getSections(const QString &title);
 
-signals:
+  signals:
     void pageReceived(const page &page);
     void pageWithImagesReceived(const page &page);
     void pageIdResolved(int pageid);
     void sectionsReceived(const QVector<section> &sections);
     void errorOccurred(const QString &error);
 
-private slots:
+  private slots:
     void onPageReply(QNetworkReply *reply, const QString &title);
     void onPageWithImagesReply(QNetworkReply *reply, int pageid);
     void onSectionsReply(QNetworkReply *reply, const QString &title);
 
-private:
+  private:
     QNetworkAccessManager *networkManager;
     QString baseUrl;
-    void fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls, QStringList &imageDescriptions);
+    void fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls,
+                                  QStringList &imageDescriptions);
     void fetchPageContentWithImages(int pageid, const page &pageData);
 };
 

@@ -2,29 +2,27 @@
 #ifndef WIKIPEDIA_MODELS_H
 #define WIKIPEDIA_MODELS_H
 
+#include <QDateTime>
 #include <QObject>
+#include <QQmlEngine>
 #include <QString>
 #include <QVector>
-#include <QDateTime>
-#include <QQmlEngine>
 
 // Data structure for search results
-class search_result
-{
+class search_result {
     Q_GADGET
     QML_ELEMENT
     Q_PROPERTY(QString title MEMBER title)
     Q_PROPERTY(QString snippet MEMBER snippet)
     Q_PROPERTY(int pageid MEMBER pageid)
-public:
+  public:
     QString title;
     QString snippet;
     int pageid;
 };
 
 // Data structure for a Wikipedia page
-class page
-{
+class page {
     Q_GADGET
     QML_ELEMENT
     Q_PROPERTY(QString title MEMBER title)
@@ -32,7 +30,7 @@ class page
     Q_PROPERTY(int pageid MEMBER pageid)
     Q_PROPERTY(QStringList imageUrls MEMBER imageUrls)
     Q_PROPERTY(QStringList imageDescriptions MEMBER imageDescriptions)
-public:
+  public:
     QString title;
     QString extract;
     int pageid;
@@ -41,15 +39,14 @@ public:
 };
 
 // Data structure for a featured article
-class featured_article
-{
+class featured_article {
     Q_GADGET
     QML_ELEMENT
     Q_PROPERTY(QString title MEMBER title)
     Q_PROPERTY(QString extract MEMBER extract)
     Q_PROPERTY(int pageid MEMBER pageid)
     Q_PROPERTY(QStringList imageUrls MEMBER imageUrls)
-public:
+  public:
     QString title;
     QString extract;
     int pageid;
@@ -58,8 +55,7 @@ public:
 };
 
 // Data structure for a news item
-class news_item
-{
+class news_item {
     Q_GADGET
     QML_ELEMENT
     Q_PROPERTY(QString title MEMBER title)
@@ -67,7 +63,7 @@ class news_item
     Q_PROPERTY(QString description MEMBER description)
     Q_PROPERTY(QString url MEMBER url)
     Q_PROPERTY(int pageid MEMBER pageid)
-public:
+  public:
     QString title;
     QString imageUrl;
     QString description;
@@ -76,15 +72,14 @@ public:
 };
 
 // Data structure for an "On This Day" event
-class on_this_day_event
-{
+class on_this_day_event {
     Q_GADGET
     QML_ELEMENT
     Q_PROPERTY(int year MEMBER year)
     Q_PROPERTY(QString event MEMBER event)
     Q_PROPERTY(QString url MEMBER url)
     Q_PROPERTY(int pageid MEMBER pageid)
-public:
+  public:
     int year;
     QString event;
     QString url;
@@ -92,43 +87,40 @@ public:
 };
 
 // Data structure for a "Did You Know" item
-class did_you_know_item
-{
+class did_you_know_item {
     Q_GADGET
     QML_ELEMENT
     Q_PROPERTY(QString text MEMBER text)
     Q_PROPERTY(QString url MEMBER url)
     Q_PROPERTY(int pageid MEMBER pageid)
-public:
+  public:
     QString text;
     QString url;
     int pageid;
 };
 
 // Data structure for a history item
-class history_item
-{
+class history_item {
     Q_GADGET
     QML_ELEMENT
     Q_PROPERTY(QString title MEMBER title)
     Q_PROPERTY(int pageId MEMBER pageId)
     Q_PROPERTY(QDateTime timestamp MEMBER timestamp)
-public:
+  public:
     QString title;
     int pageId;
     QDateTime timestamp;
 };
 
 // Data structure for a section in a Wikipedia article
-class section
-{
+class section {
     Q_GADGET
     QML_ELEMENT
     Q_PROPERTY(QString title MEMBER title)
     Q_PROPERTY(int level MEMBER level)
     Q_PROPERTY(QString anchor MEMBER anchor)
     Q_PROPERTY(int index MEMBER index)
-public:
+  public:
     QString title;
     int level;
     QString anchor;

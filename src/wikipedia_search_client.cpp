@@ -1,9 +1,10 @@
 // wikipedia_search_client.cpp
 #include "wikipedia_search_client.h"
-#include <QUrlQuery>
 #include <QUrl>
+#include <QUrlQuery>
 
-WikipediaSearchClient::WikipediaSearchClient(QObject *parent) : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
+WikipediaSearchClient::WikipediaSearchClient(QObject *parent)
+    : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
     baseUrl = "https://en.wikipedia.org/w/api.php";
 }
 
@@ -32,9 +33,7 @@ void WikipediaSearchClient::onSearchReply(QNetworkReply *reply) {
 
         QVector<search_result> results;
         for (const QJsonValue &result : searchResults) {
-            results.push_back({ result["title"].toString(),
-                                result["snippet"].toString(),
-                                result["pageid"].toInt() });
+            results.push_back({result["title"].toString(), result["snippet"].toString(), result["pageid"].toInt()});
         }
         emit searchCompleted(results);
     } else {

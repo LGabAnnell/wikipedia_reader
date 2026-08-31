@@ -62,8 +62,6 @@ wikipedia_reader/
 ├── styles/                   # CSS (table_style.css)
 ├── scripts/run_debug.sh      # Build + run in debug mode
 ├── test.sh                   # `ctest --test-dir build/tests`
-├── .editorconfig             # C++ formatting rules
-├── .continue/rules/          # Continue IDE rule files (Qt/C++ conventions)
 └── .vibe/                    # Vibe agent config (cpp agent + prompt)
 ```
 

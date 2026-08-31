@@ -1,18 +1,21 @@
 // wikipedia_page_client.cpp
 #include "wikipedia_page_client.h"
 #include "html_processor.h"
-#include <QUrlQuery>
-#include <QUrl>
 #include <QEventLoop>
 #include <QRegularExpression>
+#include <QUrl>
+#include <QUrlQuery>
 
-// Strip HTML tags and decode common entities so image descriptions render as plain text.
+static const QRegularExpression htmlTagRegex("<[^>]*>");
+
+// Strip HTML tags and decode common entities so image descriptions render as
+// plain text.
 static QString stripHtml(const QString &html) {
     if (html.isEmpty()) {
         return html;
     }
     QString text = html;
-    text.remove(QRegularExpression("<[^>]*>"));
+    text.remove(htmlTagRegex);
     text.replace("&amp;", "&");
     text.replace("&lt;", "<");
     text.replace("&gt;", ">");
@@ -22,7 +25,8 @@ static QString stripHtml(const QString &html) {
     return text.trimmed();
 }
 
-WikipediaPageClient::WikipediaPageClient(QObject *parent) : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
+WikipediaPageClient::WikipediaPageClient(QObject *parent)
+    : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
     baseUrl = "https://en.wikipedia.org/w/api.php";
 }
 
@@ -126,9 +130,8 @@ void WikipediaPageClient::getPageWithImages(int pageid) {
     url.setQuery(urlQuery);
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, pageid]() {
-        this->onPageWithImagesReply(reply, pageid);
-    });
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, pageid]() { this->onPageWithImagesReply(reply, pageid); });
 }
 
 void WikipediaPageClient::resolveTitleToPageId(const QString &title) {
@@ -200,7 +203,8 @@ void WikipediaPageClient::onPageWithImagesReply(QNetworkReply *reply, int pageid
     reply->deleteLater();
 }
 
-void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls, QStringList &imageDescriptions) {
+void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls,
+                                                   QStringList &imageDescriptions) {
     if (imageTitles.isEmpty()) {
         return;
     }
@@ -217,7 +221,7 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
     url.setQuery(urlQuery);
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
     if (reply->error() == QNetworkReply::NoError) {
@@ -236,11 +240,13 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
                     if (!imageUrl.isEmpty()) {
                         imageUrls.append(imageUrl);
 
-                        // Extract the plain-text image description from extmetadata, if present.
+                        // Extract the plain-text image description from
+                        // extmetadata, if present.
                         QString description;
                         QJsonObject extmetadata = info["extmetadata"].toObject();
                         if (extmetadata.contains("ImageDescription")) {
-                            description = stripHtml(extmetadata["ImageDescription"].toObject().value("value").toString());
+                            description =
+                                stripHtml(extmetadata["ImageDescription"].toObject().value("value").toString());
                         }
                         imageDescriptions.append(description);
                     }
@@ -263,7 +269,7 @@ void WikipediaPageClient::fetchPageContentWithImages(int pageid, const page &pag
     url.setQuery(urlQuery);
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, pageData]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, pageData] {
         if (reply->error() == QNetworkReply::NoError) {
             QByteArray response = reply->readAll();
             QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
@@ -290,9 +296,7 @@ void WikipediaPageClient::getSections(const QString &title) {
     url.setQuery(urlQuery);
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, title]() {
-        this->onSectionsReply(reply, title);
-    });
+    connect(reply, &QNetworkReply::finished, this, [this, reply, title]() { this->onSectionsReply(reply, title); });
 }
 
 void WikipediaPageClient::onSectionsReply(QNetworkReply *reply, const QString &title) {
@@ -300,29 +304,29 @@ void WikipediaPageClient::onSectionsReply(QNetworkReply *reply, const QString &t
         QByteArray response = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
         QJsonObject jsonObj = jsonDoc.object();
-        
+
         QVector<section> sections;
-        
+
         if (jsonObj.contains("parse") && jsonObj["parse"].toObject().contains("tocdata")) {
             QJsonObject tocdata = jsonObj["parse"].toObject()["tocdata"].toObject();
-            
+
             if (tocdata.contains("sections") && tocdata["sections"].isArray()) {
                 QJsonArray sectionsArray = tocdata["sections"].toArray();
-                
+
                 for (const QJsonValue &sectionValue : std::as_const(sectionsArray)) {
                     QJsonObject sectionObj = sectionValue.toObject();
-                    
+
                     section sec;
                     sec.title = sectionObj["line"].toString();
                     sec.level = sectionObj["toclevel"].toInt();
                     sec.anchor = QUrl::fromPercentEncoding(sectionObj["anchor"].toString().toUtf8());
                     sec.index = sectionObj["index"].toString().toInt();
-                    
+
                     sections.append(sec);
                 }
             }
         }
-        
+
         emit sectionsReceived(sections);
     } else {
         emit errorOccurred(reply->errorString());

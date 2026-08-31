@@ -2,34 +2,33 @@
 #ifndef WIKIPEDIA_FEATURED_CLIENT_H
 #define WIKIPEDIA_FEATURED_CLIENT_H
 
-#include <QObject>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
+#include "wikipedia_models.h"
+#include <QDate>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QJsonArray>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QObject>
 #include <QString>
 #include <QVector>
-#include <QDate>
-#include "wikipedia_models.h"
 
-class WikipediaFeaturedClient : public QObject
-{
+class WikipediaFeaturedClient : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit WikipediaFeaturedClient(QObject *parent = nullptr);
     ~WikipediaFeaturedClient();
 
     void getFeaturedArticleOfTheDay();
 
-signals:
+  signals:
     void featuredArticleReceived(const QString &title, const QString &extract, const int &pageid);
     void errorOccurred(const QString &error);
 
-private slots:
+  private slots:
     void onFeaturedArticleReply(QNetworkReply *reply);
 
-private:
+  private:
     QNetworkAccessManager *networkManager;
 };
 

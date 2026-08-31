@@ -1,19 +1,20 @@
 #ifndef SIDEBARMODEL_H
 #define SIDEBARMODEL_H
 
-#include <QObject>
-#include <QString>
-#include <QQmlEngine>
-#include <QVector>
 #include "wikipedia_models.h"
+#include <QObject>
+#include <QQmlEngine>
+#include <QString>
+#include <QVector>
 
 class SidebarModel : public QObject {
     Q_OBJECT
     QML_ELEMENT
     Q_PROPERTY(QString currentView READ currentView WRITE setCurrentView NOTIFY currentViewChanged)
-    Q_PROPERTY(QVector<search_result> searchResults READ searchResults WRITE setSearchResults NOTIFY searchResultsChanged)
+    Q_PROPERTY(
+        QVector<search_result> searchResults READ searchResults WRITE setSearchResults NOTIFY searchResultsChanged)
 
-public:
+  public:
     explicit SidebarModel(QObject *parent = nullptr);
 
     QString currentView() const;
@@ -22,12 +23,12 @@ public:
     QVector<search_result> searchResults() const;
     void setSearchResults(const QVector<search_result> &results);
 
-signals:
+  signals:
     void currentViewChanged(const QString &view);
     void navigateTo(const QString &view);
     void searchResultsChanged();
 
-private:
+  private:
     QString m_currentView;
     QVector<search_result> m_searchResults;
 };

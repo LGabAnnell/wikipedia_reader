@@ -5,9 +5,7 @@ HistoryModel::HistoryModel(QObject *parent) : QObject(parent) {
     // Initialize empty history
 }
 
-QVector<history_item> HistoryModel::history() const {
-    return m_history;
-}
+QVector<history_item> HistoryModel::history() const { return m_history; }
 
 void HistoryModel::addToHistory(const QString &title, int pageId) {
     // Check if item already exists in history

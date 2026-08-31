@@ -14,9 +14,7 @@ HistoryState::HistoryState(QObject *parent) : QObject(parent) {
 HistoryState::~HistoryState() {
     // m_database is deleted automatically by Qt's parent-child mechanism
 }
-QVector<history_item> HistoryState::history() const {
-    return m_history;
-}
+QVector<history_item> HistoryState::history() const { return m_history; }
 
 void HistoryState::addToHistory(const QString &title, int pageId) {
     // First check if item exists in memory
@@ -40,7 +38,7 @@ void HistoryState::addToHistory(const QString &title, int pageId) {
     if (m_history.size() > MAX_HISTORY_ITEMS) {
         m_history.removeLast();
     }
-    
+
     // Update database
     if (!m_database->addToHistory(title, pageId, newItem.timestamp)) {
         qWarning() << "[HistoryState] Failed to add item to history database.";
@@ -52,16 +50,16 @@ void HistoryState::addToHistory(const QString &title, int pageId) {
             qWarning() << "[HistoryState] Failed to remove oldest items from history database.";
         }
     }
-            emit historyChanged();
-        }
+    emit historyChanged();
+}
 
 void HistoryState::clearHistory() {
     m_history.clear();
     if (!m_database->clearHistory()) {
         qWarning() << "[HistoryState] Failed to clear history database.";
     }
-        emit historyChanged();
-    }
+    emit historyChanged();
+}
 
 bool HistoryState::itemExistsInHistory(int pageId) {
     for (const auto &item : m_history) {
@@ -71,4 +69,3 @@ bool HistoryState::itemExistsInHistory(int pageId) {
     }
     return false;
 }
-

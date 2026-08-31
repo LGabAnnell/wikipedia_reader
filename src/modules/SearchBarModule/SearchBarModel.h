@@ -1,12 +1,12 @@
 #ifndef SEARCHBAR_H
 #define SEARCHBAR_H
 
-#include <QObject>
-#include <QString>
-#include <QQmlEngine>
-#include <QPointer>
 #include "GlobalState.h"
 #include "HistoryState.h"
+#include <QObject>
+#include <QPointer>
+#include <QQmlEngine>
+#include <QString>
 
 class WikipediaSearchClient; // Forward declaration
 
@@ -18,13 +18,12 @@ class WikipediaSearchClient; // Forward declaration
  */
 class SearchBarModel : public QObject {
     Q_OBJECT
-        QML_ELEMENT
-        Q_PROPERTY(QString searchText READ searchText WRITE setSearchText NOTIFY searchTextChanged)
-        Q_PROPERTY(bool isSearching READ isSearching NOTIFY isSearchingChanged)
-        Q_PROPERTY(QPointer<GlobalState> globalState READ globalState)
+    QML_ELEMENT
+    Q_PROPERTY(QString searchText READ searchText WRITE setSearchText NOTIFY searchTextChanged)
+    Q_PROPERTY(bool isSearching READ isSearching NOTIFY isSearchingChanged)
+    Q_PROPERTY(QPointer<GlobalState> globalState READ globalState)
 
-public:
-
+  public:
     explicit SearchBarModel(QObject *parent = nullptr);
 
     /**
@@ -37,7 +36,8 @@ public:
      * @brief Checks if a search is currently in progress.
      * @return True if a search is in progress, false otherwise.
      */
-    bool isSearching() const; // Add this line to the public section of the SearchBarModel class definition in SearchBarModel.h
+    bool isSearching()
+        const; // Add this line to the public section of the SearchBarModel class definition in SearchBarModel.h
 
     /**
      * @brief Sets the search text.
@@ -45,14 +45,12 @@ public:
      */
     void setSearchText(const QString &text);
 
-    QPointer<GlobalState> globalState() {
-        return m_globalState;
-    }
+    QPointer<GlobalState> globalState() { return m_globalState; }
 
     // Add method to clear search results
     Q_INVOKABLE void clearSearchResults();
 
-signals:
+  signals:
     /**
      * @brief Emitted when the search text changes.
      * @param text The new search text.
@@ -73,20 +71,22 @@ signals:
     // Add error signal
     void errorOccurred(const QString &error);
 
-    void globalStateChanged(QPointer<GlobalState> globalState); // Add this line to the signals section of the SearchBarModel class definition in SearchBarModel.h if it's not already include
+    void globalStateChanged(
+        QPointer<GlobalState> globalState); // Add this line to the signals section of the SearchBarModel class
+                                            // definition in SearchBarModel.h if it's not already include
 
-public slots:
+  public slots:
     /**
      * @brief Initiates a search with the current search text.
      */
     void performSearch();
-private slots:
+  private slots:
     void handleError(const QString &error);
 
-private:
-    QString m_searchText; ///< The current search text.
-    bool m_isSearching;   ///< Indicates whether a search is currently in progress.
-    QPointer<GlobalState> m_globalState; ///< The GlobalState instance.
+  private:
+    QString m_searchText;                           ///< The current search text.
+    bool m_isSearching;                             ///< Indicates whether a search is currently in progress.
+    QPointer<GlobalState> m_globalState;            ///< The GlobalState instance.
     QPointer<WikipediaSearchClient> m_searchClient; ///< The Wikipedia search client instance.
 };
 

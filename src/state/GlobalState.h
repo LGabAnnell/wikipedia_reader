@@ -2,19 +2,19 @@
 #ifndef GLOBALSTATE_H
 #define GLOBALSTATE_H
 
-#include <QObject>
-#include <QVector>
-#include <QString>
-#include <QQmlEngine>
-#include <QPointer>
-#include <QClipboard>
-#include <QGuiApplication>
-#include "wikipedia_search_client.h"
-#include "wikipedia_page_client.h"
+#include "HistoryState.h"
 #include "wikipedia_featured_client.h"
 #include "wikipedia_home_client.h"
 #include "wikipedia_models.h"
-#include "HistoryState.h"
+#include "wikipedia_page_client.h"
+#include "wikipedia_search_client.h"
+#include <QClipboard>
+#include <QGuiApplication>
+#include <QObject>
+#include <QPointer>
+#include <QQmlEngine>
+#include <QString>
+#include <QVector>
 
 class GlobalState : public QObject {
     Q_OBJECT
@@ -37,14 +37,15 @@ class GlobalState : public QObject {
     Q_PROPERTY(QString currentImageUrl READ currentImageUrl WRITE setCurrentImageUrl NOTIFY currentImageUrlChanged)
 
     // Description/caption for the currently selected image (fullscreen image view overlay)
-    Q_PROPERTY(QString currentImageDescription READ currentImageDescription WRITE setCurrentImageDescription NOTIFY currentImageDescriptionChanged)
+    Q_PROPERTY(QString currentImageDescription READ currentImageDescription WRITE setCurrentImageDescription NOTIFY
+                   currentImageDescriptionChanged)
 
-public:
+  public:
     Q_INVOKABLE void loadArticleByPageId(int pageId);
     Q_INVOKABLE void loadArticleByTitle(const QString &title);
     Q_INVOKABLE void copyToClipboard(const QString &text);
     Q_INVOKABLE void fetchSectionsForCurrentPage();
-    explicit GlobalState(QObject *parent = nullptr, HistoryState* historyState = nullptr);
+    explicit GlobalState(QObject *parent = nullptr, HistoryState *historyState = nullptr);
 
     // Page property accessors
     QString currentPageTitle() const;
@@ -61,13 +62,11 @@ public:
     QString currentImageDescription() const;
 
     // Accessor for WikipediaPageClient
-    WikipediaPageClient* pageClient() const { return m_pageClient; }
+    WikipediaPageClient *pageClient() const { return m_pageClient; }
 
-    static QPointer<GlobalState> instance() {
-        return m_instance;
-    }
+    static QPointer<GlobalState> instance() { return m_instance; }
 
-public slots:
+  public slots:
     void setSearchResults(const QVector<search_result> &results);
     void setCurrentPage(const page &page);
     void setCurrentPageFromData(const QString &title, const QString &extract, const QString &url);
@@ -79,7 +78,7 @@ public slots:
     void setCurrentImageUrl(const QString &url);
     void setCurrentImageDescription(const QString &description);
 
-signals:
+  signals:
     void searchResultsChanged();
     void currentPageChanged();
     void isLoadingChanged();
@@ -89,7 +88,7 @@ signals:
     void currentImageUrlChanged();
     void currentImageDescriptionChanged();
 
-private:
+  private:
     QVector<search_result> m_searchResults;
     page m_currentPage;
     QVector<section> m_currentPageSections;
@@ -99,17 +98,17 @@ private:
     QString m_currentImageUrl;
     QString m_currentImageDescription;
     static QPointer<GlobalState> m_instance;
-    WikipediaSearchClient* m_searchClient;
-    WikipediaPageClient* m_pageClient;
-    WikipediaFeaturedClient* m_featuredClient;
-    WikipediaHomeClient* m_homeClient;
-    HistoryState* m_historyState;
+    WikipediaSearchClient *m_searchClient;
+    WikipediaPageClient *m_pageClient;
+    WikipediaFeaturedClient *m_featuredClient;
+    WikipediaHomeClient *m_homeClient;
+    HistoryState *m_historyState;
     QMap<int, page> m_articleCache; // Cache for loaded articles
 
     // Helper method to check if item already exists in history
     bool itemExistsInHistory(int pageId);
 
-private slots:
+  private slots:
     void handleArticleLoadError(const QString &error);
     void handleSectionsLoadError(const QString &error);
 };
