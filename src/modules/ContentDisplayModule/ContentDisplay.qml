@@ -11,7 +11,6 @@ Item {
     id: mainContent
 
     property string articleText: ""
-    property bool sectionsPanelVisible: false
 
     signal backRequested
 
@@ -28,15 +27,6 @@ Item {
         scrollView.ScrollBar.vertical.position = 0;
     }
 
-    // Fetch sections when page changes
-    Connections {
-        function onCurrentPageChanged() {
-            // Reset sections panel visibility when page changes
-            mainContent.sectionsPanelVisible = false;
-        }
-
-        target: GlobalState
-    }
     BusyIndicator {
         id: loadingIndicator
 
@@ -52,22 +42,29 @@ Item {
             searchField.forceActiveFocus();
         }
     }
-    ColumnLayout {
-        id: mainLayout
+    RowLayout {
+        id: contentRow
 
         anchors.fill: parent
         spacing: 0
 
-        RowLayout {
-            id: searchBar
+        ColumnLayout {
+            id: mainLayout
 
+            Layout.fillHeight: true
             Layout.fillWidth: true
-            Layout.leftMargin: 10
-            Layout.preferredHeight: 60
-            Layout.rightMargin: 10
-            spacing: 10
-            visible: false
-            z: 1
+            spacing: 0
+
+            RowLayout {
+                id: searchBar
+
+                Layout.fillWidth: true
+                Layout.leftMargin: 10
+                Layout.preferredHeight: 60
+                Layout.rightMargin: 10
+                spacing: 10
+                visible: false
+                z: 1
 
             TextField {
                 id: searchField
@@ -141,17 +138,6 @@ Item {
 
                 onClicked: {
                     GlobalState.copyToClipboard(mainContent.articleText);
-                }
-            }
-            Button {
-                id: sectionsButton
-
-                text: "Sections"
-                visible: GlobalState.currentPageTitle.length > 0
-                Accessible.name: "Open sections panel"
-
-                onClicked: {
-                    mainContent.sectionsPanelVisible = !mainContent.sectionsPanelVisible;
                 }
             }
         }
@@ -250,6 +236,28 @@ Item {
                 }
             }
         }
+        }
+
+        // Permanent collapsible sections bar anchored to the right
+        Section {
+            id: sectionBar
+
+            Layout.alignment: Qt.AlignRight
+            Layout.fillHeight: true
+            Layout.preferredWidth: collapsed ? collapsedWidth : expandedWidth
+            visible: GlobalState.currentPageTitle.length > 0
+
+            onSectionClicked: function (section) {
+                var html = articleSection.text;
+                var cursorPos = contentDisplay.findSectionPosition(html, section.anchor);
+
+                if (cursorPos !== -1) {
+                    articleSection.cursorPosition = cursorPos;
+                    articleSection.select(cursorPos, cursorPos);
+                    scrollView.scrollToCursor();
+                }
+            }
+        }
     }
     ContentDisplayModel {
         id: contentDisplay
@@ -273,83 +281,12 @@ Item {
         }
     }
 
-    // Sections overlay panel
-    Rectangle {
-        id: sectionsOverlay
-
-        anchors.bottom: mainContent.bottom
-        anchors.right: mainContent.right
-        anchors.top: mainContent.top
-        border.color: articleDisplay.sysPalette.midlight
-        border.width: 1
-        color: articleDisplay.sysPalette.window
-        height: mainContent.height
-        visible: mainContent.sectionsPanelVisible
-        width: Math.min(mainContent.width * 0.5, 400)
-        x: mainContent.sectionsPanelVisible ? 0 : width
-        Behavior on x {
-            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
-        }
-        z: 100
-
-        // Close button
-        Button {
-            id: closeSectionsButton
-
-            anchors.margins: 10
-            anchors.right: parent.right
-            anchors.top: parent.top
-            height: 40
-            text: "×"
-            width: 40
-            z: 101
-            Accessible.name: "Close sections panel"
-
-            background: Rectangle {
-                color: hovered ? articleDisplay.sysPalette.midlight : articleDisplay.sysPalette.window
-                radius: 5
-            }
-            contentItem: Text {
-                color: articleDisplay.sysPalette.text
-                font.pixelSize: 18
-                text: "×"
-            }
-
-            onClicked: mainContent.sectionsPanelVisible = false
-        }
-
-        // Section component
-        Section {
-            id: sectionComponent
-
-            anchors.bottomMargin: 10
-            anchors.fill: parent
-            anchors.margins: 50
-            anchors.topMargin: 50
-
-            onSectionClicked: function (section) {
-                mainContent.sectionsPanelVisible = false;
-                // Scroll to section using anchor-based navigation
-                var html = articleSection.text;
-                var cursorPos = contentDisplay.findSectionPosition(html, section.anchor);
-
-                if (cursorPos !== -1) {
-                    articleSection.cursorPosition = cursorPos;
-                    articleSection.select(cursorPos, cursorPos);
-                    scrollView.scrollToCursor();
-                }
-            }
-        }
-    }
-
-    // Close sections panel on escape key when visible
+    // Close the search bar on escape key when visible
     Shortcut {
         sequences: ["Escape"]
 
         onActivated: {
-            if (mainContent.sectionsPanelVisible) {
-                mainContent.sectionsPanelVisible = false;
-            } else if (searchBar.visible) {
+            if (searchBar.visible) {
                 searchBar.visible = false;
             }
         }

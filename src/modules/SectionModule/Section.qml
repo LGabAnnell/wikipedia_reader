@@ -1,4 +1,4 @@
-// Section.qml - Displays the table of contents sections for a Wikipedia article
+// Section.qml - Collapsible vertical bar displaying the table of contents for a Wikipedia article
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,98 +8,145 @@ import wikipedia_qt.Section 1.0
 
 Item {
     id: root
-    width: parent ? parent.width : 300
-    height: parent ? parent.height : 600
-    
+
+    property bool collapsed: true
+    property int expandedWidth: 260
+    property int collapsedWidth: 36
+
     property bool loading: sectionModel.isLoading
     property var sections: sectionModel.sections
     signal sectionClicked(var section)
-    
+
+    width: collapsed ? collapsedWidth : expandedWidth
+    height: parent ? parent.height : 600
+
+    Behavior on width {
+        NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
+    }
+
     SectionModel {
         id: sectionModel
     }
-    
+
+    SystemPalette {
+        id: sysPalette
+    }
+
+    Rectangle {
+        id: background
+
+        anchors.fill: parent
+        border.color: sysPalette.midlight
+        border.width: 1
+        color: sysPalette.window
+    }
+
+    // Toggle handle, always visible at the top-right of the bar
+    Button {
+        id: toggleButton
+
+        Accessible.name: collapsed ? "Expand sections panel" : "Collapse sections panel"
+        anchors.margins: 4
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: 28
+        text: collapsed ? "\u2039" : "\u203A"
+        width: 28
+        z: 2
+
+        onClicked: root.collapsed = !root.collapsed
+    }
+
+    // Vertical label shown while collapsed
+    Text {
+        anchors.centerIn: parent
+        color: sysPalette.text
+        font.pixelSize: 12
+        rotation: 90
+        text: "Sections"
+        visible: root.collapsed
+    }
+
+    // Expanded content
     ColumnLayout {
         anchors.fill: parent
-        
-        // Header
+        anchors.margins: 4
+        anchors.topMargin: 40
+        visible: !root.collapsed
+
         Label {
-            text: "Sections"
-            font.bold: true
-            font.pixelSize: 18
             Layout.alignment: Qt.AlignHCenter
-            Layout.margins: 10
-            color: "white"
+            Layout.margins: 6
+            color: sysPalette.text
+            font.bold: true
+            font.pixelSize: 16
+            text: "Sections"
         }
-        
-        // Loading indicator
+
         BusyIndicator {
-            id: loadingIndicator
+            Layout.alignment: Qt.AlignHCenter
             running: sectionModel.isLoading
             visible: sectionModel.isLoading
-            Layout.alignment: Qt.AlignHCenter
         }
-        
-        // Error message
+
         Text {
-            text: sectionModel.errorMessage
-            color: "red"
-            visible: sectionModel.errorMessage.length > 0
-            wrapMode: Text.WordWrap
             Layout.fillWidth: true
             Layout.margins: 10
+            color: "red"
+            text: sectionModel.errorMessage
+            visible: sectionModel.errorMessage.length > 0
+            wrapMode: Text.WordWrap
         }
-        
-        // Container for sections list and overlay
+
         Item {
-            Layout.fillWidth: true
             Layout.fillHeight: true
-            
+            Layout.fillWidth: true
+
             ListView {
                 id: sectionsList
+
                 anchors.fill: parent
+                clip: true
                 model: sectionModel.sections
+
                 delegate: ItemDelegate {
-                    id: sectionDelegate
                     width: ListView.view.width
-                    onClicked: root.sectionClicked(modelData)
 
                     contentItem: Text {
-                        text: modelData.title
-                        color: "white"
-                        font.pixelSize: 14 - (modelData.level > 2 ? modelData.level - 2 : 0)
-                        font.bold: modelData.level <= 2
+                        color: sysPalette.text
                         elide: Text.ElideRight
+                        font.bold: modelData.level <= 2
+                        font.pixelSize: 14 - (modelData.level > 2 ? modelData.level - 2 : 0)
+                        text: modelData.title
                     }
+                    onClicked: root.sectionClicked(modelData)
                 }
             }
-            
+
             // Empty message overlay
             Rectangle {
-                id: emptyMessage
-                visible: sectionModel.sections.length === 0 && !sectionModel.isLoading
                 anchors.fill: parent
                 color: "transparent"
-                z: 1
-                
+                visible: sectionModel.sections.length === 0 && !sectionModel.isLoading
+
                 Text {
-                    text: "No sections found"
+                    anchors.fill: parent
                     color: "#888888"
                     horizontalAlignment: Text.AlignHCenter
+                    text: "No sections found"
                     verticalAlignment: Text.AlignVCenter
-                    anchors.fill: parent
                 }
             }
         }
     }
-    
+
     // Automatically fetch sections when the component is ready
     Component.onCompleted: {
         if (GlobalState.currentPageTitle.length > 0) {
             sectionModel.fetchSections(GlobalState.currentPageTitle)
         }
     }
-    
+
     // Refetch sections when the current page changes
     Connections {
         target: GlobalState
@@ -112,4 +159,3 @@ Item {
         }
     }
 }
-
