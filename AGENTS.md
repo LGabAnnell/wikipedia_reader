@@ -83,14 +83,14 @@ wikipedia_reader/
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 
 # Build
-cmake --build build
+cmake --build build -j14
 
 # Run (binary output dir is bin/)
 ./build/bin/appwikipedia_qt
 
 # Configure with tests
 cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
-cmake --build build
+cmake --build build -j14
 
 # Run tests via CTest
 ctest --test-dir build            # or: ./test.sh  (runs ctest --test-dir build/tests)
