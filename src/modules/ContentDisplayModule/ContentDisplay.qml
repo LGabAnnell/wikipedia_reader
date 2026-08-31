@@ -20,6 +20,15 @@ Item {
         onTriggered: contentDisplay.performSearch(searchField.text, articleSection.getText(0, articleSection.text.length))
     }
 
+    // Clears the pinned scroll position once the sidebar width animation has
+    // settled, so later window resizes don't snap to a stale anchor.
+    Timer {
+        id: pinResetTimer
+        interval: 300
+        repeat: false
+        onTriggered: scrollView.pinnedPosition = -1
+    }
+
     height: parent ? parent.height : 0
     width: parent ? parent.width : 0
 
@@ -144,6 +153,31 @@ Item {
         ScrollView {
             id: scrollView
 
+            // Character position in articleSection that should stay pinned to the
+            // top of the viewport while the sidebar toggles and reflows the text.
+            property int pinnedPosition: -1
+            property real pinnedOffset: 0
+
+            function pinTopPosition() {
+                let contentY = scrollView.contentItem.contentY;
+                let point = articleSection.mapFromItem(articleDisplay, 0, contentY);
+                scrollView.pinnedPosition = articleSection.positionAt(point.x, point.y);
+                let rect = articleSection.positionToRectangle(scrollView.pinnedPosition);
+                let charGlobalY = articleSection.mapToItem(articleDisplay, 0, rect.y).y;
+                scrollView.pinnedOffset = contentY - charGlobalY;
+            }
+
+            function applyPinnedPosition() {
+                if (scrollView.pinnedPosition < 0)
+                    return;
+                let rect = articleSection.positionToRectangle(scrollView.pinnedPosition);
+                let charGlobalY = articleSection.mapToItem(articleDisplay, 0, rect.y).y;
+                let newContentY = charGlobalY + scrollView.pinnedOffset;
+                let maxContentY = Math.max(0, scrollView.contentHeight - scrollView.height);
+                scrollView.contentItem.contentY = Math.max(0, Math.min(newContentY, maxContentY));
+                pinResetTimer.restart();
+            }
+
             function scrollToCursor(offset) {
                 const cursorRect = articleSection.cursorRectangle;
                 // Map into articleDisplay (the Column), NOT scrollView.contentItem —
@@ -198,6 +232,7 @@ Item {
                     visible: mainContent.articleText.length > 0
                     width: parent.width
                     wrapMode: TextEdit.Wrap
+                    onWidthChanged: scrollView.applyPinnedPosition()
 
                     ContextMenu.menu: Menu {
                         MenuItem {
@@ -247,6 +282,10 @@ Item {
             Layout.preferredWidth: collapsed ? collapsedWidth : expandedWidth
             visible: GlobalState.currentPageTitle.length > 0
 
+            onCollapsedChanged: {
+                scrollView.pinTopPosition();
+                pinResetTimer.restart();
+            }
             onSectionClicked: function (section) {
                 var html = articleSection.text;
                 var cursorPos = contentDisplay.findSectionPosition(html, section.anchor);
