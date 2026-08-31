@@ -15,9 +15,11 @@ ImageHomeModel::ImageHomeModel(QObject *parent) : QObject(parent), m_currentPage
         connect(m_pageClient, &WikipediaPageClient::pageWithImagesReceived,
                 this, [this](const page &p) {
                     m_imageUrls = p.imageUrls;
+                    m_imageDescriptions = p.imageDescriptions;
                     m_articleTitle = p.title;
                     m_currentPageId = p.pageid;
                     emit imageUrlsChanged();
+                    emit imageDescriptionsChanged();
                     emit articleTitleChanged();
                     emit currentPageIdChanged();
                 });
@@ -26,6 +28,10 @@ ImageHomeModel::ImageHomeModel(QObject *parent) : QObject(parent), m_currentPage
 
 QStringList ImageHomeModel::imageUrls() const {
     return m_imageUrls;
+}
+
+QStringList ImageHomeModel::imageDescriptions() const {
+    return m_imageDescriptions;
 }
 
 QString ImageHomeModel::articleTitle() const {
@@ -63,10 +69,12 @@ void ImageHomeModel::handlePageWithImagesReceived() {
     currentPage.imageUrls = GlobalState::instance()->currentPageImageUrls();
     
     m_imageUrls = currentPage.imageUrls;
+    m_imageDescriptions = currentPage.imageDescriptions;
     m_articleTitle = currentPage.title;
     m_currentPageId = currentPage.pageid;
     
     emit imageUrlsChanged();
+    emit imageDescriptionsChanged();
     emit articleTitleChanged();
     emit currentPageIdChanged();
 }

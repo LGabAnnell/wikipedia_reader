@@ -31,11 +31,13 @@ class page
     Q_PROPERTY(QString extract MEMBER extract)
     Q_PROPERTY(int pageid MEMBER pageid)
     Q_PROPERTY(QStringList imageUrls MEMBER imageUrls)
+    Q_PROPERTY(QStringList imageDescriptions MEMBER imageDescriptions)
 public:
     QString title;
     QString extract;
     int pageid;
     QStringList imageUrls;
+    QStringList imageDescriptions; // Parallel to imageUrls; plain-text caption per image
 };
 
 // Data structure for a featured article

@@ -4,6 +4,23 @@
 #include <QUrlQuery>
 #include <QUrl>
 #include <QEventLoop>
+#include <QRegularExpression>
+
+// Strip HTML tags and decode common entities so image descriptions render as plain text.
+static QString stripHtml(const QString &html) {
+    if (html.isEmpty()) {
+        return html;
+    }
+    QString text = html;
+    text.remove(QRegularExpression("<[^>]*>"));
+    text.replace("&amp;", "&");
+    text.replace("&lt;", "<");
+    text.replace("&gt;", ">");
+    text.replace("&quot;", "\"");
+    text.replace("&#39;", "'");
+    text.replace("&nbsp;", " ");
+    return text.trimmed();
+}
 
 WikipediaPageClient::WikipediaPageClient(QObject *parent) : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
     baseUrl = "https://en.wikipedia.org/w/api.php";
@@ -175,7 +192,7 @@ void WikipediaPageClient::onPageWithImagesReply(QNetworkReply *reply, int pageid
         }
 
         // Fetch image URLs from titles
-        fetchImageUrlsFromTitles(imageTitles, page.imageUrls);
+        fetchImageUrlsFromTitles(imageTitles, page.imageUrls, page.imageDescriptions);
         emit pageWithImagesReceived(page);
     } else {
         emit errorOccurred(reply->errorString());
@@ -183,7 +200,7 @@ void WikipediaPageClient::onPageWithImagesReply(QNetworkReply *reply, int pageid
     reply->deleteLater();
 }
 
-void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls) {
+void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls, QStringList &imageDescriptions) {
     if (imageTitles.isEmpty()) {
         return;
     }
@@ -194,7 +211,8 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
     urlQuery.addQueryItem("action", "query");
     urlQuery.addQueryItem("format", "json");
     urlQuery.addQueryItem("prop", "imageinfo");
-    urlQuery.addQueryItem("iiprop", "url");
+    urlQuery.addQueryItem("iiprop", "url|extmetadata");
+    urlQuery.addQueryItem("iiextmetadata", "ImageDescription");
     urlQuery.addQueryItem("titles", imageTitles.join("|"));
     url.setQuery(urlQuery);
 
@@ -213,9 +231,18 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
             if (pageObj.contains("imageinfo")) {
                 QJsonArray imageInfo = pageObj["imageinfo"].toArray();
                 if (!imageInfo.isEmpty()) {
-                    QString url = imageInfo[0].toObject()["url"].toString();
-                    if (!url.isEmpty()) {
-                        imageUrls.append(url);
+                    QJsonObject info = imageInfo[0].toObject();
+                    QString imageUrl = info["url"].toString();
+                    if (!imageUrl.isEmpty()) {
+                        imageUrls.append(imageUrl);
+
+                        // Extract the plain-text image description from extmetadata, if present.
+                        QString description;
+                        QJsonObject extmetadata = info["extmetadata"].toObject();
+                        if (extmetadata.contains("ImageDescription")) {
+                            description = stripHtml(extmetadata["ImageDescription"].toObject().value("value").toString());
+                        }
+                        imageDescriptions.append(description);
                     }
                 }
             }

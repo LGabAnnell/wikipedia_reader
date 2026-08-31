@@ -89,6 +89,14 @@ QString GlobalState::errorMessage() const {
     return m_errorMessage;
 }
 
+QString GlobalState::currentImageUrl() const {
+    return m_currentImageUrl;
+}
+
+QString GlobalState::currentImageDescription() const {
+    return m_currentImageDescription;
+}
+
 void GlobalState::setSearchResults(const QVector<search_result> &results) {
     m_searchResults = results;
     emit searchResultsChanged();
@@ -140,6 +148,20 @@ void GlobalState::setErrorMessage(const QString &message) {
 void GlobalState::clearErrorMessage() {
     m_errorMessage.clear();
     emit errorMessageChanged();
+}
+
+void GlobalState::setCurrentImageUrl(const QString &url) {
+    if (m_currentImageUrl != url) {
+        m_currentImageUrl = url;
+        emit currentImageUrlChanged();
+    }
+}
+
+void GlobalState::setCurrentImageDescription(const QString &description) {
+    if (m_currentImageDescription != description) {
+        m_currentImageDescription = description;
+        emit currentImageDescriptionChanged();
+    }
 }
 
 void GlobalState::loadArticleByPageId(int pageId) {

@@ -40,7 +40,7 @@ private slots:
 private:
     QNetworkAccessManager *networkManager;
     QString baseUrl;
-    void fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls);
+    void fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls, QStringList &imageDescriptions);
     void fetchPageContentWithImages(int pageid, const page &pageData);
 };
 

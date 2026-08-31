@@ -33,6 +33,12 @@ class GlobalState : public QObject {
     // Add error message property
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
 
+    // Currently selected image URL (for the fullscreen image view)
+    Q_PROPERTY(QString currentImageUrl READ currentImageUrl WRITE setCurrentImageUrl NOTIFY currentImageUrlChanged)
+
+    // Description/caption for the currently selected image (fullscreen image view overlay)
+    Q_PROPERTY(QString currentImageDescription READ currentImageDescription WRITE setCurrentImageDescription NOTIFY currentImageDescriptionChanged)
+
 public:
     Q_INVOKABLE void loadArticleByPageId(int pageId);
     Q_INVOKABLE void loadArticleByTitle(const QString &title);
@@ -51,6 +57,8 @@ public:
     bool isLoading() const;
     bool isLoadingSections() const;
     QString errorMessage() const;
+    QString currentImageUrl() const;
+    QString currentImageDescription() const;
 
     // Accessor for WikipediaPageClient
     WikipediaPageClient* pageClient() const { return m_pageClient; }
@@ -68,6 +76,8 @@ public slots:
     void setLoadingSections(bool loading);
     void setErrorMessage(const QString &message);
     void clearErrorMessage();
+    void setCurrentImageUrl(const QString &url);
+    void setCurrentImageDescription(const QString &description);
 
 signals:
     void searchResultsChanged();
@@ -76,6 +86,8 @@ signals:
     void sectionsChanged();
     void loadingSectionsChanged();
     void errorMessageChanged();
+    void currentImageUrlChanged();
+    void currentImageDescriptionChanged();
 
 private:
     QVector<search_result> m_searchResults;
@@ -84,6 +96,8 @@ private:
     bool m_isLoading;
     bool m_isLoadingSections;
     QString m_errorMessage;
+    QString m_currentImageUrl;
+    QString m_currentImageDescription;
     static QPointer<GlobalState> m_instance;
     WikipediaSearchClient* m_searchClient;
     WikipediaPageClient* m_pageClient;

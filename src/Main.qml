@@ -79,6 +79,15 @@ ApplicationWindow {
                     Layout.fillWidth: true
                 }
             }
+
+            // Define the fullscreen image view component
+            Component {
+                id: imageViewComponent
+                ImageView {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                }
+            }
         }
     }
 
@@ -90,6 +99,7 @@ ApplicationWindow {
         NavigationState.addView(Constants.historyView, historyComponent);
         NavigationState.addView(Constants.homeView, homeComponent);
         NavigationState.addView(Constants.imageGalleryView, imageGalleryComponent);
+        NavigationState.addView(Constants.imageView, imageViewComponent);
         // Install the event filter on the root ApplicationWindow
         NavigationState.installEventFilter(root);
 

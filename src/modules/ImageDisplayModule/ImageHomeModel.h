@@ -14,6 +14,7 @@ class ImageHomeModel : public QObject
     QML_ELEMENT
 
     Q_PROPERTY(QStringList imageUrls READ imageUrls NOTIFY imageUrlsChanged)
+    Q_PROPERTY(QStringList imageDescriptions READ imageDescriptions NOTIFY imageDescriptionsChanged)
     Q_PROPERTY(QString articleTitle READ articleTitle NOTIFY articleTitleChanged)
     Q_PROPERTY(int currentPageId READ currentPageId NOTIFY currentPageIdChanged)
 
@@ -21,6 +22,7 @@ public:
     explicit ImageHomeModel(QObject *parent = nullptr);
 
     QStringList imageUrls() const;
+    QStringList imageDescriptions() const;
     QString articleTitle() const;
     int currentPageId() const;
 
@@ -29,6 +31,7 @@ public:
 
 signals:
     void imageUrlsChanged();
+    void imageDescriptionsChanged();
     void articleTitleChanged();
     void currentPageIdChanged();
 
@@ -38,6 +41,7 @@ private slots:
 private:
     WikipediaPageClient* m_pageClient;
     QStringList m_imageUrls;
+    QStringList m_imageDescriptions;
     QString m_articleTitle;
     int m_currentPageId;
 };

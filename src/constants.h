@@ -13,6 +13,7 @@ class Constants : public QObject {
     Q_PROPERTY(QString searchView READ searchView CONSTANT)
     Q_PROPERTY(QString homeView READ homeView CONSTANT)
     Q_PROPERTY(QString imageGalleryView READ imageGalleryView CONSTANT)
+    Q_PROPERTY(QString imageView READ imageView CONSTANT)
 
 public:
     static Constants* create(QQmlEngine *, QJSEngine *) {
@@ -40,6 +41,10 @@ public:
 
     static QString imageGalleryView() {
         return "imageGallery";
+    }
+
+    static QString imageView() {
+        return "image";
     }
 
     // Delete copy constructor and assignment operator to prevent copies

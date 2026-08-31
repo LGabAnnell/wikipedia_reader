@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import wikipedia_qt // For GlobalState, NavigationState, Constants
 import wikipedia_qt.ImageDisplay
 
 Item {
@@ -143,6 +144,14 @@ Item {
                         id: mouseArea
                         anchors.fill: parent
                         hoverEnabled: true
+                        onClicked: {
+                            GlobalState.currentImageUrl = modelData;
+                            var desc = imageModel.imageDescriptions.length > index
+                                       ? imageModel.imageDescriptions[index]
+                                       : "";
+                            GlobalState.currentImageDescription = desc;
+                            NavigationState.navigateToView(Constants.imageView);
+                        }
                     }
                 }
             }

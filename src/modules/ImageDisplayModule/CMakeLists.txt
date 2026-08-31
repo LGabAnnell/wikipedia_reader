@@ -19,6 +19,7 @@ qt_add_qml_module(ImageDisplayModule
     QML_FILES
         ImageHome.qml
         ImageGallery.qml
+        ImageView.qml
     SOURCES
         ImageHomeModel.cpp
         ImageHomeModel.h
