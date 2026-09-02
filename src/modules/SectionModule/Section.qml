@@ -122,8 +122,9 @@ Item {
                     contentItem: Text {
                         color: sysPalette.text
                         elide: Text.ElideRight
-                        font.bold: modelData.level <= 2
-                        font.pixelSize: 14 - (modelData.level > 2 ? modelData.level - 2 : 0)
+                        font.bold: modelData.level <= 1
+                        font.pixelSize: 14 - (modelData.level > 1 ? modelData.level - 1 : 0)
+                        leftPadding: modelData.level > 1 ? modelData.level * 5 : 0
                         text: modelData.title
                     }
                     onClicked: root.sectionClicked(modelData)

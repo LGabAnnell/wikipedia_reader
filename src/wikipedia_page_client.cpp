@@ -318,7 +318,7 @@ void WikipediaPageClient::onSectionsReply(QNetworkReply *reply, const QString &t
 
                     section sec;
                     sec.title = sectionObj["line"].toString();
-                    sec.level = sectionObj["toclevel"].toInt();
+                    sec.level = sectionObj["tocLevel"].toInt();
                     sec.anchor = QUrl::fromPercentEncoding(sectionObj["anchor"].toString().toUtf8());
                     sec.index = sectionObj["index"].toString().toInt();
 

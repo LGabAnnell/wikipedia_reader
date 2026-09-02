@@ -186,6 +186,7 @@ bool HistoryDatabase::clearHistory() {
 
     QSqlQuery query(db);
     QString clearQuery = "DELETE FROM history";
+    query.prepare(clearQuery);
     return executeQuery(query, clearQuery, "clear history");
 }
 
