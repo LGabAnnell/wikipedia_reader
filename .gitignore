@@ -17,8 +17,6 @@
 *_pch.h.cpp
 *_resource.rc
 *.qm
-.#*
-*.*#
 core
 !core/
 tags
@@ -93,3 +91,4 @@ CMakeLists.txt.user*
 /.qmlls.ini
 **qmldir
 **.qmlls.ini
+.vibe
