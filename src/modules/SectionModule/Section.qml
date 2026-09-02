@@ -17,10 +17,17 @@ Item {
     property var sections: sectionModel.sections
     signal sectionClicked(var section)
 
-    width: collapsed ? collapsedWidth : expandedWidth
-    height: parent ? parent.height : 600
+    implicitHeight: parent ? parent.height : 600
 
-    Behavior on width {
+    // Animate the layout's preferred width rather than the item's width.
+    // The parent RowLayout positions and sizes this item based on
+    // Layout.preferredWidth, so animating that property keeps the right edge
+    // fixed and lets the bar expand/collapse leftward. The layout sets
+    // `width` to match each frame, so children anchored to parent.right
+    // stay in sync. Using implicitWidth (instead of width) lets the layout
+    // own the geometry; a direct `width` binding would jump instantly and
+    // desync from the animated Layout.preferredWidth.
+    Behavior on Layout.preferredWidth {
         NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
     }
 
