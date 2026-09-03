@@ -2,7 +2,7 @@
 #include <QCoreApplication>
 #include <QSignalSpy>
 #include <QVector>
-#include <qtest.h>
+#include <QtTest/QTest>
 #include "GlobalState.h"
 #include "HistoryState.h"
 
