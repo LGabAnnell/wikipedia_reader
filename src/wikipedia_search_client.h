@@ -20,6 +20,8 @@ class WikipediaSearchClient : public QObject {
 
     void search(const QString &query, int limit = 10);
 
+    static QVector<search_result> parseSearchResults(const QByteArray &responseData);
+
   signals:
     void searchCompleted(const QVector<search_result> &results);
     void errorOccurred(const QString &error);

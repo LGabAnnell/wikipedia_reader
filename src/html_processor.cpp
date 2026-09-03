@@ -99,16 +99,33 @@ void HtmlProcessor::processImageNodes(tinyxml2::XMLElement *element) {
 
 QString HtmlProcessor::processHtml(const QString &htmlContent) {
     tinyxml2::XMLDocument doc;
-    doc.Parse(htmlContent.toStdString().c_str());
+    // Wrap content in a dummy root element so that root-level <style>/<img>
+    // nodes are treated as children and caught by the recursive removers.
+    std::string wrapped = "<root>" + htmlContent.toStdString() + "</root>";
+    doc.Parse(wrapped.c_str());
 
-    for (tinyxml2::XMLElement *child = doc.FirstChildElement(); child != nullptr; child = child->NextSiblingElement()) {
-        removeStyleNodes(child);
-        removeStyleAttributes(child);
-        removeImgNodes(child);
+    tinyxml2::XMLElement *root = doc.FirstChildElement("root");
+    if (root) {
+        removeStyleNodes(root);
+        removeStyleAttributes(root);
+        removeImgNodes(root);
+    } else {
+        for (tinyxml2::XMLElement *child = doc.FirstChildElement(); child != nullptr; child = child->NextSiblingElement()) {
+            removeStyleNodes(child);
+            removeStyleAttributes(child);
+            removeImgNodes(child);
+        }
     }
 
     tinyxml2::XMLPrinter printer;
-    doc.Print(&printer);
+    if (root) {
+        // Print only the children of <root>, not the wrapper itself
+        for (tinyxml2::XMLNode *child = root->FirstChild(); child != nullptr; child = child->NextSibling()) {
+            child->Accept(&printer);
+        }
+    } else {
+        doc.Print(&printer);
+    }
 
     QFile css(":/styles/table_style.css");
     if (!css.open(QIODevice::ReadOnly)) {

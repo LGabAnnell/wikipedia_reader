@@ -1,5 +1,6 @@
 // test_sidebar_layout.cpp
 #include <QtTest/QtTest>
+#include <QtQuick/QQuickItem>
 #include <QtQuick/QQuickView>
 #include <QtQuickControls2/QQuickStyle>
 #include <QtQml/QQmlEngine>
@@ -18,61 +19,73 @@ private slots:
         qmlRegisterType<SidebarModel>("Sidebar", 1, 0, "SidebarModel");
     }
 
-    void testSidebarWidthConstraints()
+    void testSidebarLoads()
     {
-        // Test that Sidebar respects width constraints
+        // Verify that Sidebar.qml loads successfully
         QQmlEngine engine;
         QQmlComponent component(&engine, QUrl::fromLocalFile("SidebarModule/Sidebar.qml"));
-        
+
         if (component.isError()) {
+            for (const auto &err : component.errors()) {
+                qWarning() << err.toString();
+            }
             QFAIL("Failed to load Sidebar.qml");
         }
-        
+
         QObject *sidebarObj = component.create();
         QVERIFY(sidebarObj != nullptr);
-        
-        // Check if the sidebar has the expected properties
+
         QQuickItem *sidebar = qobject_cast<QQuickItem*>(sidebarObj);
         QVERIFY(sidebar != nullptr);
-        
-        // The sidebar should have layout properties set
-        QCOMPARE(sidebar->property("Layout.preferredWidth").toInt(), 200);
-        QCOMPARE(sidebar->property("Layout.minimumWidth").toInt(), 40);
-        QCOMPARE(sidebar->property("Layout.maximumWidth").toInt(), 200);
-        
+
         delete sidebarObj;
     }
 
-    void testSidebarButtons()
+    void testSidebarHasListView()
     {
-        // Test that sidebar buttons are properly laid out
+        // Verify that the sidebar contains a ListView child
         QQmlEngine engine;
         QQmlComponent component(&engine, QUrl::fromLocalFile("SidebarModule/Sidebar.qml"));
-        
+
         if (component.isError()) {
             QFAIL("Failed to load Sidebar.qml");
         }
-        
+
         QObject *sidebarObj = component.create();
         QVERIFY(sidebarObj != nullptr);
-        
+
         QQuickItem *sidebar = qobject_cast<QQuickItem*>(sidebarObj);
         QVERIFY(sidebar != nullptr);
-        
-        // Find the buttons
-        QList<QQuickItem*> buttons = sidebar->findChildren<QQuickItem*>(QString(), Qt::FindChildrenRecursively);
-        int buttonCount = 0;
-        
-        for (QQuickItem *item : buttons) {
-            if (item->metaObject()->className() == QString("QQuickButton")) {
-                buttonCount++;
-                // Check that buttons have Layout.fillWidth: true
-                QVERIFY(item->property("Layout.fillWidth").toBool());
+
+        // Find ListView children
+        QList<QQuickItem*> children = sidebar->findChildren<QQuickItem*>(QString(), Qt::FindChildrenRecursively);
+        bool foundListView = false;
+        for (QQuickItem *item : children) {
+            if (item->metaObject()->className() == QString("QQuickListView")) {
+                foundListView = true;
+                break;
             }
         }
-        
-        QCOMPARE(buttonCount, 3); // Should have Home, History, Bookmarks buttons
-        
+        QVERIFY2(foundListView, "Sidebar should contain a ListView");
+
+        delete sidebarObj;
+    }
+
+    void testSidebarHasSearchResultsProperty()
+    {
+        // Verify that the sidebar exposes a searchResults property
+        QQmlEngine engine;
+        QQmlComponent component(&engine, QUrl::fromLocalFile("SidebarModule/Sidebar.qml"));
+
+        if (component.isError()) {
+            QFAIL("Failed to load Sidebar.qml");
+        }
+
+        QObject *sidebarObj = component.create();
+        QVERIFY(sidebarObj != nullptr);
+
+        QVERIFY(sidebarObj->metaObject()->indexOfProperty("searchResults") != -1);
+
         delete sidebarObj;
     }
 

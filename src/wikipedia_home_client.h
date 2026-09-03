@@ -23,6 +23,10 @@ class WikipediaHomeClient : public QObject {
     void getOnThisDayEvents(int month, int day);
     void getDidYouKnowItems();
 
+    static QVector<news_item> parseNewsItems(const QByteArray &responseData);
+    static QVector<on_this_day_event> parseOnThisDayEvents(const QByteArray &responseData);
+    static did_you_know_item parseArticleContent(const QByteArray &responseData);
+
   signals:
     void newsItemsReceived(const QVector<news_item> &items);
     void onThisDayEventsReceived(const QVector<on_this_day_event> &events);

@@ -5,17 +5,21 @@
 #include <QVector>
 #include "GlobalState.h"
 #include "SearchBarModel.h"
-#include "wikipedia_client/wikipedia_client.h"
+#include "wikipedia_search_client.h"
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
 
+    if (!qgetenv("RUN_NETWORK_TESTS").toInt()) {
+        qDebug() << "Network tests disabled. Set RUN_NETWORK_TESTS=1 to enable.";
+        return 0;
+    }
+
     // Create GlobalState
     GlobalState globalState;
 
-    // Create SearchBarModel and connect to GlobalState
+    // Create SearchBarModel — it auto-connects to GlobalState::instance()
     SearchBarModel searchBarModel;
-    searchBarModel.setGlobalState(&globalState);
 
     // Connect to signals to monitor changes
     QObject::connect(&globalState, &GlobalState::searchResultsChanged, [&]() {

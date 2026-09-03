@@ -95,6 +95,8 @@ void GlobalState::setCurrentPageFromData(const QString &title, const QString &ex
 }
 
 void GlobalState::setIsLoading(bool loading) {
+    if (m_isLoading == loading)
+        return;
     m_isLoading = loading;
     emit isLoadingChanged();
 }

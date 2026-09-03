@@ -21,6 +21,9 @@ class WikipediaFeaturedClient : public QObject {
 
     void getFeaturedArticleOfTheDay();
 
+    static void parseFeaturedArticle(const QByteArray &responseData,
+                                     QString &title, QString &extract, int &pageid);
+
   signals:
     void featuredArticleReceived(const QString &title, const QString &extract, const int &pageid);
     void errorOccurred(const QString &error);

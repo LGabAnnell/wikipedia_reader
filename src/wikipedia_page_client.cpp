@@ -48,26 +48,32 @@ void WikipediaPageClient::getPage(const QString &title) {
 
 void WikipediaPageClient::onPageReply(QNetworkReply *reply, const QString &title) {
     if (reply->error() == QNetworkReply::NoError) {
-        QByteArray response = reply->readAll();
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
-        QJsonObject jsonObj = jsonDoc.object();
-        QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
-
-        for (auto it = pages.begin(); it != pages.end(); ++it) {
-            if (it.value().toObject()["title"].toString() == title) {
-                page page;
-                page.title = it.value().toObject()["title"].toString();
-                page.extract = it.value().toObject()["extract"].toString();
-                page.pageid = it.key().toInt();
-                page.imageUrls = QStringList(); // Initialize imageUrls as an empty list
-                emit pageReceived(page);
-                break;
-            }
+        page p = parsePage(reply->readAll(), title);
+        if (!p.title.isEmpty()) {
+            emit pageReceived(p);
         }
     } else {
         emit errorOccurred(reply->errorString());
     }
     reply->deleteLater();
+}
+
+page WikipediaPageClient::parsePage(const QByteArray &responseData, const QString &title) {
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
+    QJsonObject jsonObj = jsonDoc.object();
+    QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
+
+    page result;
+    for (auto it = pages.begin(); it != pages.end(); ++it) {
+        if (it.value().toObject()["title"].toString() == title) {
+            result.title = it.value().toObject()["title"].toString();
+            result.extract = it.value().toObject()["extract"].toString();
+            result.pageid = it.key().toInt();
+            result.imageUrls = QStringList();
+            break;
+        }
+    }
+    return result;
 }
 
 void WikipediaPageClient::getPageById(int pageid) {
@@ -167,40 +173,45 @@ void WikipediaPageClient::resolveTitleToPageId(const QString &title) {
 
 void WikipediaPageClient::onPageWithImagesReply(QNetworkReply *reply, int pageid) {
     if (reply->error() == QNetworkReply::NoError) {
-        QByteArray response = reply->readAll();
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
-        QJsonObject jsonObj = jsonDoc.object();
-        QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
+        page p = parsePageWithImages(reply->readAll(), pageid);
 
-        page page;
-        QStringList imageTitles;
-
-        for (auto it = pages.begin(); it != pages.end(); ++it) {
-            if (it.key().toInt() == pageid) {
-                QJsonObject pageObj = it.value().toObject();
-                page.title = pageObj["title"].toString();
-                page.extract = pageObj["extract"].toString();
-                page.pageid = pageid;
-                page.imageUrls = QStringList(); // Initialize imageUrls as an empty list
-
-                // Extract image titles
-                if (pageObj.contains("images")) {
-                    QJsonArray images = pageObj["images"].toArray();
-                    for (const QJsonValue &image : std::as_const(images)) {
-                        imageTitles.append(image.toObject().value("title").toString());
-                    }
-                }
-                break;
-            }
-        }
-
-        // Fetch image URLs from titles
-        fetchImageUrlsFromTitles(imageTitles, page.imageUrls, page.imageDescriptions);
-        emit pageWithImagesReceived(page);
+        // parsePageWithImages stores image titles in imageUrls temporarily;
+        // extract them and fetch the actual URLs
+        QStringList imageTitles = p.imageUrls;
+        p.imageUrls = QStringList();
+        fetchImageUrlsFromTitles(imageTitles, p.imageUrls, p.imageDescriptions);
+        emit pageWithImagesReceived(p);
     } else {
         emit errorOccurred(reply->errorString());
     }
     reply->deleteLater();
+}
+
+page WikipediaPageClient::parsePageWithImages(const QByteArray &responseData, int pageid) {
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
+    QJsonObject jsonObj = jsonDoc.object();
+    QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
+
+    page result;
+    for (auto it = pages.begin(); it != pages.end(); ++it) {
+        if (it.key().toInt() == pageid) {
+            QJsonObject pageObj = it.value().toObject();
+            result.title = pageObj["title"].toString();
+            result.extract = pageObj["extract"].toString();
+            result.pageid = pageid;
+            result.imageUrls = QStringList();
+
+            // Extract image titles into imageUrls temporarily (caller fetches URLs)
+            if (pageObj.contains("images")) {
+                QJsonArray images = pageObj["images"].toArray();
+                for (const QJsonValue &image : std::as_const(images)) {
+                    result.imageUrls.append(image.toObject().value("title").toString());
+                }
+            }
+            break;
+        }
+    }
+    return result;
 }
 
 void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls,
@@ -299,37 +310,40 @@ void WikipediaPageClient::getSections(const QString &title) {
     connect(reply, &QNetworkReply::finished, this, [this, reply, title]() { this->onSectionsReply(reply, title); });
 }
 
-void WikipediaPageClient::onSectionsReply(QNetworkReply *reply, const QString &title) {
+void WikipediaPageClient::onSectionsReply(QNetworkReply *reply) {
     if (reply->error() == QNetworkReply::NoError) {
-        QByteArray response = reply->readAll();
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
-        QJsonObject jsonObj = jsonDoc.object();
-
-        QVector<section> sections;
-
-        if (jsonObj.contains("parse") && jsonObj["parse"].toObject().contains("tocdata")) {
-            QJsonObject tocdata = jsonObj["parse"].toObject()["tocdata"].toObject();
-
-            if (tocdata.contains("sections") && tocdata["sections"].isArray()) {
-                QJsonArray sectionsArray = tocdata["sections"].toArray();
-
-                for (const QJsonValue &sectionValue : std::as_const(sectionsArray)) {
-                    QJsonObject sectionObj = sectionValue.toObject();
-
-                    section sec;
-                    sec.title = sectionObj["line"].toString();
-                    sec.level = sectionObj["tocLevel"].toInt();
-                    sec.anchor = QUrl::fromPercentEncoding(sectionObj["anchor"].toString().toUtf8());
-                    sec.index = sectionObj["index"].toString().toInt();
-
-                    sections.append(sec);
-                }
-            }
-        }
-
-        emit sectionsReceived(sections);
+        emit sectionsReceived(parseSections(reply->readAll()));
     } else {
         emit errorOccurred(reply->errorString());
     }
     reply->deleteLater();
+}
+
+QVector<section> WikipediaPageClient::parseSections(const QByteArray &responseData) {
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
+    QJsonObject jsonObj = jsonDoc.object();
+
+    QVector<section> sections;
+
+    if (jsonObj.contains("parse") && jsonObj["parse"].toObject().contains("tocdata")) {
+        QJsonObject tocdata = jsonObj["parse"].toObject()["tocdata"].toObject();
+
+        if (tocdata.contains("sections") && tocdata["sections"].isArray()) {
+            QJsonArray sectionsArray = tocdata["sections"].toArray();
+
+            for (const QJsonValue &sectionValue : std::as_const(sectionsArray)) {
+                QJsonObject sectionObj = sectionValue.toObject();
+
+                section sec;
+                sec.title = sectionObj["line"].toString();
+                sec.level = sectionObj["tocLevel"].toInt();
+                sec.anchor = QUrl::fromPercentEncoding(sectionObj["anchor"].toString().toUtf8());
+                sec.index = sectionObj["index"].toString().toInt();
+
+                sections.append(sec);
+            }
+        }
+    }
+
+    return sections;
 }

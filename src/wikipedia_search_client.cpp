@@ -26,18 +26,21 @@ void WikipediaSearchClient::search(const QString &query, int limit) {
 
 void WikipediaSearchClient::onSearchReply(QNetworkReply *reply) {
     if (reply->error() == QNetworkReply::NoError) {
-        QByteArray response = reply->readAll();
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
-        QJsonObject jsonObj = jsonDoc.object();
-        QJsonArray searchResults = jsonObj["query"].toObject()["search"].toArray();
-
-        QVector<search_result> results;
-        for (const QJsonValue &result : searchResults) {
-            results.push_back({result["title"].toString(), result["snippet"].toString(), result["pageid"].toInt()});
-        }
-        emit searchCompleted(results);
+        emit searchCompleted(parseSearchResults(reply->readAll()));
     } else {
         emit errorOccurred(reply->errorString());
     }
     reply->deleteLater();
+}
+
+QVector<search_result> WikipediaSearchClient::parseSearchResults(const QByteArray &responseData) {
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
+    QJsonObject jsonObj = jsonDoc.object();
+    QJsonArray searchResults = jsonObj["query"].toObject()["search"].toArray();
+
+    QVector<search_result> results;
+    for (const QJsonValue &result : searchResults) {
+        results.push_back({result["title"].toString(), result["snippet"].toString(), result["pageid"].toInt()});
+    }
+    return results;
 }

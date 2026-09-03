@@ -24,6 +24,10 @@ class WikipediaPageClient : public QObject {
     void resolveTitleToPageId(const QString &title);
     void getSections(const QString &title);
 
+    static page parsePage(const QByteArray &responseData, const QString &title);
+    static page parsePageWithImages(const QByteArray &responseData, int pageid);
+    static QVector<section> parseSections(const QByteArray &responseData);
+
   signals:
     void pageReceived(const page &page);
     void pageWithImagesReceived(const page &page);
@@ -34,7 +38,7 @@ class WikipediaPageClient : public QObject {
   private slots:
     void onPageReply(QNetworkReply *reply, const QString &title);
     void onPageWithImagesReply(QNetworkReply *reply, int pageid);
-    void onSectionsReply(QNetworkReply *reply, const QString &title);
+    void onSectionsReply(QNetworkReply *reply);
 
   private:
     QNetworkAccessManager *networkManager;

@@ -133,7 +133,7 @@ install(TARGETS appwikipedia_qt
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-if (BUILD_TESTS)
+if (BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 

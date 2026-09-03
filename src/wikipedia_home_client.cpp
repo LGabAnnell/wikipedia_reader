@@ -42,8 +42,12 @@ void WikipediaHomeClient::onNewsItemsReply(QNetworkReply *reply) {
         return;
     }
 
-    QByteArray data = reply->readAll();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
+    emit newsItemsReceived(parseNewsItems(reply->readAll()));
+    reply->deleteLater();
+}
+
+QVector<news_item> WikipediaHomeClient::parseNewsItems(const QByteArray &responseData) {
+    QJsonDocument doc = QJsonDocument::fromJson(responseData);
     QJsonObject root = doc.object();
 
     QVector<news_item> newsItems;
@@ -64,8 +68,7 @@ void WikipediaHomeClient::onNewsItemsReply(QNetworkReply *reply) {
         qWarning() << "mostread field not found in API response";
     }
 
-    emit newsItemsReceived(newsItems);
-    reply->deleteLater();
+    return newsItems;
 }
 
 void WikipediaHomeClient::onOnThisDayEventsReply(QNetworkReply *reply) {
@@ -75,8 +78,12 @@ void WikipediaHomeClient::onOnThisDayEventsReply(QNetworkReply *reply) {
         return;
     }
 
-    QByteArray data = reply->readAll();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
+    emit onThisDayEventsReceived(parseOnThisDayEvents(reply->readAll()));
+    reply->deleteLater();
+}
+
+QVector<on_this_day_event> WikipediaHomeClient::parseOnThisDayEvents(const QByteArray &responseData) {
+    QJsonDocument doc = QJsonDocument::fromJson(responseData);
     QJsonObject root = doc.object();
 
     QVector<on_this_day_event> onThisDayEvents;
@@ -122,11 +129,10 @@ void WikipediaHomeClient::onOnThisDayEventsReply(QNetworkReply *reply) {
         }
     } else {
         qWarning() << "No 'selected' events found in on-this-day API response";
-        qWarning() << "API Response:" << QString(data);
+        qWarning() << "API Response:" << QString(responseData);
     }
 
-    emit onThisDayEventsReceived(onThisDayEvents);
-    reply->deleteLater();
+    return onThisDayEvents;
 }
 
 void WikipediaHomeClient::onRandomArticleTitleReply(QNetworkReply *reply) {
@@ -165,18 +171,22 @@ void WikipediaHomeClient::onArticleContentReply(QNetworkReply *reply, const QStr
         return;
     }
 
-    QByteArray data = reply->readAll();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
+    QVector<did_you_know_item> didYouKnowItems;
+    didYouKnowItems.append(parseArticleContent(reply->readAll()));
+
+    emit didYouKnowItemsReceived(didYouKnowItems);
+    reply->deleteLater();
+}
+
+did_you_know_item WikipediaHomeClient::parseArticleContent(const QByteArray &responseData) {
+    QJsonDocument doc = QJsonDocument::fromJson(responseData);
     QJsonObject root = doc.object();
 
-    QVector<did_you_know_item> didYouKnowItems;
     did_you_know_item dyk;
     dyk.text = root.contains("extract") ? root["extract"].toString() : "";
     dyk.url =
         root.contains("content_urls") ? root["content_urls"].toObject()["desktop"].toObject()["page"].toString() : "";
     dyk.pageid = root.contains("pageid") ? root["pageid"].toInt() : 0;
-    didYouKnowItems.append(dyk);
 
-    emit didYouKnowItemsReceived(didYouKnowItems);
-    reply->deleteLater();
+    return dyk;
 }

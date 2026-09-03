@@ -23,16 +23,22 @@ void WikipediaFeaturedClient::getFeaturedArticleOfTheDay() {
 
 void WikipediaFeaturedClient::onFeaturedArticleReply(QNetworkReply *reply) {
     if (reply->error() == QNetworkReply::NoError) {
-        QByteArray response = reply->readAll();
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
-        QJsonObject jsonObj = jsonDoc.object();
-
-        QString extract = jsonObj["tfa"].toObject()["extract"].toString();
-        QString title = jsonObj["tfa"].toObject()["title"].toString();
-        int pageid = jsonObj["tfa"].toObject()["pageid"].toInt();
+        QString title, extract;
+        int pageid;
+        parseFeaturedArticle(reply->readAll(), title, extract, pageid);
         emit featuredArticleReceived(title, extract, pageid);
     } else {
         emit errorOccurred(reply->errorString());
     }
     reply->deleteLater();
+}
+
+void WikipediaFeaturedClient::parseFeaturedArticle(const QByteArray &responseData,
+                                                    QString &title, QString &extract, int &pageid) {
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
+    QJsonObject jsonObj = jsonDoc.object();
+
+    extract = jsonObj["tfa"].toObject()["extract"].toString();
+    title = jsonObj["tfa"].toObject()["title"].toString();
+    pageid = jsonObj["tfa"].toObject()["pageid"].toInt();
 }
