@@ -1,7 +1,6 @@
 // Constants.h
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
-#include <QObject>
 #include <QQmlEngine>
 
 class Constants : public QObject {

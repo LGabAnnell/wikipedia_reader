@@ -1,4 +1,7 @@
 // src/GlobalState.cpp
+
+#include <QClipboard>
+
 #include "GlobalState.h"
 #include "wikipedia_featured_client.h"
 #include "wikipedia_home_client.h"
@@ -67,6 +70,8 @@ QString GlobalState::currentImageUrl() const { return m_currentImageUrl; }
 
 QString GlobalState::currentImageDescription() const { return m_currentImageDescription; }
 
+int GlobalState::currentSectionIndex() const { return m_currentSectionIndex; }
+
 void GlobalState::setSearchResults(const QVector<search_result> &results) {
     m_searchResults = results;
     emit searchResultsChanged();
@@ -133,6 +138,13 @@ void GlobalState::setCurrentImageDescription(const QString &description) {
     if (m_currentImageDescription != description) {
         m_currentImageDescription = description;
         emit currentImageDescriptionChanged();
+    }
+}
+
+void GlobalState::setCurrentSectionIndex(int index) {
+    if (m_currentSectionIndex != index) {
+        m_currentSectionIndex = index;
+        emit currentSectionIndexChanged();
     }
 }
 

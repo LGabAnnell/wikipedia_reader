@@ -1,7 +1,6 @@
 // tests/GlobalStateTest.cpp
 #include <QCoreApplication>
 #include <QSignalSpy>
-#include <QVector>
 #include <QtTest/QTest>
 #include "GlobalState.h"
 #include "HistoryState.h"

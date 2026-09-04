@@ -119,8 +119,15 @@ Item {
                 delegate: ItemDelegate {
                     width: ListView.view.width
 
+                    // Highlight the section currently at the top of the viewport
+                    background: Rectangle {
+                        color: modelData.index === GlobalState.currentSectionIndex
+                               ? sysPalette.highlight : "transparent"
+                    }
+
                     contentItem: Text {
-                        color: sysPalette.text
+                        color: modelData.index === GlobalState.currentSectionIndex
+                               ? sysPalette.highlightedText : sysPalette.text
                         elide: Text.ElideRight
                         font.bold: modelData.level <= 1
                         font.pixelSize: 14 - (modelData.level > 1 ? modelData.level - 1 : 0)

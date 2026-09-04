@@ -309,7 +309,7 @@ void WikipediaPageClient::getSections(const QString &title) {
     url.setQuery(urlQuery);
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, title]() { this->onSectionsReply(reply); });
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() { this->onSectionsReply(reply); });
 }
 
 void WikipediaPageClient::onSectionsReply(QNetworkReply *reply) {
