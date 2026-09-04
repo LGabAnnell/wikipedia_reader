@@ -8,9 +8,10 @@
 
 static const QRegularExpression htmlTagRegex("<[^>]*>");
 
+namespace {
 // Strip HTML tags and decode common entities so image descriptions render as
 // plain text.
-static QString stripHtml(const QString &html) {
+QString stripHtml(const QString &html) {
     if (html.isEmpty()) {
         return html;
     }
@@ -24,6 +25,7 @@ static QString stripHtml(const QString &html) {
     text.replace("&nbsp;", " ");
     return text.trimmed();
 }
+} // namespace
 
 WikipediaPageClient::WikipediaPageClient(QObject *parent)
     : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
