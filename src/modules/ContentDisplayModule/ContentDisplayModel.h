@@ -1,10 +1,9 @@
 #ifndef CONTENTDISPLAYMODEL_H
 #define CONTENTDISPLAYMODEL_H
 
-#include <QObject>
-#include <QString>
 #include <QQmlEngine>
 #include <QList>
+#include <QVector>
 
 struct search_indices {
     Q_GADGET
@@ -40,6 +39,14 @@ public:
     // Method to find section position by anchor
     Q_INVOKABLE int findSectionPosition(const QString &html, const QString &anchor);
 
+    // Pre-compute character positions for all sections in the article HTML.
+    // sections is a list of objects with an "anchor" property.
+    Q_INVOKABLE void updateSectionPositions(const QString &html, const QVariantList &sections);
+
+    // Binary-search the pre-computed positions for the last section whose
+    // character position <= charPosition. Returns the section index or -1.
+    Q_INVOKABLE int findSectionAtPosition(int charPosition);
+
     // Getter for currentResultIndex
     int currentResultIndex() const { return m_currentResultIndex + 1; }
 
@@ -50,6 +57,7 @@ signals:
     /**
      * @brief Signal emitted when a search is performed.
      * @param searchText The text to search for.
+     * @param text The text to search within.
      */
     void searchRequested(const QString &searchText, const QString &text);
 
@@ -81,6 +89,9 @@ private:
 
     // Index of the currently selected search result
     int m_currentResultIndex = -1;
+
+    // Sorted (charPosition, sectionIndex) pairs for scroll tracking
+    QVector<QPair<int, int>> m_sectionPositions;
 };
 
 #endif // CONTENTDISPLAYMODEL_H

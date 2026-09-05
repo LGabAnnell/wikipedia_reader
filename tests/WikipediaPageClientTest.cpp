@@ -101,19 +101,19 @@ class WikipediaPageClientTest : public QObject {
         QCOMPARE(sections[1].index, 2);
     }
 
-    void testParseSectionsEmpty() {
+    static void testParseSectionsEmpty() {
         QByteArray json = R"({"parse":{"tocdata":{"sections":[]}}})";
         QVector<section> sections = WikipediaPageClient::parseSections(json);
         QVERIFY(sections.isEmpty());
     }
 
-    void testParseSectionsMissingParse() {
+    static void testParseSectionsMissingParse() {
         QByteArray json = R"({})";
         QVector<section> sections = WikipediaPageClient::parseSections(json);
         QVERIFY(sections.isEmpty());
     }
 
-    void testParseSectionsMalformedJson() {
+    static void testParseSectionsMalformedJson() {
         QByteArray json = "not json";
         QVector<section> sections = WikipediaPageClient::parseSections(json);
         QVERIFY(sections.isEmpty());

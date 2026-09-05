@@ -119,8 +119,13 @@ Item {
                 delegate: ItemDelegate {
                     width: ListView.view.width
 
+                    // ItemDelegate.highlighted drives the default background,
+                    // so we get the platform hover/press styling for free.
+                    highlighted: modelData.index === GlobalState.currentSectionIndex
+
                     contentItem: Text {
-                        color: sysPalette.text
+                        color: parent.highlighted
+                            ? sysPalette.highlightedText : sysPalette.text
                         elide: Text.ElideRight
                         font.bold: modelData.level <= 1
                         font.pixelSize: 14 - (modelData.level > 1 ? modelData.level - 1 : 0)

@@ -29,11 +29,39 @@ Item {
         onTriggered: scrollView.pinnedPosition = -1
     }
 
+    // Debounces the scroll-tracking lookup so rapid contentY changes don't
+    // flood positionAt() calls during momentum scrolling.
+    Timer {
+        id: sectionTrackTimer
+        interval: 50
+        repeat: false
+        onTriggered: {
+            if (!articleSection.visible || sectionBar.sections.length === 0)
+                return;
+
+            var contentY = scrollView.contentItem.contentY;
+            var point = articleSection.mapFromItem(articleDisplay, 0, contentY);
+            var charPos = articleSection.positionAt(point.x, point.y);
+            var sectionIdx = contentDisplay.findSectionAtPosition(charPos);
+            GlobalState.setCurrentSectionIndex(sectionIdx);
+        }
+    }
+
+    // (Re)compute the character-position map for all sections. Called when
+    // both the article HTML and the section list are available.
+    function updateSectionTracking() {
+        if (articleText.length > 0 && sectionBar.sections.length > 0) {
+            contentDisplay.updateSectionPositions(articleText, sectionBar.sections);
+        }
+    }
+
     height: parent ? parent.height : 0
     width: parent ? parent.width : 0
 
     onArticleTextChanged: {
         scrollView.ScrollBar.vertical.position = 0;
+        GlobalState.setCurrentSectionIndex(-1);
+        updateSectionTracking();
     }
 
     BusyIndicator {
@@ -328,6 +356,30 @@ Item {
             if (searchBar.visible) {
                 searchBar.visible = false;
             }
+        }
+    }
+
+    // Track which section is at the top of the viewport as the user scrolls.
+    Connections {
+        target: scrollView.contentItem
+        function onContentYChanged() {
+            sectionTrackTimer.restart();
+        }
+    }
+
+    // Re-compute section positions when the section list arrives asynchronously.
+    Connections {
+        target: sectionBar
+        function onSectionsChanged() {
+            updateSectionTracking();
+        }
+    }
+
+    // Reset the highlight when navigating to a different article.
+    Connections {
+        target: GlobalState
+        function onCurrentPageChanged() {
+            GlobalState.setCurrentSectionIndex(-1);
         }
     }
 }

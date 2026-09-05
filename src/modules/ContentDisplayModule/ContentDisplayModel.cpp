@@ -1,9 +1,7 @@
 #include "ContentDisplayModel.h"
-#include <QDebug>
+#include "wikipedia_models.h"
 #include <algorithm>
 #include <QFile>
-#include <QUrl>
-#include <QTextDocument>
 #include <QTextBlock>
 #include <QTextCursor>
 #include <QTextCharFormat>
@@ -89,6 +87,91 @@ int ContentDisplayModel::findSectionPosition(const QString &html, const QString 
         }
     }
     return -1;
+}
+
+void ContentDisplayModel::updateSectionPositions(const QString &html, const QVariantList &sections) {
+    m_sectionPositions.clear();
+
+    if (html.isEmpty() || sections.isEmpty())
+        return;
+
+    QTextDocument doc;
+    doc.setHtml(html);
+
+    for (int i = 0; i < sections.size(); ++i) {
+        const QVariant &sectionVar = sections[i];
+        section sec = qvariant_cast<section>(sectionVar);
+        if (sec.anchor.isEmpty())
+            continue;
+
+        // Build target variations (same logic as findSectionPosition)
+        QStringList targets;
+        targets << sec.anchor;
+
+        QString underscored = sec.anchor;
+        underscored.replace(' ', '_');
+        targets << underscored;
+
+        QString xmlEscaped = sec.anchor;
+        xmlEscaped.replace(QChar(0x2013), "&#8211;");
+        xmlEscaped.replace(QChar(0x2014), "&#8212;");
+        targets << xmlEscaped;
+
+        QString xmlEscapedUnderscored = underscored;
+        xmlEscapedUnderscored.replace(QChar(0x2013), "&#8211;");
+        xmlEscapedUnderscored.replace(QChar(0x2014), "&#8212;");
+        targets << xmlEscapedUnderscored;
+
+        for (QTextBlock block = doc.begin(); block != doc.end(); block = block.next()) {
+            for (auto it = block.begin(); !it.atEnd(); ++it) {
+                QTextFragment frag = it.fragment();
+                if (!frag.isValid()) continue;
+
+                QTextCharFormat fmt = frag.charFormat();
+                if (fmt.isAnchor()) {
+                    const QStringList names = fmt.anchorNames();
+                    for (const QString &name : names) {
+                        if (targets.contains(name)) {
+                            m_sectionPositions.append({frag.position(), sec.index});
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort by character position so binary search works
+    std::sort(m_sectionPositions.begin(), m_sectionPositions.end(),
+              [](const QPair<int, int> &a, const QPair<int, int> &b) {
+                  return a.first < b.first;
+              });
+}
+
+int ContentDisplayModel::findSectionAtPosition(int charPosition) {
+    if (m_sectionPositions.isEmpty())
+        return -1;
+
+    // If before the first section anchor, no section is active
+    if (charPosition < m_sectionPositions.first().first)
+        return -1;
+
+    // Binary search for the last entry whose position <= charPosition
+    int lo = 0;
+    int hi = m_sectionPositions.size() - 1;
+    int result = -1;
+
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (m_sectionPositions[mid].first <= charPosition) {
+            result = m_sectionPositions[mid].second;
+            lo = mid + 1;
+        } else {
+            hi = mid - 1;
+        }
+    }
+
+    return result;
 }
 
 void ContentDisplayModel::navigateToNextResult() {

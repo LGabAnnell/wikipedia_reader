@@ -8,7 +8,6 @@
 #include "wikipedia_models.h"
 #include "wikipedia_page_client.h"
 #include "wikipedia_search_client.h"
-#include <QClipboard>
 #include <QGuiApplication>
 #include <QObject>
 #include <QPointer>
@@ -40,6 +39,9 @@ class GlobalState : public QObject {
     Q_PROPERTY(QString currentImageDescription READ currentImageDescription WRITE setCurrentImageDescription NOTIFY
                    currentImageDescriptionChanged)
 
+    // Index of the section currently at the top of the viewport (-1 = none)
+    Q_PROPERTY(int currentSectionIndex READ currentSectionIndex NOTIFY currentSectionIndexChanged)
+
   public:
     Q_INVOKABLE void loadArticleByPageId(int pageId);
     Q_INVOKABLE void loadArticleByTitle(const QString &title);
@@ -60,6 +62,7 @@ class GlobalState : public QObject {
     QString errorMessage() const;
     QString currentImageUrl() const;
     QString currentImageDescription() const;
+    int currentSectionIndex() const;
 
     // Accessor for WikipediaPageClient
     WikipediaPageClient *pageClient() const { return m_pageClient; }
@@ -77,6 +80,7 @@ class GlobalState : public QObject {
     void clearErrorMessage();
     void setCurrentImageUrl(const QString &url);
     void setCurrentImageDescription(const QString &description);
+    void setCurrentSectionIndex(int index);
 
   signals:
     void searchResultsChanged();
@@ -87,6 +91,7 @@ class GlobalState : public QObject {
     void errorMessageChanged();
     void currentImageUrlChanged();
     void currentImageDescriptionChanged();
+    void currentSectionIndexChanged();
 
   private:
     QVector<search_result> m_searchResults;
@@ -97,6 +102,7 @@ class GlobalState : public QObject {
     QString m_errorMessage;
     QString m_currentImageUrl;
     QString m_currentImageDescription;
+    int m_currentSectionIndex = -1;
     static QPointer<GlobalState> m_instance;
     WikipediaSearchClient *m_searchClient;
     WikipediaPageClient *m_pageClient;

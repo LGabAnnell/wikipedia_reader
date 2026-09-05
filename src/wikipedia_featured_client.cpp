@@ -1,7 +1,6 @@
 // wikipedia_featured_client.cpp
 #include "wikipedia_featured_client.h"
 #include <QUrl>
-#include <QUrlQuery>
 
 WikipediaFeaturedClient::WikipediaFeaturedClient(QObject *parent)
     : QObject(parent), networkManager(new QNetworkAccessManager(this)) {}
