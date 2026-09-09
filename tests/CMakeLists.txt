@@ -5,7 +5,7 @@ project(GlobalStateTests)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Test Quick Network Sql Qml Gui)
+find_package(Qt6 REQUIRED COMPONENTS Core Test Quick Network Sql Qml Gui Svg)
 
 qt_standard_project_setup()
 
@@ -40,6 +40,7 @@ target_link_libraries(GlobalStateTest PRIVATE
     Qt::Test
     Qt::Qml
     Qt::Gui
+    Qt::Svg
     tinyxml2
 )
 
@@ -72,6 +73,7 @@ target_link_libraries(test_search_display PRIVATE
     Qt::Test
     Qt::Qml
     Qt::Gui
+    Qt::Svg
     tinyxml2
 )
 
@@ -178,6 +180,7 @@ target_link_libraries(WikipediaPageClientTest PRIVATE
     Qt::Network
     Qt::Qml
     Qt::Gui
+    Qt::Svg
     tinyxml2
 )
 

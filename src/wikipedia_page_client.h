@@ -6,11 +6,13 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QHash>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QObject>
 #include <QString>
 #include <QVector>
+#include <functional>
 
 class WikipediaPageClient : public QObject {
     Q_OBJECT
@@ -43,9 +45,12 @@ class WikipediaPageClient : public QObject {
   private:
     QNetworkAccessManager *networkManager;
     QString baseUrl;
+    QHash<QString, QString> mathImageDataUrls;
     void fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls,
                                   QStringList &imageDescriptions);
     void fetchPageContentWithImages(int pageid, const page &pageData);
+    void fetchMathImageDataUrls(const QString &htmlContent,
+                                std::function<void(const QString &)> completion);
 };
 
 #endif // WIKIPEDIA_PAGE_CLIENT_H

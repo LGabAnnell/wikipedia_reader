@@ -42,6 +42,26 @@ private slots:
         QVERIFY(!result.contains("<img"));
     }
 
+    void testMathFallbackImagePreserved() {
+        QString result = HtmlProcessor::processHtml(
+            "<span class=\"mwe-math-element\" style=\"color: red\">"
+            "<span class=\"mwe-math-mathml-inline mwe-math-mathml-a11y\"><math alttext=\"x^2\"><semantics>"
+            "<annotation encoding=\"application/x-tex\">x^2</annotation></semantics></math></span>"
+            "<img src=\"https://example.com/math.svg\" "
+            "class=\"mwe-math-fallback-image-inline\" "
+            "style=\"vertical-align: -0.3ex; width: 2ex; height: 1ex;\"></span>"
+            "<img src=\"https://example.com/article-image.jpg\">");
+
+        QVERIFY(result.contains("mwe-math-fallback-image-inline"));
+        QVERIFY(result.contains("https://example.com/math.svg"));
+        QVERIFY(!result.contains("<math"));
+        QVERIFY(!result.contains("application/x-tex"));
+        QVERIFY(!result.contains("x^2"));
+        QVERIFY(!result.contains("color: red"));
+        QVERIFY(!result.contains("vertical-align: -0.3ex"));
+        QVERIFY(!result.contains("article-image.jpg"));
+    }
+
     void testNestedElements() {
         QString result = HtmlProcessor::processHtml(
             "<div><style>x{}</style><p>Hi</p></div>");

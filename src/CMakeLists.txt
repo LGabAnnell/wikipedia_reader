@@ -46,3 +46,5 @@ qt_add_qml_module(wikipedia_qt
         HeaderModule
         ImageDisplayModule
 )
+
+target_link_libraries(wikipedia_qt PRIVATE Qt::Svg)

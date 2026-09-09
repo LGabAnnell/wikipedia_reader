@@ -1,14 +1,28 @@
 // wikipedia_page_client.cpp
 #include "wikipedia_page_client.h"
 #include "html_processor.h"
+#include <QBuffer>
 #include <QEventLoop>
+#include <QImage>
+#include <QPalette>
+#include <QPainter>
 #include <QRegularExpression>
+#include <QSharedPointer>
+#include <QSvgRenderer>
 #include <QUrl>
 #include <QUrlQuery>
+#include <algorithm>
 
 static const QRegularExpression htmlTagRegex("<[^>]*>");
 
 namespace {
+struct MathImageRequest {
+    QString htmlContent;
+    QHash<QString, QString> dataUrls;
+    int pendingRequests = 0;
+    std::function<void(const QString &)> completion;
+};
+
 // Strip HTML tags and decode common entities so image descriptions render as
 // plain text.
 QString stripHtml(const QString &html) {
@@ -24,6 +38,52 @@ QString stripHtml(const QString &html) {
     text.replace("&#39;", "'");
     text.replace("&nbsp;", " ");
     return text.trimmed();
+}
+
+QString rasterizeSvg(const QByteArray &svgData) {
+    static const QRegularExpression widthRegex(R"(\bwidth="([0-9.]+)ex")");
+    static const QRegularExpression heightRegex(R"(\bheight="([0-9.]+)ex")");
+    constexpr double pixelsPerEx = 7.0;
+
+    QByteArray svgWithTextColor = svgData;
+    if (svgWithTextColor.startsWith("<svg")) {
+        const QByteArray color = QPalette().text().color().name().toUtf8();
+        svgWithTextColor.insert(4, " color=\"" + color + "\"");
+    }
+
+    QSvgRenderer renderer(svgWithTextColor);
+    if (!renderer.isValid()) {
+        return {};
+    }
+
+    QSize imageSize = renderer.defaultSize();
+    const QString svg = QString::fromUtf8(svgData);
+    const QRegularExpressionMatch widthMatch = widthRegex.match(svg);
+    const QRegularExpressionMatch heightMatch = heightRegex.match(svg);
+    if (widthMatch.hasMatch() && heightMatch.hasMatch()) {
+        imageSize = QSize(qRound(widthMatch.captured(1).toDouble() * pixelsPerEx),
+                          qRound(heightMatch.captured(1).toDouble() * pixelsPerEx));
+    }
+    if (imageSize.isEmpty()) {
+        return {};
+    }
+
+    imageSize.setWidth(std::min(imageSize.width(), 4096));
+    imageSize.setHeight(std::min(imageSize.height(), 4096));
+    QImage image(imageSize, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+
+    QPainter painter(&image);
+    renderer.render(&painter);
+    painter.end();
+
+    QBuffer buffer;
+    buffer.open(QIODevice::WriteOnly);
+    if (!image.save(&buffer, "PNG")) {
+        return {};
+    }
+
+    return "data:image/png;base64," + QString::fromLatin1(buffer.data().toBase64());
 }
 } // namespace
 
@@ -289,14 +349,85 @@ void WikipediaPageClient::fetchPageContentWithImages(int pageid, const page &pag
             QJsonObject jsonObj = jsonDoc.object();
             QJsonObject pages = jsonObj["parse"].toObject();
 
-            page page = pageData;
-            page.extract = HtmlProcessor::processHtml(pages["text"].toString());
-            emit pageReceived(page);
+            fetchMathImageDataUrls(pages["text"].toString(), [this, pageData](const QString &htmlContent) {
+                page page = pageData;
+                page.extract = HtmlProcessor::processHtml(htmlContent);
+                emit pageReceived(page);
+            });
         } else {
             emit errorOccurred(reply->errorString());
         }
         reply->deleteLater();
     });
+}
+
+void WikipediaPageClient::fetchMathImageDataUrls(const QString &htmlContent,
+                                                  std::function<void(const QString &)> completion) {
+    static const QRegularExpression imageTagRegex(R"(<img\b[^>]*>)",
+                                                  QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression sourceRegex(R"(\bsrc\s*=\s*(["'])(.*?)\1)",
+                                                 QRegularExpression::CaseInsensitiveOption);
+
+    auto request = QSharedPointer<MathImageRequest>::create();
+    request->htmlContent = htmlContent;
+    request->completion = std::move(completion);
+
+    QRegularExpressionMatchIterator imageTags = imageTagRegex.globalMatch(htmlContent);
+    while (imageTags.hasNext()) {
+        const QString imageTag = imageTags.next().captured();
+        if (!imageTag.contains("mwe-math-fallback-image", Qt::CaseInsensitive)) {
+            continue;
+        }
+
+        const QRegularExpressionMatch sourceMatch = sourceRegex.match(imageTag);
+        if (!sourceMatch.hasMatch()) {
+            continue;
+        }
+
+        const QString source = sourceMatch.captured(2);
+        if (mathImageDataUrls.contains(source)) {
+            request->dataUrls.insert(source, mathImageDataUrls.value(source));
+            continue;
+        }
+        if (request->dataUrls.contains(source)) {
+            continue;
+        }
+
+        request->dataUrls.insert(source, {});
+        ++request->pendingRequests;
+
+        QNetworkReply *mathReply = networkManager->get(QNetworkRequest(QUrl(source)));
+        connect(mathReply, &QNetworkReply::finished, this, [this, mathReply, request, source] {
+            if (mathReply->error() == QNetworkReply::NoError) {
+                const QString dataUrl = rasterizeSvg(mathReply->readAll());
+                if (!dataUrl.isEmpty()) {
+                    mathImageDataUrls.insert(source, dataUrl);
+                    request->dataUrls[source] = dataUrl;
+                }
+            }
+            mathReply->deleteLater();
+
+            if (--request->pendingRequests != 0) {
+                return;
+            }
+
+            for (auto it = request->dataUrls.cbegin(); it != request->dataUrls.cend(); ++it) {
+                if (!it.value().isEmpty()) {
+                    request->htmlContent.replace(it.key(), it.value());
+                }
+            }
+            request->completion(request->htmlContent);
+        });
+    }
+
+    if (request->pendingRequests == 0) {
+        for (auto it = request->dataUrls.cbegin(); it != request->dataUrls.cend(); ++it) {
+            if (!it.value().isEmpty()) {
+                request->htmlContent.replace(it.key(), it.value());
+            }
+        }
+        request->completion(request->htmlContent);
+    }
 }
 
 void WikipediaPageClient::getSections(const QString &title) {
