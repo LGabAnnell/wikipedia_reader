@@ -19,6 +19,7 @@ class WikipediaSearchClient : public QObject {
     ~WikipediaSearchClient();
 
     void search(const QString &query, int limit = 10);
+    void setLanguage(const QString &langCode);
 
     static QVector<search_result> parseSearchResults(const QByteArray &responseData);
 
@@ -32,6 +33,7 @@ class WikipediaSearchClient : public QObject {
   private:
     QNetworkAccessManager *networkManager;
     QString baseUrl;
+    QString m_language = "en";
 };
 
 #endif // WIKIPEDIA_SEARCH_CLIENT_H

@@ -22,6 +22,7 @@ class WikipediaHomeClient : public QObject {
     void getNewsItems();
     void getOnThisDayEvents(int month, int day);
     void getDidYouKnowItems();
+    void setLanguage(const QString &langCode);
 
     static QVector<news_item> parseNewsItems(const QByteArray &responseData);
     static QVector<on_this_day_event> parseOnThisDayEvents(const QByteArray &responseData);
@@ -41,6 +42,7 @@ class WikipediaHomeClient : public QObject {
 
   private:
     QNetworkAccessManager *networkManager;
+    QString m_language = "en";
     void fetchArticleContent(const QString &title);
 };
 

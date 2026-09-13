@@ -8,10 +8,14 @@ WikipediaHomeClient::WikipediaHomeClient(QObject *parent)
 
 WikipediaHomeClient::~WikipediaHomeClient() = default;
 
+void WikipediaHomeClient::setLanguage(const QString &langCode) {
+    m_language = langCode;
+}
+
 void WikipediaHomeClient::getNewsItems() {
     QDate currentDate = QDate::currentDate();
     QString dateString = currentDate.toString("yyyy/MM/dd");
-    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/en/featured/%1").arg(dateString));
+    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2").arg(m_language, dateString));
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() { onNewsItemsReply(reply); });
@@ -19,7 +23,8 @@ void WikipediaHomeClient::getNewsItems() {
 
 void WikipediaHomeClient::getOnThisDayEvents(int month, int day) {
     QDate today = QDate::currentDate();
-    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/%1/%2")
+    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/onthisday/all/%2/%3")
+                 .arg(m_language)
                  .arg(today.month(), 2, 10, QLatin1Char('0'))
                  .arg(today.day(), 2, 10, QLatin1Char('0')));
     QNetworkRequest request(url);
@@ -28,7 +33,7 @@ void WikipediaHomeClient::getOnThisDayEvents(int month, int day) {
 }
 
 void WikipediaHomeClient::getDidYouKnowItems() {
-    QUrl url("https://en.wikipedia.org/api/rest_v1/page/random/title");
+    QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/page/random/title").arg(m_language));
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() { onRandomArticleTitleReply(reply); });
@@ -158,7 +163,7 @@ void WikipediaHomeClient::onRandomArticleTitleReply(QNetworkReply *reply) {
 }
 
 void WikipediaHomeClient::fetchArticleContent(const QString &title) {
-    QUrl url(QString("https://en.wikipedia.org/api/rest_v1/page/summary/%1").arg(title));
+    QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/page/summary/%2").arg(m_language, title));
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply, title]() { onArticleContentReply(reply, title); });

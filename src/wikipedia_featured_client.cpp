@@ -7,11 +7,15 @@ WikipediaFeaturedClient::WikipediaFeaturedClient(QObject *parent)
 
 WikipediaFeaturedClient::~WikipediaFeaturedClient() = default;
 
+void WikipediaFeaturedClient::setLanguage(const QString &langCode) {
+    m_language = langCode;
+}
+
 void WikipediaFeaturedClient::getFeaturedArticleOfTheDay() {
     QDate currentDate = QDate::currentDate();
     QString dateString = currentDate.toString("yyyy/MM/dd");
 
-    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/en/featured/%1").arg(dateString));
+    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2").arg(m_language, dateString));
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {

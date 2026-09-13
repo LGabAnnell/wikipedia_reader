@@ -25,6 +25,7 @@ class WikipediaPageClient : public QObject {
     void getPageWithImages(int pageid);
     void resolveTitleToPageId(const QString &title);
     void getSections(const QString &title);
+    void setLanguage(const QString &langCode);
 
     static page parsePage(const QByteArray &responseData, const QString &title);
     static page parsePageWithImages(const QByteArray &responseData, int pageid);
@@ -45,6 +46,7 @@ class WikipediaPageClient : public QObject {
   private:
     QNetworkAccessManager *networkManager;
     QString baseUrl;
+    QString m_language = "en";
     QHash<QString, QString> mathImageDataUrls;
     void fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls,
                                   QStringList &imageDescriptions);

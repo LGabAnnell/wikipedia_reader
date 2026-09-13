@@ -89,10 +89,15 @@ QString rasterizeSvg(const QByteArray &svgData) {
 
 WikipediaPageClient::WikipediaPageClient(QObject *parent)
     : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
-    baseUrl = "https://en.wikipedia.org/w/api.php";
+    setLanguage("en");
 }
 
 WikipediaPageClient::~WikipediaPageClient() = default;
+
+void WikipediaPageClient::setLanguage(const QString &langCode) {
+    m_language = langCode;
+    baseUrl = QString("https://%1.wikipedia.org/w/api.php").arg(langCode);
+}
 
 void WikipediaPageClient::getPage(const QString &title) {
     QUrl url(baseUrl);

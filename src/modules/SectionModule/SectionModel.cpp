@@ -1,5 +1,6 @@
 #include "SectionModel.h"
 #include "wikipedia_page_client.h"
+#include "GlobalState.h"
 
 #include <iostream>
 
@@ -7,6 +8,14 @@ SectionModel::SectionModel(QObject *parent) : QObject(parent), m_isLoading(false
     // Get the WikipediaPageClient instance from GlobalState
     // We'll create it here for now, but ideally it should be shared
     m_pageClient = new WikipediaPageClient(this);
+
+    auto globalState = GlobalState::instance();
+    if (globalState) {
+        m_pageClient->setLanguage(globalState->language());
+        connect(globalState, &GlobalState::languageChanged, this, [this, globalState]() {
+            m_pageClient->setLanguage(globalState->language());
+        });
+    }
 
     connect(m_pageClient, &WikipediaPageClient::sectionsReceived, // NOLINT(clang-diagnostic-error)
             this, &SectionModel::handleSectionsReceived);

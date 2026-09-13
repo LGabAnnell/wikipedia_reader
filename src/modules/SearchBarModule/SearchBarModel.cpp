@@ -10,6 +10,9 @@ SearchBarModel::SearchBarModel(QObject *parent) : QObject(parent) {
     m_searchText = "";
     m_searchClient = new WikipediaSearchClient(this);
     m_globalState = GlobalState::instance();
+    if (m_globalState) {
+        m_searchClient->setLanguage(m_globalState->language());
+    }
     connect(m_searchClient, &WikipediaSearchClient::searchCompleted,
                 m_globalState, [this] (const QVector<search_result> results) {
                     m_isSearching = false;
@@ -18,6 +21,9 @@ SearchBarModel::SearchBarModel(QObject *parent) : QObject(parent) {
                 });
     connect(m_searchClient, &WikipediaSearchClient::errorOccurred,
             this, &SearchBarModel::handleError);
+    connect(m_globalState, &GlobalState::languageChanged, this, [this]() {
+        m_searchClient->setLanguage(m_globalState->language());
+    });
 }
 
 QString SearchBarModel::searchText() const {

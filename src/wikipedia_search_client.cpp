@@ -5,10 +5,15 @@
 
 WikipediaSearchClient::WikipediaSearchClient(QObject *parent)
     : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
-    baseUrl = "https://en.wikipedia.org/w/api.php";
+    setLanguage("en");
 }
 
 WikipediaSearchClient::~WikipediaSearchClient() = default;
+
+void WikipediaSearchClient::setLanguage(const QString &langCode) {
+    m_language = langCode;
+    baseUrl = QString("https://%1.wikipedia.org/w/api.php").arg(langCode);
+}
 
 void WikipediaSearchClient::search(const QString &query, int limit) {
     QUrl url(baseUrl);

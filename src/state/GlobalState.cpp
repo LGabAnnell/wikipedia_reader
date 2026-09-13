@@ -72,6 +72,8 @@ QString GlobalState::currentImageDescription() const { return m_currentImageDesc
 
 int GlobalState::currentSectionIndex() const { return m_currentSectionIndex; }
 
+QString GlobalState::language() const { return m_language; }
+
 void GlobalState::setSearchResults(const QVector<search_result> &results) {
     m_searchResults = results;
     emit searchResultsChanged();
@@ -195,4 +197,16 @@ void GlobalState::handleArticleLoadError(const QString &error) {
 void GlobalState::handleSectionsLoadError(const QString &error) {
     setLoadingSections(false);
     setErrorMessage(error);
+}
+
+void GlobalState::setLanguage(const QString &lang) {
+    if (m_language == lang)
+        return;
+    m_language = lang;
+    m_searchClient->setLanguage(lang);
+    m_pageClient->setLanguage(lang);
+    m_featuredClient->setLanguage(lang);
+    m_homeClient->setLanguage(lang);
+    m_articleCache.clear();
+    emit languageChanged();
 }

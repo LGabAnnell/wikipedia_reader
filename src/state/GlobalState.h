@@ -42,11 +42,15 @@ class GlobalState : public QObject {
     // Index of the section currently at the top of the viewport (-1 = none)
     Q_PROPERTY(int currentSectionIndex READ currentSectionIndex NOTIFY currentSectionIndexChanged)
 
+    // Current Wikipedia language code (e.g. "en", "fr")
+    Q_PROPERTY(QString language READ language NOTIFY languageChanged)
+
   public:
     Q_INVOKABLE void loadArticleByPageId(int pageId);
     Q_INVOKABLE void loadArticleByTitle(const QString &title);
     Q_INVOKABLE void copyToClipboard(const QString &text);
     Q_INVOKABLE void fetchSectionsForCurrentPage();
+    Q_INVOKABLE void setLanguage(const QString &lang);
     explicit GlobalState(QObject *parent = nullptr, HistoryState *historyState = nullptr);
 
     // Page property accessors
@@ -63,9 +67,10 @@ class GlobalState : public QObject {
     QString currentImageUrl() const;
     QString currentImageDescription() const;
     int currentSectionIndex() const;
+    QString language() const;
 
     // Accessor for WikipediaPageClient
-    WikipediaPageClient *pageClient() const { return m_pageClient; }
+    [[nodiscard]] WikipediaPageClient *pageClient() const { return m_pageClient; }
 
     static QPointer<GlobalState> instance() { return m_instance; }
 
@@ -92,6 +97,7 @@ class GlobalState : public QObject {
     void currentImageUrlChanged();
     void currentImageDescriptionChanged();
     void currentSectionIndexChanged();
+    void languageChanged();
 
   private:
     QVector<search_result> m_searchResults;
@@ -103,6 +109,7 @@ class GlobalState : public QObject {
     QString m_currentImageUrl;
     QString m_currentImageDescription;
     int m_currentSectionIndex = -1;
+    QString m_language = "en";
     static QPointer<GlobalState> m_instance;
     WikipediaSearchClient *m_searchClient;
     WikipediaPageClient *m_pageClient;

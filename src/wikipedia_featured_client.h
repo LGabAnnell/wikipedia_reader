@@ -20,6 +20,7 @@ class WikipediaFeaturedClient : public QObject {
     ~WikipediaFeaturedClient();
 
     void getFeaturedArticleOfTheDay();
+    void setLanguage(const QString &langCode);
 
     static void parseFeaturedArticle(const QByteArray &responseData,
                                      QString &title, QString &extract, int &pageid);
@@ -33,6 +34,7 @@ class WikipediaFeaturedClient : public QObject {
 
   private:
     QNetworkAccessManager *networkManager;
+    QString m_language = "en";
 };
 
 #endif // WIKIPEDIA_FEATURED_CLIENT_H

@@ -73,6 +73,9 @@ ToolBar {
             text: "History"
             onClicked: header.changeView(Constants.historyView)
         }
+        LanguageSelector {
+            Layout.alignment: Qt.AlignRight
+        }
     }
 }
 

@@ -2,6 +2,7 @@
 #include <QDate>
 #include <QDebug>
 #include <QString>
+#include "GlobalState.h"
 #include "wikipedia_featured_client.h"
 #include "wikipedia_home_client.h"
 #include "wikipedia_page_client.h"
@@ -12,6 +13,20 @@ HomeModel::HomeModel(QObject *parent) : QObject(parent) {
     m_featuredClient = new WikipediaFeaturedClient(this);
     m_homeClient = new WikipediaHomeClient(this);
     m_pageClient = new WikipediaPageClient(this);
+
+    auto globalState = GlobalState::instance();
+    if (globalState) {
+        m_featuredClient->setLanguage(globalState->language());
+        m_homeClient->setLanguage(globalState->language());
+        m_pageClient->setLanguage(globalState->language());
+
+        connect(globalState, &GlobalState::languageChanged, this, [this, globalState]() {
+            QString lang = globalState->language();
+            m_featuredClient->setLanguage(lang);
+            m_homeClient->setLanguage(lang);
+            m_pageClient->setLanguage(lang);
+        });
+    }
 
     // Connect signals from WikipediaFeaturedClient
     connect(m_featuredClient, &WikipediaFeaturedClient::featuredArticleReceived,
@@ -63,7 +78,9 @@ void HomeModel::fetchHomeData() {
 void HomeModel::handleFeaturedArticleReceived(const QString &title, const QString &extract, const int &pageid) {
     m_featuredArticleTitle = title;
     m_featuredArticleExtract = extract;
-    m_featuredArticleUrl = QString("https://en.wikipedia.org/wiki/%1").arg(m_featuredArticleTitle.replace(' ', '_'));
+    m_featuredArticleUrl = QString("https://%1.wikipedia.org/wiki/%2")
+                               .arg(GlobalState::instance() ? GlobalState::instance()->language() : "en",
+                                    m_featuredArticleTitle.replace(' ', '_'));
     
     // Use a placeholder image initially
     m_featuredArticleImageUrl = "qrc:/images/featured_article_placeholder.jpg";

@@ -20,6 +20,7 @@ qt_add_qml_module(HeaderModule
     VERSION 1.0
     QML_FILES
         Header.qml
+        LanguageSelector.qml
     SOURCES
         HeaderModel.cpp
         HeaderModel.h
