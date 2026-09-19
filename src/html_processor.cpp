@@ -7,22 +7,31 @@
 #include <tinyxml2.h>
 
 namespace {
-bool isMathFallbackImage(const tinyxml2::XMLElement *element) {
-    if (element == nullptr || QString::fromUtf8(element->Name()) != "img") {
-        return false;
+int findTagEnd(const QString &html, int start) {
+    QChar quote;
+    for (int position = start + 1; position < html.size(); ++position) {
+        const QChar character = html.at(position);
+        if (!quote.isNull()) {
+            if (character == quote) {
+                quote = QChar();
+            }
+        } else if (character == QLatin1Char('"') || character == QLatin1Char('\'')) {
+            quote = character;
+        } else if (character == QLatin1Char('>')) {
+            return position;
+        }
     }
-
-    const char *className = element->Attribute("class");
-    return className != nullptr && QString::fromUtf8(className).contains("mwe-math-fallback-image");
+    return -1;
 }
 
 QString processHtmlFragment(const QString &htmlContent) {
     static const QRegularExpression styleElementRegex(
-        R"(<style\b[^>]*>[\s\S]*?</style\s*>)",
+        R"(<style\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?</style\s*>)",
         QRegularExpression::CaseInsensitiveOption);
-    static const QRegularExpression htmlTagRegex(R"(<[^>]+>)");
     static const QRegularExpression imageTagRegex(R"(^<\s*img\b)",
                                                   QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression protocolRelativeSourceRegex(
+        R"((\bsrc\s*=\s*["'])//)", QRegularExpression::CaseInsensitiveOption);
     static const QRegularExpression styleAttributeRegex(
         R"(\s+style\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))",
         QRegularExpression::CaseInsensitiveOption);
@@ -33,27 +42,40 @@ QString processHtmlFragment(const QString &htmlContent) {
     processedHtml.reserve(withoutStyleElements.size());
 
     int position = 0;
-    QRegularExpressionMatchIterator tags = htmlTagRegex.globalMatch(withoutStyleElements);
-    while (tags.hasNext()) {
-        const QRegularExpressionMatch match = tags.next();
-        processedHtml += withoutStyleElements.sliced(position, match.capturedStart() - position);
+    while (position < withoutStyleElements.size()) {
+        const int tagStart = withoutStyleElements.indexOf(QLatin1Char('<'), position);
+        if (tagStart < 0) {
+            break;
+        }
+        const int tagEnd = findTagEnd(withoutStyleElements, tagStart);
+        if (tagEnd < 0) {
+            break;
+        }
+        processedHtml += withoutStyleElements.sliced(position, tagStart - position);
 
-        QString tag = match.captured();
+        QString tag = withoutStyleElements.sliced(tagStart, tagEnd - tagStart + 1);
         if (imageTagRegex.match(tag).hasMatch()) {
-            // Preserve the PNG fallback that the page client generates from
-            // MediaWiki's MathML SVG.
-            if (tag.contains("mwe-math-fallback-image", Qt::CaseInsensitive)) {
-                // SVG's ex-based dimensions are not interpreted reliably by
-                // QQuickTextEdit. The generated PNG has intrinsic dimensions.
-                tag.remove(styleAttributeRegex);
-                processedHtml += tag;
+            // Keep images in their original article position. The parse API's
+            // src attribute is the relation between the HTML and the fetched
+            // thumbnail, so removing the element loses that information.
+            tag.replace(protocolRelativeSourceRegex, R"(\1https://)");
+            tag.remove(styleAttributeRegex);
+            if (!tag.contains("mwe-math-fallback-image", Qt::CaseInsensitive)) {
+                int attributePosition = tag.lastIndexOf('>');
+                if (attributePosition > 0 && tag.at(attributePosition - 1) == '/') {
+                    --attributePosition;
+                }
+                if (attributePosition >= 0) {
+                    tag.insert(attributePosition, " style=\"max-width: 100%; height: auto;\"");
+                }
             }
+            processedHtml += tag;
         } else {
             tag.remove(styleAttributeRegex);
             processedHtml += tag;
         }
 
-        position = match.capturedEnd();
+        position = tagEnd + 1;
     }
     processedHtml += withoutStyleElements.sliced(position);
     return processedHtml;
@@ -69,29 +91,6 @@ QString removeMathMlAccessibilityMarkup(const QString &htmlContent) {
     return processedHtml;
 }
 } // namespace
-
-void HtmlProcessor::removeImgNodes(tinyxml2::XMLElement *element) {
-    if (element == nullptr)
-        return;
-
-    // Remove img nodes
-    for (tinyxml2::XMLElement *img = element->FirstChildElement("img"); img != nullptr;) {
-        tinyxml2::XMLElement *next = img->NextSiblingElement("img");
-        // MediaWiki provides LaTeX equations as MathML plus an SVG fallback
-        // image. Qt rich text does not render MathML, so retain that fallback
-        // while continuing to remove regular article images for the gallery.
-        if (!isMathFallbackImage(img)) {
-            element->DeleteChild(img);
-        }
-        img = next;
-    }
-
-    // Recursively process child elements
-    for (tinyxml2::XMLElement *child = element->FirstChildElement(); child != nullptr;
-         child = child->NextSiblingElement()) {
-        removeImgNodes(child);
-    }
-}
 
 void HtmlProcessor::removeStyleNodes(tinyxml2::XMLElement *element) {
     if (element == nullptr)
@@ -145,8 +144,15 @@ void HtmlProcessor::processImageNodes(tinyxml2::XMLElement *element) {
             // but the parse API should return proper URLs
         }
 
-        // Ensure img has proper display attributes
-        // Add max-width for responsive images
+        const char *className = img->Attribute("class");
+        const bool isMathFallback =
+            className != nullptr && QString::fromUtf8(className).contains("mwe-math-fallback-image");
+        if (isMathFallback) {
+            continue;
+        }
+
+        // Keep article images within the text column when Qt supports the
+        // corresponding rich-text CSS.
         const char *style = img->Attribute("style");
         QString styleStr = style ? QString::fromUtf8(style) : "";
         if (!styleStr.contains("max-width")) {
@@ -185,13 +191,13 @@ QString HtmlProcessor::processHtml(const QString &htmlContent) {
         if (root) {
             removeStyleNodes(root);
             removeStyleAttributes(root);
-            removeImgNodes(root);
+            processImageNodes(root);
         } else {
             for (tinyxml2::XMLElement *child = doc.FirstChildElement(); child != nullptr;
                  child = child->NextSiblingElement()) {
                 removeStyleNodes(child);
                 removeStyleAttributes(child);
-                removeImgNodes(child);
+                processImageNodes(child);
             }
         }
 

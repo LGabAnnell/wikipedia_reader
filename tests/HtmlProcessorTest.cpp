@@ -37,9 +37,33 @@ private slots:
         QVERIFY(!result.contains("color:red"));
     }
 
-    void testImgNodeRemoved() {
-        QString result = HtmlProcessor::processHtml("<p><img src=\"x.jpg\"/></p>");
-        QVERIFY(!result.contains("<img"));
+    void testImgNodePreservedInline() {
+        QString result = HtmlProcessor::processHtml("<p>Before<img src=\"x.jpg\"/>After</p>");
+        QVERIFY(result.contains("Before<img"));
+        QVERIFY(result.contains("src=\"x.jpg\""));
+        QVERIFY(result.contains("After"));
+        QVERIFY(result.contains("max-width: 100%; height: auto;"));
+    }
+
+    void testProtocolRelativeImageUrlNormalized() {
+        QString result = HtmlProcessor::processHtml(
+            "<p>Image&nbsp;<img src=\"//upload.wikimedia.org/example.jpg\"/></p>");
+        QVERIFY(result.contains("src=\"https://upload.wikimedia.org/example.jpg\""));
+        QVERIFY(result.contains("height: auto;\"/>"));
+    }
+
+    void testFallbackKeepsGreaterThanInsideQuotedAttributes() {
+        // &nbsp; is not an XML entity, so this input exercises the HTML fallback parser.
+        QString result = HtmlProcessor::processHtml(
+            "<p>Image&nbsp;<img alt=\"A > B\" title='C > D' src=\"x.jpg\" "
+            "style=\"color:red\"></p>");
+
+        QVERIFY(result.contains("alt=\"A > B\""));
+        QVERIFY(result.contains("title='C > D'"));
+        QVERIFY(result.contains("src=\"x.jpg\""));
+        QVERIFY(result.contains("style=\"max-width: 100%; height: auto;\""));
+        QVERIFY(!result.contains("color:red"));
+        QVERIFY(result.contains("</p>"));
     }
 
     void testMathFallbackImagePreserved() {
@@ -59,7 +83,7 @@ private slots:
         QVERIFY(!result.contains("x^2"));
         QVERIFY(!result.contains("color: red"));
         QVERIFY(!result.contains("vertical-align: -0.3ex"));
-        QVERIFY(!result.contains("article-image.jpg"));
+        QVERIFY(result.contains("article-image.jpg"));
     }
 
     void testNestedElements() {
