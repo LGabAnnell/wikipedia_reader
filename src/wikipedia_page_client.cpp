@@ -3,7 +3,6 @@
 #include "html_processor.h"
 #include <QBuffer>
 #include <QEventLoop>
-#include <QImage>
 #include <QPalette>
 #include <QPainter>
 #include <QRegularExpression>
@@ -175,7 +174,7 @@ void WikipediaPageClient::getPageById(int pageid) {
 
                     if (pageObj.contains("images")) {
                         QJsonArray images = pageObj["images"].toArray();
-                        for (const QJsonValue &image : std::as_const(images)) {
+                        for (const QJsonValueConstRef &image : std::as_const(images)) {
                             imageTitles.append(image.toObject().value("title").toString());
                         }
                     }
@@ -271,7 +270,7 @@ page WikipediaPageClient::parsePageWithImages(const QByteArray &responseData, in
             // Extract image titles into imageUrls temporarily (caller fetches URLs)
             if (pageObj.contains("images")) {
                 QJsonArray images = pageObj["images"].toArray();
-                for (const QJsonValue &image : std::as_const(images)) {
+                for (const QJsonValueConstRef &image : std::as_const(images)) {
                     result.imageUrls.append(image.toObject().value("title").toString());
                 }
             }
@@ -469,7 +468,7 @@ QVector<section> WikipediaPageClient::parseSections(const QByteArray &responseDa
         if (tocdata.contains("sections") && tocdata["sections"].isArray()) {
             QJsonArray sectionsArray = tocdata["sections"].toArray();
 
-            for (const QJsonValue &sectionValue : std::as_const(sectionsArray)) {
+            for (const QJsonValueConstRef &sectionValue : std::as_const(sectionsArray)) {
                 QJsonObject sectionObj = sectionValue.toObject();
 
                 section sec;

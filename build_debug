@@ -1,6 +1,6 @@
 #!/bin/bash
 
-build_type="Release"
+build_type="Debug"
 cache_file="build/CMakeCache.txt"
 
 if [ -f "$cache_file" ] && grep -q "^CMAKE_BUILD_TYPE:STRING=$build_type$" "$cache_file"; then
