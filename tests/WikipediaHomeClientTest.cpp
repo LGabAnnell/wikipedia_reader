@@ -28,11 +28,11 @@ class WikipediaHomeClientTest : public QObject {
         QCOMPARE(items[0].title, QString("Article A"));
         QCOMPARE(items[0].description, QString("Description A"));
         QCOMPARE(items[0].pageid, 1);
-        QCOMPARE(items[0].url, QString("https:\/\/en.wikipedia.org/wiki/Article_A"));
+        QCOMPARE(items[0].url, QString("https://en.wikipedia.org/wiki/Article_A"));
         QCOMPARE(items[1].title, QString("Article B"));
         QCOMPARE(items[1].description, QString("Description B"));
         QCOMPARE(items[1].pageid, 2);
-        QCOMPARE(items[1].url, QString("https:\/\/en.wikipedia.org/wiki/Article_B"));
+        QCOMPARE(items[1].url, QString("https://en.wikipedia.org/wiki/Article_B"));
     }
 
     void testParseNewsItemsWithThumbnail() {
@@ -48,7 +48,7 @@ class WikipediaHomeClientTest : public QObject {
 
         QVector<news_item> items = WikipediaHomeClient::parseNewsItems(json);
         QCOMPARE(items.size(), 1);
-        QCOMPARE(items[0].imageUrl, QString("https:\/\/upload.wikimedia.org/thumb.jpg"));
+        QCOMPARE(items[0].imageUrl, QString("https://upload.wikimedia.org/thumb.jpg"));
     }
 
     void testParseNewsItemsMissingMostread() {
@@ -92,11 +92,11 @@ class WikipediaHomeClientTest : public QObject {
         QCOMPARE(events[0].year, 1969);
         QCOMPARE(events[0].event, QString("Apollo 11 landed on the Moon."));
         QCOMPARE(events[0].pageid, 736);
-        QCOMPARE(events[0].url, QString("https:\/\/en.wikipedia.org/wiki/Apollo_11"));
+        QCOMPARE(events[0].url, QString("https://en.wikipedia.org/wiki/Apollo_11"));
         QCOMPARE(events[1].year, 1945);
         QCOMPARE(events[1].event, QString("End of World War II."));
         QCOMPARE(events[1].pageid, 999);
-        QCOMPARE(events[1].url, QString("https:\/\/en.wikipedia.org/wiki/WWII"));
+        QCOMPARE(events[1].url, QString("https://en.wikipedia.org/wiki/WWII"));
     }
 
     void testParseOnThisDayEventsEmptyPages() {
@@ -132,7 +132,7 @@ class WikipediaHomeClientTest : public QObject {
 
         did_you_know_item dyk = WikipediaHomeClient::parseArticleContent(json);
         QCOMPARE(dyk.text, QString("An article about something."));
-        QCOMPARE(dyk.url, QString("https:\/\/en.wikipedia.org/wiki/Something"));
+        QCOMPARE(dyk.url, QString("https://en.wikipedia.org/wiki/Something"));
         QCOMPARE(dyk.pageid, 42);
     }
 
