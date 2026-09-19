@@ -1,6 +1,7 @@
 // wikipedia_page_client.cpp
 #include "wikipedia_page_client.h"
 #include "html_processor.h"
+#include "wikipedia_network_access_manager.h"
 #include <QBuffer>
 #include <QEventLoop>
 #include <QPalette>
@@ -87,7 +88,7 @@ QString rasterizeSvg(const QByteArray &svgData) {
 } // namespace
 
 WikipediaPageClient::WikipediaPageClient(QObject *parent)
-    : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
+    : QObject(parent), networkManager(WikipediaNetwork::createNetworkAccessManager(this)) {
     setLanguage("en");
 }
 

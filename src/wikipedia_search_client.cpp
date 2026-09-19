@@ -1,10 +1,11 @@
 // wikipedia_search_client.cpp
 #include "wikipedia_search_client.h"
+#include "wikipedia_network_access_manager.h"
 #include <QUrl>
 #include <QUrlQuery>
 
 WikipediaSearchClient::WikipediaSearchClient(QObject *parent)
-    : QObject(parent), networkManager(new QNetworkAccessManager(this)) {
+    : QObject(parent), networkManager(WikipediaNetwork::createNetworkAccessManager(this)) {
     setLanguage("en");
 }
 

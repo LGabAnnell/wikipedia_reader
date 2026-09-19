@@ -1,9 +1,10 @@
 // wikipedia_featured_client.cpp
 #include "wikipedia_featured_client.h"
+#include "wikipedia_network_access_manager.h"
 #include <QUrl>
 
 WikipediaFeaturedClient::WikipediaFeaturedClient(QObject *parent)
-    : QObject(parent), networkManager(new QNetworkAccessManager(this)) {}
+    : QObject(parent), networkManager(WikipediaNetwork::createNetworkAccessManager(this)) {}
 
 WikipediaFeaturedClient::~WikipediaFeaturedClient() = default;
 

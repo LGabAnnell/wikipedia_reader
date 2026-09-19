@@ -41,7 +41,10 @@ list(JOIN QML_DIRS ";" QML_IMPORT_PATH_STR)
 # Set as a cached variable
 set(QML_IMPORT_PATH "${QML_IMPORT_PATH_STR}")
 
-find_package(Qt6 REQUIRED COMPONENTS Quick Core Network Sql Gui Svg Widgets SvgWidgets Test)
+find_package(Qt6 REQUIRED COMPONENTS Quick Core Network Sql Gui Svg Widgets SvgWidgets)
+if (BUILD_TESTING)
+    find_package(Qt6 REQUIRED COMPONENTS Test QuickTest)
+endif()
 find_package(tinyxml2 REQUIRED)
 
 qt_standard_project_setup(REQUIRES 6.8)
@@ -59,18 +62,33 @@ include_directories(
     src/modules/SectionModule
 )
 
-qt_add_executable(appwikipedia_qt
-    src/main.cpp
+add_library(wikipedia_runtime STATIC
     src/state/GlobalState.cpp
-    src/wikipedia_search_client.cpp
-    src/wikipedia_page_client.cpp
-    src/wikipedia_featured_client.cpp
-    src/wikipedia_home_client.cpp
-    src/html_processor.cpp
     src/state/HistoryState.cpp
     src/state/NavigationState.cpp
     src/state/db/HistoryDatabase.cpp
-    src/modules/HeaderModule/SvgImageProvider.cpp
+    src/html_processor.cpp
+)
+
+target_include_directories(wikipedia_runtime PUBLIC
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/state
+    ${CMAKE_SOURCE_DIR}/src/state/db
+)
+
+target_link_libraries(wikipedia_runtime PUBLIC
+    Qt::Core
+    Qt::Network
+    Qt::Sql
+    Qt::Gui
+    Qt::Qml
+    Qt::Quick
+    Qt::Svg
+    tinyxml2
+)
+
+qt_add_executable(appwikipedia_qt
+    src/main.cpp
 )
 
 qt_add_resources(appwikipedia_qt
@@ -124,6 +142,7 @@ PRIVATE
     HomeModule
     ImageDisplayModule
     SectionModule
+    wikipedia_runtime
     tinyxml2
 )
 
@@ -135,6 +154,6 @@ install(TARGETS appwikipedia_qt
 )
 
 if (BUILD_TESTING)
+    enable_testing()
     add_subdirectory(tests)
 endif()
-

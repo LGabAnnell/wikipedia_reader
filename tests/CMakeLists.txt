@@ -228,5 +228,8 @@ target_include_directories(WikipediaHomeClientTest PRIVATE ${CMAKE_SOURCE_DIR}/s
 
 add_test(NAME WikipediaHomeClientTest COMMAND WikipediaHomeClientTest)
 
-# Enable testing
-enable_testing()
+# ---------------------------------------------------------------------------
+# QML Quick Test harness
+# ---------------------------------------------------------------------------
+add_subdirectory(qml)
+

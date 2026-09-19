@@ -1,10 +1,11 @@
 // wikipedia_home_client.cpp
 #include "wikipedia_home_client.h"
+#include "wikipedia_network_access_manager.h"
 #include <QUrl>
 #include <QUrlQuery>
 
 WikipediaHomeClient::WikipediaHomeClient(QObject *parent)
-    : QObject(parent), networkManager(new QNetworkAccessManager(this)) {}
+    : QObject(parent), networkManager(WikipediaNetwork::createNetworkAccessManager(this)) {}
 
 WikipediaHomeClient::~WikipediaHomeClient() = default;
 

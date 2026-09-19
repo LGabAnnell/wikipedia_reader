@@ -2,7 +2,7 @@
 #include "HistoryDatabase.h"
 #include <QDebug>
 HistoryState::HistoryState(QObject *parent) : QObject(parent) {
-    m_database = new HistoryDatabase(parent);
+    m_database = new HistoryDatabase(this);
 
     // Connect signals
     connect(m_database, &HistoryDatabase::databaseError, this, &HistoryState::databaseError);
