@@ -22,6 +22,31 @@ Item {
                     .replace(/&gt;/g, ">");
     }
 
+    function fullResolutionImageUrl(imageUrl) {
+        const thumbnailMarker = "/thumb/";
+        const markerPosition = imageUrl.indexOf(thumbnailMarker);
+        if (markerPosition < 0 || !imageUrl.startsWith("https://upload.wikimedia.org/"))
+            return imageUrl;
+
+        let pathEnd = imageUrl.length;
+        const queryPosition = imageUrl.indexOf("?", markerPosition);
+        const fragmentPosition = imageUrl.indexOf("#", markerPosition);
+        if (queryPosition >= 0)
+            pathEnd = Math.min(pathEnd, queryPosition);
+        if (fragmentPosition >= 0)
+            pathEnd = Math.min(pathEnd, fragmentPosition);
+
+        const thumbnailPath = imageUrl.substring(markerPosition + thumbnailMarker.length,
+                                                 pathEnd);
+        const sizeSegmentPosition = thumbnailPath.lastIndexOf("/");
+        if (sizeSegmentPosition < 0)
+            return imageUrl;
+
+        return imageUrl.substring(0, markerPosition) + "/"
+                + thumbnailPath.substring(0, sizeSegmentPosition)
+                + imageUrl.substring(pathEnd);
+    }
+
     function renderArticleText(html) {
         return html.replace(/<a\b[^>]*>[\s\S]*?<\/a\s*>/gi, function (anchor) {
             const imageMatch = anchor.match(/<img\b[^>]*>/i);
@@ -37,6 +62,7 @@ Item {
             let imageUrl = decodeHtmlAttribute(srcMatch[2]);
             if (imageUrl.startsWith("//"))
                 imageUrl = "https:" + imageUrl;
+            imageUrl = fullResolutionImageUrl(imageUrl);
 
             const imageData = encodeURIComponent(JSON.stringify({
                 url: imageUrl,
