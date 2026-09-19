@@ -8,7 +8,6 @@
 
 class HtmlProcessor {
   public:
-    static void removeImgNodes(tinyxml2::XMLElement *element);
     static void removeStyleNodes(tinyxml2::XMLElement *element);
     static void removeStyleAttributes(tinyxml2::XMLElement *node);
     static void processImageNodes(tinyxml2::XMLElement *element);

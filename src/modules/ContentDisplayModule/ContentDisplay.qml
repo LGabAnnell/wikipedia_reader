@@ -14,6 +14,68 @@ Item {
 
     signal backRequested
 
+    function decodeHtmlAttribute(value) {
+        return value.replace(/&amp;/g, "&")
+                    .replace(/&quot;/g, '"')
+                    .replace(/&#39;/g, "'")
+                    .replace(/&lt;/g, "<")
+                    .replace(/&gt;/g, ">");
+    }
+
+    function fullResolutionImageUrl(imageUrl) {
+        const thumbnailMarker = "/thumb/";
+        const markerPosition = imageUrl.indexOf(thumbnailMarker);
+        if (markerPosition < 0 || !imageUrl.startsWith("https://upload.wikimedia.org/"))
+            return imageUrl;
+
+        let pathEnd = imageUrl.length;
+        const queryPosition = imageUrl.indexOf("?", markerPosition);
+        const fragmentPosition = imageUrl.indexOf("#", markerPosition);
+        if (queryPosition >= 0)
+            pathEnd = Math.min(pathEnd, queryPosition);
+        if (fragmentPosition >= 0)
+            pathEnd = Math.min(pathEnd, fragmentPosition);
+
+        const thumbnailPath = imageUrl.substring(markerPosition + thumbnailMarker.length,
+                                                 pathEnd);
+        const sizeSegmentPosition = thumbnailPath.lastIndexOf("/");
+        if (sizeSegmentPosition < 0)
+            return imageUrl;
+
+        return imageUrl.substring(0, markerPosition) + "/"
+                + thumbnailPath.substring(0, sizeSegmentPosition)
+                + imageUrl.substring(pathEnd);
+    }
+
+    function renderArticleText(html) {
+        return html.replace(/<a\b[^>]*>[\s\S]*?<\/a\s*>/gi, function (anchor) {
+            const imageMatch = anchor.match(/<img\b[^>]*>/i);
+            if (!imageMatch)
+                return anchor;
+
+            const imageTag = imageMatch[0];
+            const srcMatch = imageTag.match(/\bsrc\s*=\s*(["'])(.*?)\1/i);
+            if (!srcMatch)
+                return anchor;
+
+            const altMatch = imageTag.match(/\b(?:alt|title)\s*=\s*(["'])(.*?)\1/i);
+            let imageUrl = decodeHtmlAttribute(srcMatch[2]);
+            if (imageUrl.startsWith("//"))
+                imageUrl = "https:" + imageUrl;
+            imageUrl = fullResolutionImageUrl(imageUrl);
+
+            const imageData = encodeURIComponent(JSON.stringify({
+                url: imageUrl,
+                description: altMatch ? decodeHtmlAttribute(altMatch[2]) : ""
+            }));
+            const imageLink = "wikipedia-image:" + imageData;
+            return anchor.replace(/(\bhref\s*=\s*)(["'])(.*?)\2/i,
+                                 function (_, prefix, quote) {
+                                     return prefix + quote + imageLink + quote;
+                                 });
+        });
+    }
+
     property Timer searchDebounceTimer: Timer {
         interval: 200
         repeat: false
@@ -255,7 +317,7 @@ Item {
                     readOnly: true
                     selectByMouse: true
                     selectionColor: articleDisplay.sysPalette.highlight
-                    text: mainContent.articleText
+                    text: mainContent.renderArticleText(mainContent.articleText)
                     textFormat: TextEdit.RichText
                     visible: mainContent.articleText.length > 0
                     width: parent.width
@@ -271,6 +333,24 @@ Item {
                     }
 
                     onLinkActivated: function (link) {
+                        const imageLinkPrefix = "wikipedia-image:";
+                        if (link.startsWith(imageLinkPrefix)) {
+                            let image = null;
+                            try {
+                                const imageData = decodeURIComponent(link.substring(imageLinkPrefix.length));
+                                image = JSON.parse(imageData);
+                            } catch (error) {
+                                console.warn("Unable to read inline image link", error);
+                            }
+                            if (!image || !image.url)
+                                return;
+
+                            GlobalState.currentImageUrl = image.url;
+                            GlobalState.currentImageDescription = image.description;
+                            NavigationState.navigateToView(Constants.imageView);
+                            return;
+                        }
+
                         if (link.startsWith("/wiki/")) {
                             var title = link.substring(6).replace(/_/g, " ");
                             GlobalState.loadArticleByTitle(title);
