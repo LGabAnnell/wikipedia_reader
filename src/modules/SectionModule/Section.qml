@@ -16,6 +16,12 @@ Item {
     property bool loading: sectionModel.isLoading
     property var sections: sectionModel.sections
     signal sectionClicked(var section)
+    signal resizeStarted()
+
+    function toggleCollapsed() {
+        resizeStarted()
+        collapsed = !collapsed
+    }
 
     implicitHeight: parent ? parent.height : 600
 
@@ -61,7 +67,7 @@ Item {
         width: 28
         z: 2
 
-        onClicked: root.collapsed = !root.collapsed
+        onClicked: root.toggleCollapsed()
     }
 
     // Vertical label shown while collapsed

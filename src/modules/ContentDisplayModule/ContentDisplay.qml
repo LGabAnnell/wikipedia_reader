@@ -11,6 +11,7 @@ Item {
     id: mainContent
 
     property string articleText: ""
+    property bool sectionResizeInProgress: false
 
     signal backRequested
 
@@ -90,15 +91,6 @@ Item {
         onTriggered: contentDisplay.performSearch(searchField.text, articleSection.getText(0, articleSection.text.length))
     }
 
-    // Clears the pinned scroll position once the sidebar width animation has
-    // settled, so later window resizes don't snap to a stale anchor.
-    Timer {
-        id: pinResetTimer
-        interval: 300
-        repeat: false
-        onTriggered: scrollView.pinnedPosition = -1
-    }
-
     // Debounces the scroll-tracking lookup so rapid contentY changes don't
     // flood positionAt() calls during momentum scrolling.
     Timer {
@@ -106,7 +98,8 @@ Item {
         interval: 50
         repeat: false
         onTriggered: {
-            if (!articleSection.visible || sectionBar.sections.length === 0)
+            if (mainContent.sectionResizeInProgress
+                    || !articleSection.visible || sectionBar.sections.length === 0)
                 return;
 
             var contentY = scrollView.contentItem.contentY;
@@ -114,6 +107,22 @@ Item {
             var charPos = articleSection.positionAt(point.x, point.y);
             var sectionIdx = contentDisplay.findSectionAtPosition(charPos);
             GlobalState.setCurrentSectionIndex(sectionIdx);
+        }
+    }
+
+    // A Behavior owns the section-width animation, so its child animation is
+    // not a dependable place to observe completion. Restarting this inexpensive
+    // timer as the width changes lets us restore the pinned position once the
+    // layout has settled without doing document lookups on every frame.
+    Timer {
+        id: sectionResizeSettleTimer
+        interval: 50
+        repeat: false
+        onTriggered: {
+            scrollView.applyPinnedPosition();
+            scrollView.pinnedPosition = -1;
+            mainContent.sectionResizeInProgress = false;
+            sectionTrackTimer.restart();
         }
     }
 
@@ -273,7 +282,6 @@ Item {
                 let newContentY = charGlobalY + scrollView.pinnedOffset;
                 let maxContentY = Math.max(0, scrollView.contentHeight - scrollView.height);
                 scrollView.contentItem.contentY = Math.max(0, Math.min(newContentY, maxContentY));
-                pinResetTimer.restart();
             }
 
             function scrollToCursor(offset) {
@@ -330,7 +338,6 @@ Item {
                     visible: mainContent.articleText.length > 0
                     width: parent.width
                     wrapMode: TextEdit.Wrap
-                    onWidthChanged: scrollView.applyPinnedPosition()
 
                     ContextMenu.menu: Menu {
                         MenuItem {
@@ -398,9 +405,16 @@ Item {
             Layout.preferredWidth: collapsed ? collapsedWidth : expandedWidth
             visible: GlobalState.currentPageTitle.length > 0
 
-            onCollapsedChanged: {
-                scrollView.pinTopPosition();
-                pinResetTimer.restart();
+            onResizeStarted: {
+                if (!mainContent.sectionResizeInProgress)
+                    scrollView.pinTopPosition();
+                mainContent.sectionResizeInProgress = true;
+                sectionTrackTimer.stop();
+                sectionResizeSettleTimer.restart();
+            }
+            onWidthChanged: {
+                if (mainContent.sectionResizeInProgress)
+                    sectionResizeSettleTimer.restart();
             }
             onSectionClicked: function (section) {
                 var html = articleSection.text;
@@ -451,7 +465,8 @@ Item {
     Connections {
         target: scrollView.contentItem
         function onContentYChanged() {
-            sectionTrackTimer.restart();
+            if (!mainContent.sectionResizeInProgress)
+                sectionTrackTimer.restart();
         }
     }
 
