@@ -32,7 +32,7 @@ wikipedia_reader/
 ├── src/
 │   ├── main.cpp              # Entry point; registers QML singletons
 │   ├── Main.qml              # Root ApplicationWindow + StackView
-│   ├── SearchScreen.qml      # Search view (SearchBar + Sidebar)
+│   ├── SearchScreen.qml      # Search view: controls, loading/empty/error feedback, Sidebar
 │   ├── constants.{h,cpp}     # QML_SINGLETON view-name constants
 │   ├── wikipedia_models.h    # Q_GADGET data structs (search_result, page, ...)
 │   ├── wikipedia_search_client.{h,cpp}   # Action API search
@@ -166,6 +166,21 @@ containing QML view file(s) + a `*Model.{h,cpp}` C++ backend
 state singletons. The main `wikipedia_qt` module (`src/CMakeLists.txt`)
 depends on all submodules.
 
+### Search flow
+- **`SearchBarModel`** trims submitted text and ignores empty or whitespace-only
+  queries. It exposes `isSearching` and read-only `hasCompletedSearch` to QML;
+  a new request clears completion state, prior results, and errors.
+- **`SearchBar`** disables its text field and button while searching, and keeps
+  the button disabled for blank or whitespace-only input. Its stable QML test
+  selectors are `searchInput` and `searchButton`.
+- **`SearchScreen`** displays `searchLoadingIndicator` during a pending search,
+  `searchStatusLabel` for errors or a successful empty response, and passes
+  results to the `searchResults` sidebar. The sidebar list and delegates expose
+  `searchResultsList` and `searchResultContent-<index>` selectors respectively.
+- Search success must clear `GlobalState.isLoading`; failures clear it through
+  the error path. “No results found.” is only shown after a successful response,
+  never before the first search or while a retry is pending.
+
 ### Navigation
 StackView-based. `Main.qml` registers `Component`s with `NavigationState`
 on startup. Use `StackView.push()`/`pop()` — NOT `replace` — to preserve
@@ -238,19 +253,26 @@ Non-blocking: only intercept needed events (e.g. `Qt::BackButton`), return
   which matches requests by method + URL, serves committed fixtures from
   `tests/qml/fixtures/`, simulates HTTP status / network errors, records
   requests, and calls `qFatal` on unexpected requests — tests never reach
-  the internet.
+  the internet. Replies complete asynchronously by default. For deterministic
+  pending-state tests, call `networkFixtures.deferNextReply()` before issuing a
+  request, inspect `pendingReplyCount`, then release it with
+  `networkFixtures.completeNextReply()`.
 - **QML access:** the setup registers the real singletons before the engine
   imports `wikipedia_qt` (importing first would finalize the module and
   reject the registrations) and exposes two context properties to test files:
   `networkFixtures` (fixture controller: `addFixture`, `clearRequests`,
-  `requestCount`, `requests`) and `testSupport` (QML-warning capture, request
-  counts).
+  `deferNextReply`, `completeNextReply`, `pendingReplyCount`, `requestCount`,
+  `requests`) and `testSupport` (QML-warning capture, request counts).
 - **Isolation:** app data is redirected to a per-run `QTemporaryDir` via
   `XDG_DATA_HOME` plus a dedicated organization/application name, so the
   SQLite history DB never touches real user data.
 - **Existing tests:** `tst_smoke.qml` — singletons usable / start idle, and
-  `Sidebar` loads without network requests or QML warnings.
+  `Sidebar` loads without network requests or QML warnings. `tst_search.qml`
+  covers blank input, mouse and Enter submission, deferred loading controls,
+  populated and empty responses, plus error recovery and retry.
 - Run: `ctest --test-dir build -R QmlTests`.
+  Run only the search behavior test with
+  `ctest --test-dir build -R '^QmlTests\\.tst_search$' --output-on-failure`.
 
 ## 8. Git Workflow
 

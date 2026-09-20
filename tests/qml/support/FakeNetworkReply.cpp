@@ -4,7 +4,7 @@
 #include <algorithm>
 
 FakeNetworkReply::FakeNetworkReply(const QNetworkRequest &request, QNetworkAccessManager::Operation operation,
-                                   const FakeNetworkResponse &response, QObject *parent)
+                                   const FakeNetworkResponse &response, bool deferred, QObject *parent)
     : QNetworkReply(parent), m_body(response.body), m_networkError(response.networkError),
       m_errorString(response.errorString) {
     setRequest(request);
@@ -30,8 +30,12 @@ FakeNetworkReply::FakeNetworkReply(const QNetworkRequest &request, QNetworkAcces
         }
     }
 
-    QTimer::singleShot(0, this, &FakeNetworkReply::finishReply);
+    if (!deferred) {
+        QTimer::singleShot(0, this, &FakeNetworkReply::finishReply);
+    }
 }
+
+void FakeNetworkReply::complete() { finishReply(); }
 
 qint64 FakeNetworkReply::bytesAvailable() const {
     return (m_body.size() - m_position) + QNetworkReply::bytesAvailable();

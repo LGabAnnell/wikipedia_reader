@@ -18,6 +18,9 @@ SearchBarModel::SearchBarModel(QObject *parent) : QObject(parent) {
                     m_isSearching = false;
                     emit isSearchingChanged(m_isSearching);
                     m_globalState->setSearchResults(results);
+                    m_globalState->setIsLoading(false);
+                    m_hasCompletedSearch = true;
+                    emit hasCompletedSearchChanged(m_hasCompletedSearch);
                 });
     connect(m_searchClient, &WikipediaSearchClient::errorOccurred,
             this, &SearchBarModel::handleError);
@@ -41,11 +44,20 @@ bool SearchBarModel::isSearching() const {
     return m_isSearching;
 }
 
+bool SearchBarModel::hasCompletedSearch() const {
+    return m_hasCompletedSearch;
+}
+
 void SearchBarModel::performSearch() {
-    if (!m_searchText.isEmpty()) {
+    const QString query = m_searchText.trimmed();
+    if (!query.isEmpty() && !m_isSearching) {
         m_isSearching = true;
         emit isSearchingChanged(m_isSearching);
-        emit searchRequested(m_searchText);
+        if (m_hasCompletedSearch) {
+            m_hasCompletedSearch = false;
+            emit hasCompletedSearchChanged(m_hasCompletedSearch);
+        }
+        emit searchRequested(query);
 
         if (m_globalState) {
             m_globalState->setIsLoading(true);
@@ -55,7 +67,7 @@ void SearchBarModel::performSearch() {
         }
 
         if (m_searchClient) {
-            m_searchClient->search(m_searchText);
+            m_searchClient->search(query);
         }
     }
 }
@@ -67,6 +79,10 @@ void SearchBarModel::handleError(const QString &error) {
     }
     m_isSearching = false;
     emit isSearchingChanged(m_isSearching);
+    if (m_hasCompletedSearch) {
+        m_hasCompletedSearch = false;
+        emit hasCompletedSearchChanged(m_hasCompletedSearch);
+    }
     emit errorOccurred(error);
 }
 
@@ -75,4 +91,3 @@ void SearchBarModel::clearSearchResults() {
         m_globalState->setSearchResults({});
     }
 }
-

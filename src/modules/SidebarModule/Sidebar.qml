@@ -13,10 +13,14 @@ Item {
 
     ListView {
         id: listView
+        objectName: "searchResultsList"
         anchors.fill: parent
         model: container.searchResults
         delegate: ItemDelegate {
             id: delegate
+            objectName: "searchResultContent-" + index
+            readonly property string resultTitle: modelData.title
+            readonly property string resultSnippet: modelData.snippet
             focus: false
             SystemPalette {
                 id: sysPalette
@@ -76,4 +80,3 @@ Item {
         spacing: 10
     }
 }
-

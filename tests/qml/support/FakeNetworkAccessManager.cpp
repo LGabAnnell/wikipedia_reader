@@ -23,6 +23,9 @@ NetworkFixtureController::NetworkFixtureController(QObject *parent) : QObject(pa
     addFixtureFile(QStringLiteral("GET"),
                    QUrl(QStringLiteral("https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=fixture&srlimit=10")),
                    QStringLiteral("search-results.json"), QStringLiteral("application/json"));
+    addFixtureFile(QStringLiteral("GET"),
+                   QUrl(QStringLiteral("https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=empty&srlimit=10")),
+                   QStringLiteral("search-empty.json"), QStringLiteral("application/json"));
     addFixtureFile(QStringLiteral("GET"), QUrl(QStringLiteral("https://en.wikipedia.org/api/rest_v1/page/html/Fixture_article")),
                    QStringLiteral("article.html"), QStringLiteral("text/html; charset=utf-8"));
     addFixtureFile(QStringLiteral("GET"), QUrl(QStringLiteral("https://upload.wikimedia.org/wikipedia/commons/fixture.png")),
@@ -41,6 +44,31 @@ int NetworkFixtureController::requestCount() const {
 QVariantList NetworkFixtureController::requests() const {
     QMutexLocker locker(&m_mutex);
     return m_requests;
+}
+
+int NetworkFixtureController::pendingReplyCount() const {
+    QMutexLocker locker(&m_mutex);
+    return m_pendingReplies.size();
+}
+
+void NetworkFixtureController::deferNextReply() {
+    QMutexLocker locker(&m_mutex);
+    m_deferNextReply = true;
+}
+
+void NetworkFixtureController::completeNextReply() {
+    QPointer<FakeNetworkReply> reply;
+    {
+        QMutexLocker locker(&m_mutex);
+        if (m_pendingReplies.isEmpty()) {
+            return;
+        }
+        reply = m_pendingReplies.dequeue();
+    }
+    emit pendingRepliesChanged();
+    if (reply) {
+        reply->complete();
+    }
 }
 
 void NetworkFixtureController::addFixture(const QString &method, const QUrl &url, const QByteArray &body,
@@ -137,10 +165,24 @@ FakeNetworkReply *NetworkFixtureController::handleRequest(QNetworkAccessManager:
         rejected.contentType = "text/plain";
         rejected.networkError = QNetworkReply::ContentNotFoundError;
         rejected.errorString = description;
-        return new FakeNetworkReply(request, operation, rejected, parent);
+        return new FakeNetworkReply(request, operation, rejected, false, parent);
     }
 
-    return new FakeNetworkReply(request, operation, response, parent);
+    bool deferred = false;
+    {
+        QMutexLocker locker(&m_mutex);
+        deferred = m_deferNextReply;
+        m_deferNextReply = false;
+    }
+    auto *reply = new FakeNetworkReply(request, operation, response, deferred, parent);
+    if (deferred) {
+        {
+            QMutexLocker locker(&m_mutex);
+            m_pendingReplies.enqueue(reply);
+        }
+        emit pendingRepliesChanged();
+    }
+    return reply;
 }
 
 void NetworkFixtureController::addFixtureFile(const QString &method, const QUrl &url, const QString &fixtureFile,

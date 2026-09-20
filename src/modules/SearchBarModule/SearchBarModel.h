@@ -21,6 +21,7 @@ class SearchBarModel : public QObject {
     QML_ELEMENT
     Q_PROPERTY(QString searchText READ searchText WRITE setSearchText NOTIFY searchTextChanged)
     Q_PROPERTY(bool isSearching READ isSearching NOTIFY isSearchingChanged)
+    Q_PROPERTY(bool hasCompletedSearch READ hasCompletedSearch NOTIFY hasCompletedSearchChanged)
     Q_PROPERTY(QPointer<GlobalState> globalState READ globalState)
 
   public:
@@ -36,8 +37,13 @@ class SearchBarModel : public QObject {
      * @brief Checks if a search is currently in progress.
      * @return True if a search is in progress, false otherwise.
      */
-    bool isSearching()
-        const; // Add this line to the public section of the SearchBarModel class definition in SearchBarModel.h
+    bool isSearching() const;
+
+    /**
+     * @brief Checks whether the latest search completed successfully.
+     * @return True after a successful response, false while idle, searching, or after failure.
+     */
+    bool hasCompletedSearch() const;
 
     /**
      * @brief Sets the search text.
@@ -67,6 +73,7 @@ class SearchBarModel : public QObject {
      * @param isSearching True if a search is in progress, false otherwise.
      */
     void isSearchingChanged(bool isSearching);
+    void hasCompletedSearchChanged(bool hasCompletedSearch);
 
     // Add error signal
     void errorOccurred(const QString &error);
@@ -86,6 +93,7 @@ class SearchBarModel : public QObject {
   private:
     QString m_searchText;                           ///< The current search text.
     bool m_isSearching;                             ///< Indicates whether a search is currently in progress.
+    bool m_hasCompletedSearch = false;               ///< Whether the latest search completed successfully.
     QPointer<GlobalState> m_globalState;            ///< The GlobalState instance.
     QPointer<WikipediaSearchClient> m_searchClient; ///< The Wikipedia search client instance.
 };

@@ -17,7 +17,25 @@ Item {
         anchors.fill: parent
 
         SearchBar {
+            id: searchBar
             Layout.fillWidth: true
+        }
+
+        BusyIndicator {
+            objectName: "searchLoadingIndicator"
+            running: searchBar.isSearching
+            visible: running
+            Layout.alignment: Qt.AlignHCenter
+        }
+
+        Label {
+            objectName: "searchStatusLabel"
+            text: GlobalState.errorMessage.length > 0
+                  ? GlobalState.errorMessage
+                  : (searchBar.hasCompletedSearch && GlobalState.searchResults.length === 0
+                     ? qsTr("No results found.") : "")
+            visible: text.length > 0 && !searchBar.isSearching
+            Layout.alignment: Qt.AlignHCenter
         }
 
         SplitView {
@@ -27,6 +45,7 @@ Item {
 
             Sidebar {
                 id: sidebar
+                objectName: "searchResults"
                 SplitView.fillHeight: true
                 SplitView.minimumWidth: 200
                 searchResults: GlobalState.searchResults ? GlobalState.searchResults : []

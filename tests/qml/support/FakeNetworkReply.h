@@ -17,10 +17,11 @@ class FakeNetworkReply final : public QNetworkReply {
 
   public:
     FakeNetworkReply(const QNetworkRequest &request, QNetworkAccessManager::Operation operation,
-                     const FakeNetworkResponse &response, QObject *parent = nullptr);
+                     const FakeNetworkResponse &response, bool deferred = false, QObject *parent = nullptr);
 
     qint64 bytesAvailable() const override;
     void abort() override;
+    void complete();
 
   protected:
     qint64 readData(char *data, qint64 maxSize) override;

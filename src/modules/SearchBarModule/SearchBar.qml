@@ -6,6 +6,9 @@ import wikipedia_qt.SearchBar 1.0
 
 RowLayout {
     id: searchBar
+    objectName: "searchBar"
+    readonly property alias isSearching: searchBarModel.isSearching
+    readonly property alias hasCompletedSearch: searchBarModel.hasCompletedSearch
     Layout.margins: 10
     spacing: 10
 
@@ -15,6 +18,7 @@ RowLayout {
 
     TextField {
         id: searchText
+        objectName: "searchInput"
         placeholderText: "Search Wikipedia"
         onTextChanged: searchBarModel.searchText = text
         onAccepted: searchBarModel.performSearch()
@@ -27,8 +31,9 @@ RowLayout {
 
     Button {
         id: searchButton
+        objectName: "searchButton"
         text: "Search"
-        enabled: !searchBarModel.isSearching && searchText.text.length > 0
+        enabled: !searchBarModel.isSearching && searchText.text.trim().length > 0
         onClicked: searchBarModel.performSearch()
 
         Layout.preferredWidth: 100
