@@ -40,6 +40,7 @@ wikipedia_reader/
 │   ├── wikipedia_featured_client.{h,cpp} # Wikimedia feed: featured article
 │   ├── wikipedia_home_client.{h,cpp}     # Wikimedia feed: news/on-this-day/dyk
 │   ├── html_processor.{h,cpp}            # tinyxml2-based HTML cleanup
+│   ├── wikipedia_network_access_manager.h  # Injectable QNetworkAccessManager factory
 │   ├── CMakeLists.txt        # Main `wikipedia_qt` QML module (URI wikipedia_qt)
 │   ├── state/
 │   │   ├── GlobalState.{h,cpp}     # App-wide singleton: search/page/loading state
@@ -57,6 +58,11 @@ wikipedia_reader/
 │       ├── ImageDisplayModule/  # URI wikipedia_qt.ImageDisplay
 │       └── SectionModule/       # URI wikipedia_qt.Section
 ├── tests/                    # Qt Test / CTest tests
+│   └── qml/                  # Qt Quick Test harness (fake network transport)
+│       ├── support/          # FakeNetworkAccessManager, FakeNetworkReply, QmlTestSupport
+│       ├── fixtures/         # Committed JSON/HTML/PNG fixtures
+│       ├── tst_*.qml         # Test files (auto-globbed into CTest as QmlTests.<name>)
+│       └── qml_test_main.cpp # QUICK_TEST_MAIN_WITH_SETUP entry
 ├── examples/                 # Usage example for WikipediaClient
 ├── icons/                    # SVG icons (home, history, back, search)
 ├── styles/                   # CSS (table_style.css)
@@ -92,6 +98,9 @@ cmake --build build -j14
 
 # Run tests via CTest
 ctest --test-dir build            # or: ./test.sh  (runs ctest --test-dir build/tests)
+
+# Run only the Qt Quick Tests
+ctest --test-dir build -R QmlTests
 
 # Debug run helper (rebuild from scratch with `rebuild` arg)
 ./scripts/run_debug.sh
@@ -204,20 +213,44 @@ Non-blocking: only intercept needed events (e.g. `Qt::BackButton`), return
 
 ## 7. Testing
 
+### C++ tests (`tests/`)
 - **Framework:** Qt Test (`QtTest/QtTest`, `QSignalSpy`, `QTEST_MAIN`).
 - **Runner:** CTest (`enable_testing()` in `tests/CMakeLists.txt`).
-- **Location:** `tests/`.
-- **Test targets:** `GlobalStateTest`, `test_wikipedia_client`, `simple_test`,
-  `verbose_test`, `basic_test`, `test_search_display`, `test_sidebar_layout`.
+- **Test targets:** `GlobalStateTest`, `test_search_display`,
+  `test_sidebar_layout`, `HtmlProcessorTest`, `HistoryDatabaseTest`,
+  `WikipediaSearchClientTest`, `WikipediaPageClientTest`,
+  `WikipediaFeaturedClientTest`, `WikipediaHomeClientTest`.
 - Tests compile selected `.cpp` sources directly (e.g.
   `${CMAKE_SOURCE_DIR}/src/state/GlobalState.cpp`) rather than linking the
   full app.
 - Run: `ctest --test-dir build` (or `./test.sh`).
-- Note: `tests/CMakeLists.txt` references `src/wikipedia_client.cpp`, which no
-  longer exists (the client was split into `wikipedia_search_client.cpp`,
-  `wikipedia_page_client.cpp`, etc.). Those test targets may fail to build
-  until updated; `GlobalStateTest`, `test_search_display`, and
-  `test_sidebar_layout` reference current paths.
+
+### Qt Quick Test harness (`tests/qml/`)
+- **Framework:** Qt Quick Test — `QUICK_TEST_MAIN_WITH_SETUP` in
+  `qml_test_main.cpp`. Each `tst_*.qml` file is auto-globbed by
+  `tests/qml/CMakeLists.txt` into a CTest named `QmlTests.<file>` and run
+  headless (`QT_QPA_PLATFORM=offscreen`). Adding a new test means dropping a
+  new `tst_*.qml` file in `tests/qml/` — no CMake changes needed.
+- **Fake network transport:** clients obtain their `QNetworkAccessManager`
+  via the injectable factory in `src/wikipedia_network_access_manager.h`
+  (`WikipediaNetwork::installNetworkAccessManagerFactory`). In tests the
+  factory is `NetworkFixtureController` (`support/FakeNetworkAccessManager.h`),
+  which matches requests by method + URL, serves committed fixtures from
+  `tests/qml/fixtures/`, simulates HTTP status / network errors, records
+  requests, and calls `qFatal` on unexpected requests — tests never reach
+  the internet.
+- **QML access:** the setup registers the real singletons before the engine
+  imports `wikipedia_qt` (importing first would finalize the module and
+  reject the registrations) and exposes two context properties to test files:
+  `networkFixtures` (fixture controller: `addFixture`, `clearRequests`,
+  `requestCount`, `requests`) and `testSupport` (QML-warning capture, request
+  counts).
+- **Isolation:** app data is redirected to a per-run `QTemporaryDir` via
+  `XDG_DATA_HOME` plus a dedicated organization/application name, so the
+  SQLite history DB never touches real user data.
+- **Existing tests:** `tst_smoke.qml` — singletons usable / start idle, and
+  `Sidebar` loads without network requests or QML warnings.
+- Run: `ctest --test-dir build -R QmlTests`.
 
 ## 8. Git Workflow
 
@@ -237,6 +270,8 @@ Non-blocking: only intercept needed events (e.g. `Qt::BackButton`), return
 ## 9. Existing Guides / Agent Config
 
 - No `CONTRIBUTING.md` exists.
+- `docs/qt-quick-test-setup-spec.md` and `docs/full_testing.md` — design and
+  rationale for the Qt Quick Test harness in `tests/qml/`.
 - `.continue/rules/` — Continue IDE rule files (most are `alwaysApply: true`):
   `c++.md`, `qt-database-error-handling.md`, `qt-event-filter-best-practices.md`,
   `qt-sqlite-best-practices.md`, `qt-stackview-navigation.md`,
