@@ -23,11 +23,18 @@ Item {
     }
 
     function fullResolutionImageUrl(imageUrl) {
+        const uploadHost = "https://upload.wikimedia.org/";
+        const thumbHost = "https://thumb.wikimedia.org/";
+        const isUploadThumb = imageUrl.startsWith(uploadHost);
+        const isThumbHost = imageUrl.startsWith(thumbHost);
         const thumbnailMarker = "/thumb/";
         const markerPosition = imageUrl.indexOf(thumbnailMarker);
-        if (markerPosition < 0 || !imageUrl.startsWith("https://upload.wikimedia.org/"))
+        if (markerPosition < 0 || (!isUploadThumb && !isThumbHost))
             return imageUrl;
 
+        // A thumbnail URL is <host>/<bucket>/thumb/<hash>/<file>/<size-segment>;
+        // the original asset is upload.wikimedia.org/<bucket>/<hash>/<file>.
+        // Query and fragment (tracking parameters) do not apply to the original.
         let pathEnd = imageUrl.length;
         const queryPosition = imageUrl.indexOf("?", markerPosition);
         const fragmentPosition = imageUrl.indexOf("#", markerPosition);
@@ -36,15 +43,16 @@ Item {
         if (fragmentPosition >= 0)
             pathEnd = Math.min(pathEnd, fragmentPosition);
 
+        const hostLength = isThumbHost ? thumbHost.length : uploadHost.length;
+        const bucketPath = imageUrl.substring(hostLength, markerPosition);
         const thumbnailPath = imageUrl.substring(markerPosition + thumbnailMarker.length,
                                                  pathEnd);
         const sizeSegmentPosition = thumbnailPath.lastIndexOf("/");
         if (sizeSegmentPosition < 0)
             return imageUrl;
 
-        return imageUrl.substring(0, markerPosition) + "/"
-                + thumbnailPath.substring(0, sizeSegmentPosition)
-                + imageUrl.substring(pathEnd);
+        return uploadHost + bucketPath + "/"
+                + thumbnailPath.substring(0, sizeSegmentPosition);
     }
 
     function renderArticleText(html) {
