@@ -33,3 +33,10 @@ qt6_add_qml_module(HomeModule
 
 # Add this module to the main library
 target_link_libraries(HomeModule PRIVATE Qt::Quick Qt::Core)
+
+qt_add_resources(HomeModule "home_images"
+    PREFIX "/images"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/images"
+    FILES
+        images/news_placeholder.jpg
+)
