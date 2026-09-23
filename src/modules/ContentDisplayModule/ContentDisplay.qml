@@ -145,6 +145,7 @@ Item {
 
     BusyIndicator {
         id: loadingIndicator
+        objectName: "articleLoadingIndicator"
 
         anchors.centerIn: parent
         running: GlobalState.isLoading
@@ -314,6 +315,7 @@ Item {
                 width: scrollView.width - scrollView.effectiveScrollBarWidth - leftPadding - rightPadding
 
                 TextEdit {
+                    objectName: "articleTitle"
                     color: articleDisplay.sysPalette.text
                     font.bold: true
                     font.pixelSize: 20
@@ -327,6 +329,7 @@ Item {
                 }
                 TextEdit {
                     id: articleSection
+                    objectName: "articleBody"
 
                     color: articleDisplay.sysPalette.text
                     font.pixelSize: 14
@@ -385,6 +388,7 @@ Item {
                     wrapMode: Text.WordWrap
                 }
                 Text {
+                    objectName: "articleErrorMessage"
                     anchors.horizontalCenter: parent.horizontalCenter
                     color: articleDisplay.sysPalette.negativeText || articleDisplay.sysPalette.text
                     text: GlobalState.errorMessage
