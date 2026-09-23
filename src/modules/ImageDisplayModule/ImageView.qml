@@ -15,6 +15,7 @@ Item {
 
         Image {
             id: fullImage
+            objectName: "fullScreenImage"
             anchors.fill: parent
             source: GlobalState.currentImageUrl
             fillMode: Image.PreserveAspectFit
@@ -58,6 +59,7 @@ Item {
         // Image description overlay at the bottom
         Rectangle {
             id: descriptionOverlay
+            objectName: "imageCaptionOverlay"
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
@@ -74,6 +76,7 @@ Item {
                 spacing: 4
 
                 Text {
+                    objectName: "imageCaptionText"
                     Layout.fillWidth: true
                     text: GlobalState.currentImageDescription
                     color: "white"

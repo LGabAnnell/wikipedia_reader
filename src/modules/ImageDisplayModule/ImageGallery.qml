@@ -72,6 +72,7 @@ Item {
 
                 delegate: Rectangle {
                     id: imageCell
+                    objectName: "imageGalleryCell-" + index
                     width: imageGrid.cellWidth
                     height: imageGrid.cellHeight
                     color: "transparent"
