@@ -1,5 +1,8 @@
 #include "QmlTestSupport.h"
 
+#include <QCoreApplication>
+#include <QMouseEvent>
+
 QmlTestSupport::QmlTestSupport(NetworkFixtureController *networkController, QObject *parent)
     : QObject(parent), m_networkController(networkController) {
     connect(m_networkController, &NetworkFixtureController::requestsChanged, this,
@@ -23,6 +26,16 @@ void QmlTestSupport::clearQmlWarnings() {
 }
 
 void QmlTestSupport::clearRequests() { m_networkController->clearRequests(); }
+
+bool QmlTestSupport::sendBackButtonPress(QObject *target) const {
+    if (!target) {
+        return false;
+    }
+
+    QMouseEvent event(QEvent::MouseButtonPress, QPointF(), QPointF(), Qt::BackButton, Qt::BackButton,
+                      Qt::NoModifier);
+    return QCoreApplication::sendEvent(target, &event);
+}
 
 void QmlTestSupport::recordQmlWarnings(const QList<QQmlError> &warnings) {
     for (const QQmlError &warning : warnings) {

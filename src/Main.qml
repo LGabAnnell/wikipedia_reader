@@ -12,6 +12,7 @@ import wikipedia_qt.Section
 
 ApplicationWindow {
     id: root
+    objectName: "mainWindow"
     width: 800
     height: 600
     visible: true
@@ -22,23 +23,32 @@ ApplicationWindow {
         spacing: 1
 
         Header {
+            objectName: "applicationHeader"
             stackView: stackView // Pass stackView to Header
             onChangeView: function (viewName) {
-                NavigationState.setCurrentView(viewName);
+                if (viewName === Constants.homeView) {
+                    if (stackView.depth > 1) {
+                        stackView.pop(null);
+                    }
+                } else {
+                    NavigationState.navigateToView(viewName);
+                }
             }
         }
 
         // StackView for navigation
         StackView {
             id: stackView
+            objectName: "applicationStack"
             Layout.fillWidth: true
             Layout.fillHeight: true
             initialItem: homeComponent
 
-            // Define the search view (root view)
+            // Define the search view
             Component {
                 id: searchView
                 SearchScreen {
+                    objectName: "searchView"
                     Layout.fillHeight: true
                     Layout.fillWidth: true
                 }
@@ -60,6 +70,7 @@ ApplicationWindow {
             Component {
                 id: homeComponent
                 HomeScreen {
+                    objectName: "homeView"
                     Layout.fillHeight: true
                     Layout.fillWidth: true
                 }
@@ -68,7 +79,9 @@ ApplicationWindow {
             // Define the history view component
             Component {
                 id: historyComponent
-                History {}
+                History {
+                    objectName: "historyView"
+                }
             }
 
             // Define the image gallery view component
@@ -117,6 +130,6 @@ ApplicationWindow {
         NavigationState.replaceView.connect((newView) => {
             // Clear the stack and replace with the new view instantly
             stackView.replace(null, newView);
-        })
+        });
     }
 }

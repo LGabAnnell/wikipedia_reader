@@ -23,6 +23,7 @@ class QmlTestSupport final : public QObject {
     QVariantList requests() const;
     Q_INVOKABLE void clearQmlWarnings();
     Q_INVOKABLE void clearRequests();
+    Q_INVOKABLE bool sendBackButtonPress(QObject *target) const;
 
   public slots:
     void recordQmlWarnings(const QList<QQmlError> &warnings);

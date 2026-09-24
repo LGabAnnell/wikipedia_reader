@@ -25,6 +25,7 @@ ToolBar {
     RowLayout {
         ToolButton {
             id: backButton
+            objectName: "backButton"
             text: "Back"
             Layout.fillHeight: true
 
@@ -41,6 +42,7 @@ ToolBar {
             visible: header.stackView ? header.stackView.depth > 1 : false
         }
         ToolButton {
+            objectName: "homeButton"
             height: parent.height
             contentItem: Image {
                 source: "image://svg/home"
@@ -53,6 +55,7 @@ ToolBar {
             }
         }
         ToolButton {
+            objectName: "searchButton"
             height: parent.height
             contentItem: Image {
                 source: "image://svg/search"
@@ -65,6 +68,7 @@ ToolBar {
             }
         }
         ToolButton {
+            objectName: "historyButton"
             contentItem: Image {
                 source: "image://svg/history"
                 fillMode: Image.PreserveAspectFit
@@ -78,4 +82,3 @@ ToolBar {
         }
     }
 }
-
