@@ -103,7 +103,7 @@ Item {
                 return;
 
             var contentY = scrollView.contentItem.contentY;
-            var point = articleSection.mapFromItem(articleDisplay, 0, contentY);
+            var point = articleSection.mapFromItem(articleDisplay, articleSection.x + 1, contentY);
             var charPos = articleSection.positionAt(point.x, point.y);
             var sectionIdx = contentDisplay.findSectionAtPosition(charPos);
             GlobalState.setCurrentSectionIndex(sectionIdx);
@@ -260,6 +260,7 @@ Item {
         }
         ScrollView {
             id: scrollView
+            objectName: "articleScrollView"
 
             // Character position in articleSection that should stay pinned to the
             // top of the viewport while the sidebar toggles and reflows the text.
@@ -268,7 +269,7 @@ Item {
 
             function pinTopPosition() {
                 let contentY = scrollView.contentItem.contentY;
-                let point = articleSection.mapFromItem(articleDisplay, 0, contentY);
+                let point = articleSection.mapFromItem(articleDisplay, articleSection.x + 1, contentY);
                 scrollView.pinnedPosition = articleSection.positionAt(point.x, point.y);
                 let rect = articleSection.positionToRectangle(scrollView.pinnedPosition);
                 let charGlobalY = articleSection.mapToItem(articleDisplay, 0, rect.y).y;

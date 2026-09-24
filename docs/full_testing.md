@@ -18,6 +18,7 @@ ctest --test-dir build -R '^QmlTests\.tst_article$' --output-on-failure
 ctest --test-dir build -R '^QmlTests\.tst_images$' --output-on-failure
 ctest --test-dir build -R '^QmlTests\.tst_history$' --output-on-failure
 ctest --test-dir build -R '^QmlTests\.tst_navigation$' --output-on-failure
+ctest --test-dir build -R '^QmlTests\.tst_sections$' --output-on-failure
 ```
 
 `BUILD_TESTING` defaults to `OFF`. The QML tests run with `QT_QPA_PLATFORM=offscreen`; each `tests/qml/tst_*.qml` file is registered as a separate CTest process.
@@ -34,8 +35,9 @@ ctest --test-dir build -R '^QmlTests\.tst_navigation$' --output-on-failure
 | Gallery image | Load an article through the fake API, open its gallery, select an image, and verify the selected URL and description in `GlobalState` and the full-screen image and caption in `ImageView` (`tst_images.qml`). |
 | History | Load two fixture articles through `GlobalState`, then revisit one; verify visit order and that the revisit moves it to the front without a duplicate (`tst_history.qml`). |
 | Navigation | Exercise Home → Search → History using the real Main window; verify Search and History push, toolbar Back and the mouse Back button pop one view, and Home returns to the original root without adding entries (`tst_navigation.qml`). |
+| Sections | Verify deferred loading, section entries, click-to-heading navigation, viewport tracking and active highlight, empty results, and request errors (`tst_sections.qml`). |
 
-The gallery test uses the committed `tests/qml/fixtures/fixture.png`. The article, image, history, and search tests use the fake network transport; unexpected requests fail the test. QML tests check for warnings. The article test resets page, search, error, history, and navigation state between its success and failure cases.
+The gallery test uses the committed `tests/qml/fixtures/fixture.png`. The article, image, history, search, and Sections tests use the fake network transport; unexpected requests fail the test. QML tests check for warnings. The article test resets page, search, error, history, and navigation state between its success and failure cases.
 
 ## QML test harness
 
@@ -47,7 +49,6 @@ Add further QML coverage by creating a `tst_*.qml` file in `tests/qml/`. CMake d
 
 ## Remaining QML coverage
 
-- Section loading and scrolling to the selected heading.
 - Home feed content and partial failure behavior.
 
 The history QML test checks visits within one app run. Persistence across restarts is outside this QML test; database behavior has separate C++ tests.

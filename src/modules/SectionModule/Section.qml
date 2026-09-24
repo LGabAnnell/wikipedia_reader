@@ -8,6 +8,7 @@ import wikipedia_qt.Section 1.0
 
 Item {
     id: root
+    objectName: "sectionsPanel"
 
     property bool collapsed: true
     property int expandedWidth: 260
@@ -57,6 +58,7 @@ Item {
     // Toggle handle, always visible at the top-right of the bar
     Button {
         id: toggleButton
+        objectName: "sectionsToggleButton"
 
         Accessible.name: collapsed ? "Expand sections panel" : "Collapse sections panel"
         anchors.margins: 4
@@ -97,12 +99,14 @@ Item {
         }
 
         BusyIndicator {
+            objectName: "sectionsLoadingIndicator"
             Layout.alignment: Qt.AlignHCenter
             running: sectionModel.isLoading
             visible: sectionModel.isLoading
         }
 
         Text {
+            objectName: "sectionsErrorMessage"
             Layout.fillWidth: true
             Layout.margins: 10
             color: "red"
@@ -117,12 +121,14 @@ Item {
 
             ListView {
                 id: sectionsList
+                objectName: "sectionsList"
 
                 anchors.fill: parent
                 clip: true
                 model: sectionModel.sections
 
                 delegate: ItemDelegate {
+                    objectName: "sectionEntry-" + modelData.index
                     width: ListView.view.width
 
                     // ItemDelegate.highlighted drives the default background,
@@ -149,6 +155,7 @@ Item {
                 visible: sectionModel.sections.length === 0 && !sectionModel.isLoading
 
                 Text {
+                    objectName: "sectionsEmptyMessage"
                     anchors.fill: parent
                     color: "#888888"
                     horizontalAlignment: Text.AlignHCenter
