@@ -8,6 +8,8 @@ Item {
     width: 800
     height: 600
 
+    property SystemPalette systemPalette: SystemPalette {}
+
     Component {
         id: contentDisplayComponent
 
@@ -89,6 +91,25 @@ Item {
             compare(image.url,
                     "https://upload.wikimedia.org/wikipedia/commons/2/28/Foo.jpg")
             compare(image.description, "Foo")
+        }
+
+        function test_captioned_table_link_uses_visible_caption() {
+            const html = '<table class="article-image-table" border="1">'
+                    + '<tr><td><a href="/wiki/File:Foo.jpg">'
+                    + '<img alt="Different alt text" data-article-description="The%20Borden%20house%20%26%20garden" '
+                    + 'src="https://thumb.wikimedia.org/wikipedia/commons/thumb/2/28/Foo.jpg/250px-Foo.jpg" width="250" height="180" />'
+                    + '</a></td></tr><tr><td>The Borden house &amp; garden</td></tr></table>';
+            const rendered = display.renderArticleText(html);
+            const hrefMatch = rendered.match(/href="(wikipedia-image:[^"]+)"/);
+            verify(hrefMatch !== null, "The table image must retain its image link")
+
+            const image = JSON.parse(decodeURIComponent(
+                                          hrefMatch[1].substring("wikipedia-image:".length)));
+            compare(image.url,
+                    "https://upload.wikimedia.org/wikipedia/commons/2/28/Foo.jpg")
+            compare(image.description, "The Borden house & garden")
+            verify(rendered.includes('border-color: ' + root.systemPalette.text.toString()),
+                   "Image table border must use SystemPalette.text")
         }
     }
 }

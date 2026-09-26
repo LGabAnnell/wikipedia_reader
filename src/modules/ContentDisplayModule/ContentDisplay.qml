@@ -57,7 +57,7 @@ Item {
     }
 
     function renderArticleText(html) {
-        return html.replace(/<a\b[^>]*>[\s\S]*?<\/a\s*>/gi, function (anchor) {
+        const rendered = html.replace(/<a\b[^>]*>[\s\S]*?<\/a\s*>/gi, function (anchor) {
             const imageMatch = anchor.match(/<img\b[^>]*>/i);
             if (!imageMatch)
                 return anchor;
@@ -68,6 +68,7 @@ Item {
                 return anchor;
 
             const altMatch = imageTag.match(/\b(?:alt|title)\s*=\s*(["'])(.*?)\1/i);
+            const descriptionMatch = imageTag.match(/\bdata-article-description\s*=\s*(["'])(.*?)\1/i);
             let imageUrl = decodeHtmlAttribute(srcMatch[2]);
             if (imageUrl.startsWith("//"))
                 imageUrl = "https:" + imageUrl;
@@ -75,7 +76,8 @@ Item {
 
             const imageData = encodeURIComponent(JSON.stringify({
                 url: imageUrl,
-                description: altMatch ? decodeHtmlAttribute(altMatch[2]) : ""
+                description: descriptionMatch ? decodeURIComponent(descriptionMatch[2])
+                                              : altMatch ? decodeHtmlAttribute(altMatch[2]) : ""
             }));
             const imageLink = "wikipedia-image:" + imageData;
             return anchor.replace(/(\bhref\s*=\s*)(["'])(.*?)\2/i,
@@ -83,6 +85,13 @@ Item {
                                      return prefix + quote + imageLink + quote;
                                  });
         });
+        if (!rendered.includes('class="article-image-table"'))
+            return rendered;
+
+        const borderColor = articleDisplay.systemPalette.text.toString();
+        return "<style>table.article-image-table, table.article-image-table td "
+                + "{ border-color: " + borderColor + "; border-style: solid; "
+                + "border-width: 1px; }</style>" + rendered;
     }
 
     property Timer searchDebounceTimer: Timer {
@@ -203,7 +212,7 @@ Item {
                 }
             }
             Text {
-                color: articleDisplay.sysPalette.text
+                color: articleDisplay.systemPalette.text
                 font.pixelSize: 14
                 text: contentDisplay.totalResults > 0 ? contentDisplay.currentResultIndex + " of " + contentDisplay.totalResults : ""
                 verticalAlignment: Text.AlignVCenter
@@ -308,7 +317,7 @@ Item {
             Column {
                 id: articleDisplay
 
-                property SystemPalette sysPalette: SystemPalette {
+                property SystemPalette systemPalette: SystemPalette {
                 }
 
                 padding: 20
@@ -317,12 +326,12 @@ Item {
 
                 TextEdit {
                     objectName: "articleTitle"
-                    color: articleDisplay.sysPalette.text
+                    color: articleDisplay.systemPalette.text
                     font.bold: true
                     font.pixelSize: 20
                     readOnly: true
                     selectByMouse: true
-                    selectionColor: articleDisplay.sysPalette.highlight
+                    selectionColor: articleDisplay.systemPalette.highlight
                     text: GlobalState.currentPageTitle
                     visible: GlobalState.currentPageTitle.length > 0
                     width: parent.width
@@ -332,11 +341,11 @@ Item {
                     id: articleSection
                     objectName: "articleBody"
 
-                    color: articleDisplay.sysPalette.text
+                    color: articleDisplay.systemPalette.text
                     font.pixelSize: 14
                     readOnly: true
                     selectByMouse: true
-                    selectionColor: articleDisplay.sysPalette.highlight
+                    selectionColor: articleDisplay.systemPalette.highlight
                     text: mainContent.renderArticleText(mainContent.articleText)
                     textFormat: TextEdit.RichText
                     visible: mainContent.articleText.length > 0
@@ -380,7 +389,7 @@ Item {
                     onLinkHovered: {}
                 }
                 Text {
-                    color: articleDisplay.sysPalette.text
+                    color: articleDisplay.systemPalette.text
                     font.pixelSize: 14
                     horizontalAlignment: Text.AlignHCenter
                     text: "Select an article to view its content"
@@ -391,7 +400,7 @@ Item {
                 Text {
                     objectName: "articleErrorMessage"
                     anchors.horizontalCenter: parent.horizontalCenter
-                    color: articleDisplay.sysPalette.negativeText || articleDisplay.sysPalette.text
+                    color: articleDisplay.systemPalette.negativeText || articleDisplay.systemPalette.text
                     text: GlobalState.errorMessage
                     visible: GlobalState.errorMessage.length > 0
                     width: parent.width
