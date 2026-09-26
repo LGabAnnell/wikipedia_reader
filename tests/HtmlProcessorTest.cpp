@@ -1,234 +1,243 @@
-// tests/HtmlProcessorTest.cpp
 #include <QtTest/QtTest>
-#include <QRegularExpression>
+
+#include <memory>
+#include <vector>
+
+#include <lexbor/html/html.h>
+
 #include "html_processor.h"
+
+namespace {
+using Node = lxb_dom_node_t;
+
+struct DocumentDeleter {
+    void operator()(lxb_html_document_t *document) const {
+        if (document)
+            lxb_html_document_destroy(document);
+    }
+};
+
+struct ParsedFragment {
+    std::unique_ptr<lxb_html_document_t, DocumentDeleter> document;
+    Node *root = nullptr;
+};
+
+ParsedFragment parse(const QString &html) {
+    ParsedFragment parsed{std::unique_ptr<lxb_html_document_t, DocumentDeleter>(
+                              lxb_html_document_create()), nullptr};
+    if (!parsed.document)
+        return parsed;
+    lxb_html_document_scripting_set(parsed.document.get(), false);
+    auto *context = lxb_html_document_create_element(parsed.document.get(),
+        reinterpret_cast<const lxb_char_t *>("body"), 4, nullptr);
+    if (!context)
+        return parsed;
+    const QByteArray utf8 = html.toUtf8();
+    parsed.root = lxb_html_document_parse_fragment(parsed.document.get(),
+        lxb_dom_interface_element(context),
+        reinterpret_cast<const lxb_char_t *>(utf8.constData()), size_t(utf8.size()));
+    return parsed;
+}
+
+QString name(Node *node) {
+    if (!node || node->type != LXB_DOM_NODE_TYPE_ELEMENT)
+        return {};
+    size_t length = 0;
+    const auto *tag = lxb_dom_element_local_name(lxb_dom_interface_element(node), &length);
+    return QString::fromUtf8(reinterpret_cast<const char *>(tag), qsizetype(length));
+}
+
+QString attr(Node *node, const char *key) {
+    if (!node || node->type != LXB_DOM_NODE_TYPE_ELEMENT)
+        return {};
+    size_t length = 0;
+    const auto *value = lxb_dom_element_get_attribute(lxb_dom_interface_element(node),
+        reinterpret_cast<const lxb_char_t *>(key), qstrlen(key), &length);
+    return value ? QString::fromUtf8(reinterpret_cast<const char *>(value), qsizetype(length))
+                 : QString();
+}
+
+QString text(Node *node) {
+    size_t length = 0;
+    const auto *value = lxb_dom_node_text_content(node, &length);
+    return value ? QString::fromUtf8(reinterpret_cast<const char *>(value), qsizetype(length))
+                 : QString();
+}
+
+void descendants(Node *root, const QString &tag, std::vector<Node *> &result) {
+    for (Node *child = root ? root->first_child : nullptr; child; child = child->next) {
+        if (name(child) == tag)
+            result.push_back(child);
+        descendants(child, tag, result);
+    }
+}
+
+int count(Node *root, const QString &tag) {
+    std::vector<Node *> found;
+    descendants(root, tag, found);
+    return int(found.size());
+}
+
+Node *first(Node *root, const QString &tag) {
+    std::vector<Node *> found;
+    descendants(root, tag, found);
+    return found.empty() ? nullptr : found.front();
+}
+
+ParsedFragment processed(const QString &source) {
+    return parse(HtmlProcessor::processHtml(source));
+}
+} // namespace
 
 class HtmlProcessorTest : public QObject {
     Q_OBJECT
 
-    static QStringList imageTables(const QString &html) {
-        static const QRegularExpression tableRegex(
-            R"(<table\b[^>]*class="article-image-table"[^>]*>[\s\S]*?</table>)",
-            QRegularExpression::CaseInsensitiveOption);
-        QStringList tables;
-        auto matches = tableRegex.globalMatch(html);
-        while (matches.hasNext())
-            tables.append(matches.next().captured());
-        return tables;
-    }
-
-    static void verifyTwoRowImageTable(const QString &table, const QString &imageSource,
-                                       const QString &description) {
-        QVERIFY(table.contains("border=\"1\""));
-        QCOMPARE(table.count(QRegularExpression(R"(<tr\b)")), 2);
-        QCOMPARE(table.count(QRegularExpression(R"(<td\b)")), 2);
-        QCOMPARE(table.count(QRegularExpression(R"(<img\b)")), 1);
-        const int firstRowEnd = table.indexOf(QLatin1String("</tr>"));
-        QVERIFY(firstRowEnd > 0);
-        QVERIFY(table.left(firstRowEnd).contains(imageSource));
-        QVERIFY(table.mid(firstRowEnd).contains(description));
-    }
-
 private slots:
-    void testEmpty_data() {
-        QTest::addColumn<QString>("input");
-        QTest::newRow("empty") << "";
+    void removesSourceStylesAndPreservesArticleText() {
+        const auto result = processed(QStringLiteral(
+            "<style>body{color:red}</style><p style=color:red>Before</p>"
+            "<div><span style='font-weight:bold'>After</span></div>"));
+        QVERIFY(result.root);
+        QCOMPARE(count(result.root, QStringLiteral("style")), 0);
+        QCOMPARE(count(result.root, QStringLiteral("p")), 1);
+        QCOMPARE(text(result.root).trimmed(), QStringLiteral("BeforeAfter"));
     }
 
-    void testEmpty() {
-        QFETCH(QString, input);
-        QString result = HtmlProcessor::processHtml(input);
-        // With no CSS resource, the function returns the raw processed HTML.
-        // Empty input should produce empty or near-empty output.
-        QVERIFY(result.trimmed().isEmpty() || result.contains("<style>"));
+    void convertsFigureAndKeepsLinkDimensionsAndCaptionMarkup() {
+        const auto result = processed(QStringLiteral(
+            "<h2>Heading</h2><figure><a href=/wiki/File:House.jpg>"
+            "<img alt='House alt' src=//upload.wikimedia.org/house.jpg width=250 height=180>"
+            "</a><figcaption>The <b>old</b> house &amp; garden</figcaption></figure><p>Next</p>"));
+        Node *table = first(result.root, QStringLiteral("table"));
+        QVERIFY(table);
+        QCOMPARE(attr(table, "class"), QStringLiteral("article-image-table"));
+        QCOMPARE(attr(table, "width"), QStringLiteral("270"));
+        QCOMPARE(count(table, QStringLiteral("tr")), 2);
+        QCOMPARE(count(table, QStringLiteral("td")), 2);
+        Node *image = first(table, QStringLiteral("img"));
+        QVERIFY(image);
+        QCOMPARE(attr(image, "src"), QStringLiteral("https://upload.wikimedia.org/house.jpg"));
+        QCOMPARE(attr(image, "width"), QStringLiteral("250"));
+        QCOMPARE(attr(image, "height"), QStringLiteral("180"));
+        QCOMPARE(attr(first(table, QStringLiteral("a")), "href"),
+                 QStringLiteral("/wiki/File:House.jpg"));
+        QCOMPARE(text(table).trimmed(), QStringLiteral("The old house & garden"));
+        QVERIFY(first(table, QStringLiteral("b")));
+        QCOMPARE(text(result.root).indexOf(QStringLiteral("Heading")) <
+                     text(result.root).indexOf(QStringLiteral("The old house")), true);
+        QVERIFY(text(result.root).endsWith(QStringLiteral("Next")));
     }
 
-    void testPlainText() {
-        QString result = HtmlProcessor::processHtml("<p>Hello</p>");
-        QVERIFY(result.contains("Hello"));
-        QVERIFY(!result.contains("<style>body{"));
+    void captionFallbackIsLiteralAndHasEncodedDescription() {
+        const auto result = processed(QStringLiteral(
+            "<figure><img alt='A < B &amp; C' src=x.jpg><figcaption></figcaption></figure>"));
+        Node *table = first(result.root, QStringLiteral("table"));
+        QVERIFY(table);
+        Node *image = first(table, QStringLiteral("img"));
+        QCOMPARE(attr(image, "alt"), QStringLiteral("A < B & C"));
+        QCOMPARE(attr(image, "data-article-description"), QStringLiteral("A%20%3C%20B%20%26%20C"));
+        QCOMPARE(text(table).trimmed(), QStringLiteral("A < B & C"));
     }
 
-    void testStyleNodeRemoved() {
-        QString result = HtmlProcessor::processHtml("<style>body{}</style><p>Hi</p>");
-        QVERIFY(result.contains("Hi"));
-        QVERIFY(!result.contains("body{}"));
+    void leavesEmptyCaptionRowWhenAltIsMissing() {
+        const auto result = processed(QStringLiteral(
+            "<figure><img src=uncaptioned.jpg><figcaption></figcaption></figure>"));
+        Node *table = first(result.root, QStringLiteral("table"));
+        QVERIFY(table);
+        QCOMPARE(count(table, QStringLiteral("tr")), 2);
+        QCOMPARE(attr(first(table, QStringLiteral("img")), "data-article-description"), QString());
+        QCOMPARE(text(table).trimmed(), QString());
     }
 
-    void testStyleAttributeRemoved() {
-        QString result = HtmlProcessor::processHtml("<p style=\"color:red\">Hi</p>");
-        QVERIFY(result.contains("Hi"));
-        QVERIFY(!result.contains("color:red"));
+    void convertsLegacyThumbnailAndOmitsMagnificationControl() {
+        const auto result = processed(QStringLiteral(
+            "<div class='thumb tright'><div class=thumbinner><a href=/wiki/File:Old.jpg>"
+            "<img alt='Old alt' src=old.jpg></a><div class=thumbcaption>Older caption"
+            "<div class=magnify><img src=zoom.svg></div></div></div></div>"));
+        Node *table = first(result.root, QStringLiteral("table"));
+        QVERIFY(table);
+        QCOMPARE(count(table, QStringLiteral("img")), 1);
+        QCOMPARE(text(table).trimmed(), QStringLiteral("Older caption"));
     }
 
-    void testImgNodePreservedInline() {
-        QString result = HtmlProcessor::processHtml("<p>Before<img src=\"x.jpg\"/>After</p>");
-        QVERIFY(result.contains("Before<img"));
-        QVERIFY(result.contains("src=\"x.jpg\""));
-        QVERIFY(result.contains("After"));
-        QVERIFY(result.contains("max-width: 100%; height: auto;"));
+    void standaloneImageBlocksConvertButInlineAndTableImagesDoNot() {
+        const auto result = processed(QStringLiteral(
+            "<div class=center><div class=floatnone><a href=/wiki/File:C.jpg>"
+            "<img alt=Centered src=center.jpg></a></div></div>"
+            "<p>Text <img src=inline.jpg> continues</p>"
+            "<table><tr><td><img src=table.jpg></td></tr></table>"));
+        QCOMPARE(count(result.root, QStringLiteral("table")), 2); // Image table + source table.
+        QVERIFY(text(result.root).contains(QStringLiteral("Text  continues")));
+        QCOMPARE(count(result.root, QStringLiteral("img")), 3);
     }
 
-    void testFigureKeepsImageAndCaptionTogether() {
-        const QString html = QStringLiteral(
-            "<h2>Early life</h2><figure class=\"mw-default-size mw-halign-right\" "
-            "typeof=\"mw:File/Thumb\"><a href=\"/wiki/File:Borden_house.jpg\" "
-            "class=\"mw-file-description\"><img alt=\"House alt text\" "
-            "src=\"//upload.wikimedia.org/Borden_house.jpg\" width=\"250\" height=\"180\"/>"
-            "</a><figcaption>The Borden house at 92 Second Street in Fall River, "
-            "Massachusetts</figcaption></figure><p>Lizzie Andrew Borden was born here.</p>");
-        const QString result = HtmlProcessor::processHtml(html);
-        const QStringList tables = imageTables(result);
-        QCOMPARE(tables.size(), 1);
-        verifyTwoRowImageTable(tables.first(), QStringLiteral("Borden_house.jpg"),
-                               QStringLiteral("The Borden house at 92 Second Street"));
-        QVERIFY(tables.first().contains("width=\"250\""));
-        QVERIFY(tables.first().contains("<table class=\"article-image-table\" border=\"1\" width=\"270\""));
-        QVERIFY(tables.first().contains("height=\"180\""));
-        QVERIFY(tables.first().contains("href=\"/wiki/File:Borden_house.jpg\""));
-        QVERIFY(tables.first().contains("src=\"https://upload.wikimedia.org/Borden_house.jpg\""));
-        QVERIFY(!result.contains("<figure"));
-        QVERIFY(!result.contains("<figcaption"));
-        QVERIFY(result.indexOf("Early life") < result.indexOf("<table class=\"article-image-table\""));
-        QVERIFY(result.indexOf("</table>") < result.indexOf("Lizzie Andrew Borden"));
+    void multipleMediaImagesKeepFigureLayout() {
+        const auto result = processed(QStringLiteral(
+            "<figure><img src=one.jpg><img src=two.jpg><figcaption>Gallery</figcaption></figure>"));
+        QCOMPARE(count(result.root, QStringLiteral("table")), 0);
+        QCOMPARE(count(result.root, QStringLiteral("figure")), 1);
+        QCOMPARE(count(result.root, QStringLiteral("img")), 2);
     }
 
-    void testCaptionlessFigureUsesAltText() {
-        const QString result = HtmlProcessor::processHtml(
-            "<figure><a href=\"/wiki/File:Portrait.jpg\"><img alt=\"A &amp; B\" "
-            "src=\"portrait.jpg\"/></a><figcaption></figcaption></figure>");
-        const QStringList tables = imageTables(result);
-        QCOMPARE(tables.size(), 1);
-        verifyTwoRowImageTable(tables.first(), QStringLiteral("portrait.jpg"),
-                               QStringLiteral("A &amp; B"));
-        QVERIFY(tables.first().contains("data-article-description=\"A%20%26%20B\""));
+    void cleansNestedMathAccessibilityAndKeepsFallbackImageUnstyled() {
+        const auto result = processed(QStringLiteral(
+            "<span class='mwe-math-element'><span class='mwe-math-mathml-inline'>"
+            "<span class='mwe-math-mathml-a11y'><math><annotation>x^2</annotation></math>"
+            "</span></span><img class='mwe-math-fallback-image-inline' src=math.svg "
+            "style='width:2ex'><img src=article.jpg></span><p>Neighbor</p>"));
+        QCOMPARE(count(result.root, QStringLiteral("math")), 0);
+        QVERIFY(!text(result.root).contains(QStringLiteral("x^2")));
+        Node *mathImage = first(result.root, QStringLiteral("img"));
+        QVERIFY(mathImage);
+        QCOMPARE(attr(mathImage, "style"), QString());
+        std::vector<Node *> images;
+        descendants(result.root, QStringLiteral("img"), images);
+        QCOMPARE(images.size(), size_t(2));
+        QCOMPARE(attr(images.at(1), "style"), QStringLiteral("max-width: 100%; height: auto;"));
+        QVERIFY(text(result.root).contains(QStringLiteral("Neighbor")));
     }
 
-    void testImageWithoutAltKeepsEmptyDescriptionRow() {
-        const QString result = HtmlProcessor::processHtml(
-            "<figure><img src=\"uncaptioned.jpg\"/><figcaption></figcaption></figure>");
-        const QStringList tables = imageTables(result);
-        QCOMPARE(tables.size(), 1);
-        verifyTwoRowImageTable(tables.first(), QStringLiteral("uncaptioned.jpg"), QString());
-        QVERIFY(QRegularExpression(R"(<tr>\s*<td\s*/>\s*</tr>|<tr>\s*<td>\s*</td>\s*</tr>)")
-                    .match(tables.first())
-                    .hasMatch());
+    void parserRepairsVoidEntitiesUnquotedAttrsAndOmittedClosers() {
+        const auto result = processed(QStringLiteral(
+            "<p>First&nbsp;line<p>Second &#x1F600;"
+            "<figure><img alt=Coffee src=coffee.jpg width=100>"
+            "<figcaption>Caf&eacute; &amp; tea"));
+        QCOMPARE(text(result.root).contains(QStringLiteral("First lineSecond 😀Café & tea")), true);
+        Node *table = first(result.root, QStringLiteral("table"));
+        QVERIFY(table);
+        QCOMPARE(attr(table, "width"), QStringLiteral("120"));
+        QCOMPARE(text(table).trimmed(), QStringLiteral("Café & tea"));
     }
 
-    void testLegacyThumbnailCaption() {
-        const QString result = HtmlProcessor::processHtml(
-            "<div class=\"thumb tright\"><div class=\"thumbinner\">"
-            "<a href=\"/wiki/File:Old.jpg\"><img alt=\"Old alt\" src=\"old.jpg\"/></a>"
-            "<div class=\"thumbcaption\"><div class=\"magnify\"><img src=\"zoom.svg\"/></div>"
-            "An older thumbnail</div>"
-            "</div></div>");
-        const QStringList tables = imageTables(result);
-        QCOMPARE(tables.size(), 1);
-        verifyTwoRowImageTable(tables.first(), QStringLiteral("old.jpg"),
-                               QStringLiteral("An older thumbnail"));
+    void commentsAndTagLikeAttributeTextAreNotParsedAsMarkup() {
+        const auto result = processed(QStringLiteral(
+            "<!-- <style>comment</style><img src=bad> -->"
+            "<p title='literal <style>text'>Survives</p>"));
+        QVERIFY(text(result.root).contains(QStringLiteral("Survives")));
+        QCOMPARE(count(result.root, QStringLiteral("img")), 0);
+        QCOMPARE(count(result.root, QStringLiteral("style")), 0);
+        QCOMPARE(attr(first(result.root, QStringLiteral("p")), "title"),
+                 QStringLiteral("literal <style>text"));
     }
 
-    void testStandaloneDivImageUsesAltText() {
-        const QString result = HtmlProcessor::processHtml(
-            "<div class=\"center\"><div class=\"floatnone\">"
-            "<a href=\"/wiki/File:Centered.jpg\"><img alt=\"Centered photo\" "
-            "src=\"centered.jpg\"/></a></div></div>");
-        const QStringList tables = imageTables(result);
-        QCOMPARE(tables.size(), 1);
-        verifyTwoRowImageTable(tables.first(), QStringLiteral("centered.jpg"),
-                               QStringLiteral("Centered photo"));
+    void preservesInlineImagesAndNormalizesUrls() {
+        const auto result = processed(QStringLiteral(
+            "<p>Before<img src=//example.org/a.jpg>After</p>"));
+        QCOMPARE(count(result.root, QStringLiteral("table")), 0);
+        Node *image = first(result.root, QStringLiteral("img"));
+        QCOMPARE(attr(image, "src"), QStringLiteral("https://example.org/a.jpg"));
+        QCOMPARE(attr(image, "style"), QStringLiteral("max-width: 100%; height: auto;"));
+        QVERIFY(text(result.root).contains(QStringLiteral("BeforeAfter")));
     }
 
-    void testMultipleImagesGetSeparateTables() {
-        const QString result = HtmlProcessor::processHtml(
-            "<figure><img alt=\"One\" src=\"one.jpg\"/><figcaption>First</figcaption></figure>"
-            "<p>Between</p>"
-            "<figure><img alt=\"Two\" src=\"two.jpg\"/><figcaption>Second</figcaption></figure>");
-        const QStringList tables = imageTables(result);
-        QCOMPARE(tables.size(), 2);
-        verifyTwoRowImageTable(tables.at(0), QStringLiteral("one.jpg"), QStringLiteral("First"));
-        verifyTwoRowImageTable(tables.at(1), QStringLiteral("two.jpg"), QStringLiteral("Second"));
-        QVERIFY(result.indexOf("one.jpg") < result.indexOf("Between"));
-        QVERIFY(result.indexOf("Between") < result.indexOf("two.jpg"));
-    }
-
-    void testHtmlFallbackConvertsFigureAndStandaloneImage() {
-        const QString result = HtmlProcessor::processHtml(
-            "<p>Intro&nbsp;text</p>"
-            "<figure><a href=\"/wiki/File:One.jpg\"><img alt=\"Alt > text\" "
-            "src=\"one.jpg\"></a><figcaption>A <b>caption</b></figcaption></figure>"
-            "<p><a href=\"/wiki/File:Two.jpg\"><img alt=\"Second alt\" src=\"two.jpg\"></a></p>");
-        const QStringList tables = imageTables(result);
-        QCOMPARE(tables.size(), 2);
-        verifyTwoRowImageTable(tables.at(0), QStringLiteral("one.jpg"),
-                               QStringLiteral("A <b>caption</b>"));
-        verifyTwoRowImageTable(tables.at(1), QStringLiteral("two.jpg"),
-                               QStringLiteral("Second alt"));
-        QVERIFY(result.contains("data-article-description=\"A%20caption\""));
-        QVERIFY(result.contains("Intro&nbsp;text"));
-    }
-
-    void testExistingTableAndInlineImageRemainUnwrapped() {
-        const QString result = HtmlProcessor::processHtml(
-            "<table><tr><td><img src=\"infobox.jpg\"/></td></tr></table>"
-            "<p>Text <img src=\"icon.jpg\"/> continues.</p>");
-        QVERIFY(imageTables(result).isEmpty());
-        QVERIFY(result.contains("infobox.jpg"));
-        QVERIFY(result.contains("icon.jpg"));
-    }
-
-    void testProtocolRelativeImageUrlNormalized() {
-        QString result = HtmlProcessor::processHtml(
-            "<p>Image&nbsp;<img src=\"//upload.wikimedia.org/example.jpg\"/></p>");
-        QVERIFY(result.contains("src=\"https://upload.wikimedia.org/example.jpg\""));
-        QVERIFY(result.contains("height: auto;\"/>"));
-    }
-
-    void testFallbackKeepsGreaterThanInsideQuotedAttributes() {
-        // &nbsp; is not an XML entity, so this input exercises the HTML fallback parser.
-        QString result = HtmlProcessor::processHtml(
-            "<p>Image&nbsp;<img alt=\"A > B\" title='C > D' src=\"x.jpg\" "
-            "style=\"color:red\"></p>");
-
-        QVERIFY(result.contains("alt=\"A > B\""));
-        QVERIFY(result.contains("title='C > D'"));
-        QVERIFY(result.contains("src=\"x.jpg\""));
-        QVERIFY(result.contains("style=\"max-width: 100%; height: auto;\""));
-        QVERIFY(!result.contains("color:red"));
-        QVERIFY(result.contains("</p>"));
-    }
-
-    void testMathFallbackImagePreserved() {
-        QString result = HtmlProcessor::processHtml(
-            "<span class=\"mwe-math-element\" style=\"color: red\">"
-            "<span class=\"mwe-math-mathml-inline mwe-math-mathml-a11y\"><math alttext=\"x^2\"><semantics>"
-            "<annotation encoding=\"application/x-tex\">x^2</annotation></semantics></math></span>"
-            "<img src=\"https://example.com/math.svg\" "
-            "class=\"mwe-math-fallback-image-inline\" "
-            "style=\"vertical-align: -0.3ex; width: 2ex; height: 1ex;\"></span>"
-            "<img src=\"https://example.com/article-image.jpg\">");
-
-        QVERIFY(result.contains("mwe-math-fallback-image-inline"));
-        QVERIFY(result.contains("https://example.com/math.svg"));
-        QVERIFY(!result.contains("<math"));
-        QVERIFY(!result.contains("application/x-tex"));
-        QVERIFY(!result.contains("x^2"));
-        QVERIFY(!result.contains("color: red"));
-        QVERIFY(!result.contains("vertical-align: -0.3ex"));
-        QVERIFY(result.contains("article-image.jpg"));
-    }
-
-    void testNestedElements() {
-        QString result = HtmlProcessor::processHtml(
-            "<div><style>x{}</style><p>Hi</p></div>");
-        QVERIFY(result.contains("Hi"));
-        QVERIFY(!result.contains("x{}"));
-    }
-
-    void testMultipleRoots() {
-        QString result = HtmlProcessor::processHtml("<p>A</p><p>B</p>");
-        QVERIFY(result.contains("A"));
-        QVERIFY(result.contains("B"));
+    void figureContentOutsideCaptionAndImageSurvivesConversion() {
+        const auto result = processed(QStringLiteral(
+            "<figure>Introductory words <img src=figure.jpg> trailing note"
+            "<figcaption>Image caption</figcaption></figure><p>Neighbor remains</p>"));
+        QVERIFY(first(result.root, QStringLiteral("table")));
+        QVERIFY(text(result.root).contains(QStringLiteral("Introductory words")));
+        QVERIFY(text(result.root).contains(QStringLiteral("trailing note")));
+        QVERIFY(text(result.root).contains(QStringLiteral("Neighbor remains")));
     }
 };
 

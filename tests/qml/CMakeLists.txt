@@ -50,7 +50,6 @@ target_link_libraries(QmlTests PRIVATE
     ImageDisplayModule
     SectionModule
     wikipedia_runtime
-    tinyxml2
 )
 
 file(GLOB QML_TEST_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tst_*.qml")

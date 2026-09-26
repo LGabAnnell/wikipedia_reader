@@ -1,16 +1,15 @@
-// html_processor.h
-
 #ifndef HTML_PROCESSOR_H
 #define HTML_PROCESSOR_H
 
 #include <QString>
-#include <tinyxml2.h>
 
 class HtmlProcessor {
   public:
-    static void removeStyleNodes(tinyxml2::XMLElement *element);
-    static void removeStyleAttributes(tinyxml2::XMLElement *node);
-    static void processImageNodes(tinyxml2::XMLElement *element);
+    /**
+     * @brief Cleans and prepares an HTML fragment for article display.
+     * @param htmlContent HTML returned by the MediaWiki parse API.
+     * @return A cleaned HTML fragment with the article stylesheet prepended.
+     */
     static QString processHtml(const QString &htmlContent);
 };
 

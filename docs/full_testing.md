@@ -1,5 +1,29 @@
 # Testing
 
+## Lexbor dependency
+
+Article HTML parsing requires Lexbor 3.0 or newer. Install the Lexbor CMake
+package before configuring this project. For a local installation, build and
+install Lexbor with its upstream CMake project, for example:
+
+```bash
+git clone --branch v3.0.0 https://github.com/lexbor/lexbor.git
+cmake -S lexbor -B lexbor/build -DCMAKE_INSTALL_PREFIX="$PWD/lexbor/install"
+cmake --build lexbor/build -j14
+cmake --install lexbor/build
+```
+
+Then configure Wikipedia Reader with that prefix so CMake can find
+`lexbor-config.cmake`:
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON \
+    -DCMAKE_PREFIX_PATH="$PWD/lexbor/install"
+```
+
+The HTML processor uses Lexbor's HTML5 fragment parser and DOM. `tinyxml2`
+remains a dependency of HeaderModule for SVG icon recoloring.
+
 ## Run the tests
 
 Configure with `BUILD_TESTING=ON` before building:

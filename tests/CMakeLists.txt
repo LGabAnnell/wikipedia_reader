@@ -41,7 +41,7 @@ target_link_libraries(GlobalStateTest PRIVATE
     Qt::Qml
     Qt::Gui
     Qt::Svg
-    tinyxml2
+    lexbor::lexbor
 )
 
 target_include_directories(GlobalStateTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -74,7 +74,7 @@ target_link_libraries(test_search_display PRIVATE
     Qt::Qml
     Qt::Gui
     Qt::Svg
-    tinyxml2
+    lexbor::lexbor
 )
 
 add_test(NAME test_search_display COMMAND test_search_display)
@@ -114,7 +114,7 @@ target_link_libraries(HtmlProcessorTest PRIVATE
     Qt::Core
     Qt::Test
     Qt::Gui
-    tinyxml2
+    lexbor::lexbor
 )
 
 target_include_directories(HtmlProcessorTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -181,7 +181,7 @@ target_link_libraries(WikipediaPageClientTest PRIVATE
     Qt::Qml
     Qt::Gui
     Qt::Svg
-    tinyxml2
+    lexbor::lexbor
 )
 
 target_include_directories(WikipediaPageClientTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -232,4 +232,3 @@ add_test(NAME WikipediaHomeClientTest COMMAND WikipediaHomeClientTest)
 # QML Quick Test harness
 # ---------------------------------------------------------------------------
 add_subdirectory(qml)
-

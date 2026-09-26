@@ -90,7 +90,7 @@ Item {
             networkFixtures.addFixture("GET", parseUrl(pageId), JSON.stringify({"parse": {
                 "title": title,
                 "pageid": pageId,
-                "text": "<p>Rendered article fixture body</p>"
+                "text": "<p>Rendered article fixture body</p><figure><a href='/wiki/File:Borden.jpg'><img alt='Old image alt' src='//upload.wikimedia.org/wikipedia/commons/fixture.png' width='250'></a><figcaption>A Borden house &amp; garden</figcaption></figure>"
             }}))
             networkFixtures.addFixture("GET", sectionsUrl(title), JSON.stringify({"parse": {
                 "tocdata": {"sections": []}
@@ -158,13 +158,20 @@ Item {
             tryCompare(GlobalState, "currentPageId", successArticleId)
             tryCompare(GlobalState, "currentPageTitle", successTitle)
             tryCompare(GlobalState, "isLoading", false)
-            tryCompare(networkFixtures, "requestCount", 4)
+            tryCompare(networkFixtures, "requestCount", 5)
             tryCompare(networkFixtures, "pendingReplyCount", 0)
 
             const title = child("articleTitle")
             tryCompare(title, "text", successTitle)
             const body = child("articleBody")
             tryVerify(function() { return body.text.indexOf("Rendered article fixture body") >= 0 })
+            const imageLink = body.text.match(/href="(wikipedia-image:[^"]+)"/)
+            verify(imageLink !== null, "Processed figure must render as an image-view link")
+            const imageData = JSON.parse(decodeURIComponent(
+                imageLink[1].substring("wikipedia-image:".length)))
+            compare(imageData.url,
+                    "https://upload.wikimedia.org/wikipedia/commons/fixture.png")
+            compare(imageData.description, "A Borden house & garden")
             compare(child("articleLoadingIndicator").visible, false)
             compare(child("articleErrorMessage").visible, false)
             compare(HistoryState.history.length, 1)
