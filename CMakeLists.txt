@@ -11,11 +11,10 @@ set(QT_QML_GENERATE_QMLLS_INI ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_compile_definitions($<$<CONFIG:Debug>:DEBUG>)
-
-if (QT_QML_DEBUG)
-    add_compile_definitions($<$<CONFIG:Debug>:QT_QML_DEBUG>)
-endif()
+add_compile_definitions(
+    $<$<CONFIG:Debug>:DEBUG>
+    $<$<CONFIG:Debug>:QT_QML_DEBUG>
+)
 
 set(QML_DIRS
     "src"

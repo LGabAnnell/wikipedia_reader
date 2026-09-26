@@ -103,6 +103,19 @@ private slots:
         QCOMPARE(text(result.root).trimmed(), QStringLiteral("BeforeAfter"));
     }
 
+    void normalizesLegacyHtmlHexColorAttributes() {
+        const auto result = processed(QStringLiteral(
+            "<table bgcolor=F7F6A8 bordercolor=123456><tr><td>Cell</td></tr></table>"
+            "<font color=abcdef>Text</font>"));
+        QVERIFY(result.root);
+        QCOMPARE(attr(first(result.root, QStringLiteral("table")), "bgcolor"),
+                 QStringLiteral("#F7F6A8"));
+        QCOMPARE(attr(first(result.root, QStringLiteral("table")), "bordercolor"),
+                 QStringLiteral("#123456"));
+        QCOMPARE(attr(first(result.root, QStringLiteral("font")), "color"),
+                 QStringLiteral("#abcdef"));
+    }
+
     void removesLinkAndScriptElementsThatTruncateRichTextImport() {
         const auto result = processed(QStringLiteral(
             "<p>Before</p>"

@@ -108,7 +108,10 @@ Item {
             compare(image.url,
                     "https://upload.wikimedia.org/wikipedia/commons/2/28/Foo.jpg")
             compare(image.description, "The Borden house & garden")
-            verify(rendered.includes('border-color: ' + root.systemPalette.text.toString()),
+            const paletteColor = root.systemPalette.text.toString()
+            const cssColor = /^[0-9a-f]{6}([0-9a-f]{2})?$/i.test(paletteColor)
+                    ? "#" + paletteColor : paletteColor
+            verify(rendered.includes('border-color: ' + cssColor),
                    "Image table border must use SystemPalette.text")
         }
     }
