@@ -133,7 +133,11 @@ bool removeNodes(Node *root) {
             continue;
         const QString name = tagName(node);
         Element *element = lxb_dom_interface_element(node);
+        // Qt's rich text engine drops the entire remainder of the document when
+        // it encounters a link or script element, so strip both alongside style.
         if (name == QStringLiteral("style")
+            || name == QStringLiteral("link")
+            || name == QStringLiteral("script")
             || (name == QStringLiteral("span") && containsMathA11yClass(element))) {
             lxb_dom_node_remove(node);
         } else {

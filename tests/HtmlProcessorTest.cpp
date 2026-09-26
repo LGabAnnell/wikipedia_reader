@@ -103,6 +103,18 @@ private slots:
         QCOMPARE(text(result.root).trimmed(), QStringLiteral("BeforeAfter"));
     }
 
+    void removesLinkAndScriptElementsThatTruncateRichTextImport() {
+        const auto result = processed(QStringLiteral(
+            "<p>Before</p>"
+            "<link rel=\"mw-deduplicated-inline-style\" href=\"mw-data:TemplateStyles:r1\">"
+            "<script>ignore()</script>"
+            "<p>After</p>"));
+        QVERIFY(result.root);
+        QCOMPARE(count(result.root, QStringLiteral("link")), 0);
+        QCOMPARE(count(result.root, QStringLiteral("script")), 0);
+        QCOMPARE(text(result.root).trimmed(), QStringLiteral("BeforeAfter"));
+    }
+
     void convertsFigureAndKeepsLinkDimensionsAndCaptionMarkup() {
         const auto result = processed(QStringLiteral(
             "<h2>Heading</h2><figure><a href=/wiki/File:House.jpg>"
