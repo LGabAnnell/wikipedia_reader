@@ -11,17 +11,10 @@ set(QT_QML_GENERATE_QMLLS_INI ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(DEBUG TRUE)
-endif()
-
-if (DEBUG) 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG -g")
-endif()
-
-if (QT_QML_DEBUG)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DQT_QML_DEBUG")
-endif()
+add_compile_definitions(
+    $<$<CONFIG:Debug>:DEBUG>
+    $<$<CONFIG:Debug>:QT_QML_DEBUG>
+)
 
 set(QML_DIRS
     "src"
@@ -46,6 +39,7 @@ if (BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test QuickTest)
 endif()
 find_package(tinyxml2 REQUIRED)
+find_package(lexbor 3.0 CONFIG REQUIRED)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -84,8 +78,8 @@ target_link_libraries(wikipedia_runtime PUBLIC
     Qt::Qml
     Qt::Quick
     Qt::Svg
-    tinyxml2
 )
+target_link_libraries(wikipedia_runtime PRIVATE lexbor::lexbor)
 
 qt_add_executable(appwikipedia_qt
     src/main.cpp
@@ -143,7 +137,6 @@ PRIVATE
     ImageDisplayModule
     SectionModule
     wikipedia_runtime
-    tinyxml2
 )
 
 include(GNUInstallDirs)

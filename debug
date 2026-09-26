@@ -8,4 +8,4 @@ if [ -f "$cache_file" ] && grep -q "^CMAKE_BUILD_TYPE:STRING=$build_type$" "$cac
 else
     cmake -DCMAKE_BUILD_TYPE=$build_type -B build
 fi
-cmake --build build -j
+cmake --build build -j14

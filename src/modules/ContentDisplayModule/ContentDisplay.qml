@@ -88,7 +88,11 @@ Item {
         if (!rendered.includes('class="article-image-table"'))
             return rendered;
 
-        const borderColor = articleDisplay.systemPalette.text.toString();
+        let borderColor = articleDisplay.systemPalette.text.toString();
+        // QColor::toString() may omit the leading hash. QTextDocument's CSS
+        // parser treats an unprefixed value as a named color instead of RGB.
+        if (/^[0-9a-f]{6}([0-9a-f]{2})?$/i.test(borderColor))
+            borderColor = "#" + borderColor;
         return "<style>table.article-image-table, table.article-image-table td "
                 + "{ border-color: " + borderColor + "; border-style: solid; "
                 + "border-width: 1px; }</style>" + rendered;
