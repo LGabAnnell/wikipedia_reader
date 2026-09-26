@@ -50,6 +50,24 @@ bool setAttribute(Element *element, const char *name, const QByteArray &value) {
                                          size_t(value.size())) != nullptr;
 }
 
+bool isBareHexColor(const QString &value) {
+    if (value.size() != 3 && value.size() != 6)
+        return false;
+    for (const QChar character : value) {
+        if (!character.isDigit() && !(character >= u'a' && character <= u'f')
+            && !(character >= u'A' && character <= u'F'))
+            return false;
+    }
+    return true;
+}
+
+bool normalizeColorAttribute(Element *element, const char *name) {
+    const QString value = attribute(element, name);
+    if (!isBareHexColor(value))
+        return true;
+    return setAttribute(element, name, (u'#' + value).toUtf8());
+}
+
 void collectNodes(Node *root, std::vector<Node *> &nodes) {
     for (Node *child = root == nullptr ? nullptr : root->first_child; child != nullptr;) {
         Node *next = child->next;
@@ -143,6 +161,13 @@ bool removeNodes(Node *root) {
         } else {
             if (lxb_dom_element_remove_attribute(element,
                     reinterpret_cast<const lxb_char_t *>("style"), 5) != LXB_STATUS_OK)
+                return false;
+            // Wikipedia's legacy markup contains attributes such as
+            // bgcolor="F7F6A8". QTextDocument interprets that as a color name;
+            // CSS/HTML hexadecimal colors need a leading '#'.
+            if (!normalizeColorAttribute(element, "color")
+                || !normalizeColorAttribute(element, "bgcolor")
+                || !normalizeColorAttribute(element, "bordercolor"))
                 return false;
         }
     }
