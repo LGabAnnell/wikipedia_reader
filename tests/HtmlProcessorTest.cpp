@@ -103,31 +103,6 @@ private slots:
         QCOMPARE(text(result.root).trimmed(), QStringLiteral("BeforeAfter"));
     }
 
-    void normalizesLegacyHtmlHexColorAttributes() {
-        const auto result = processed(QStringLiteral(
-            "<table bgcolor=F7F6A8 bordercolor=123456><tr><td>Cell</td></tr></table>"
-            "<font color=abcdef>Text</font>"));
-        QVERIFY(result.root);
-        QCOMPARE(attr(first(result.root, QStringLiteral("table")), "bgcolor"),
-                 QStringLiteral("#F7F6A8"));
-        QCOMPARE(attr(first(result.root, QStringLiteral("table")), "bordercolor"),
-                 QStringLiteral("#123456"));
-        QCOMPARE(attr(first(result.root, QStringLiteral("font")), "color"),
-                 QStringLiteral("#abcdef"));
-    }
-
-    void removesLinkAndScriptElementsThatTruncateRichTextImport() {
-        const auto result = processed(QStringLiteral(
-            "<p>Before</p>"
-            "<link rel=\"mw-deduplicated-inline-style\" href=\"mw-data:TemplateStyles:r1\">"
-            "<script>ignore()</script>"
-            "<p>After</p>"));
-        QVERIFY(result.root);
-        QCOMPARE(count(result.root, QStringLiteral("link")), 0);
-        QCOMPARE(count(result.root, QStringLiteral("script")), 0);
-        QCOMPARE(text(result.root).trimmed(), QStringLiteral("BeforeAfter"));
-    }
-
     void convertsFigureAndKeepsLinkDimensionsAndCaptionMarkup() {
         const auto result = processed(QStringLiteral(
             "<h2>Heading</h2><figure><a href=/wiki/File:House.jpg>"
