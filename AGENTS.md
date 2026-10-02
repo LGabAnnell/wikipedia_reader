@@ -235,9 +235,11 @@ Non-blocking: only intercept needed events (e.g. `Qt::BackButton`), return
   `test_sidebar_layout`, `HtmlProcessorTest`, `HistoryDatabaseTest`,
   `WikipediaSearchClientTest`, `WikipediaPageClientTest`,
   `WikipediaFeaturedClientTest`, `WikipediaHomeClientTest`.
-- Tests compile selected `.cpp` sources directly (e.g.
-  `${CMAKE_SOURCE_DIR}/src/state/GlobalState.cpp`) rather than linking the
-  full app.
+- Shared API clients, state, database, HTML processing, and model meta-objects
+  are compiled once in `wikipedia_qt_core`, which the app and tests link.
+  `wikipedia_runtime` contains navigation only, keeping Qt Quick out of the core.
+  The search-display and sidebar-layout tests still compile their feature models
+  directly; QML tests link the application modules.
 - Run: `ctest --test-dir build` (or `./test.sh`).
 
 ### Qt Quick Test harness (`tests/qml/`)

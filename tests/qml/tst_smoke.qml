@@ -16,8 +16,38 @@ Item {
         }
     }
 
+    Component {
+        id: modelTypesComponent
+
+        QtObject {
+            property search_result searchResult
+            property page articlePage
+            property featured_article featuredArticle
+            property news_item newsItem
+            property on_this_day_event onThisDayEvent
+            property did_you_know_item didYouKnowItem
+            property history_item historyItem
+            property section articleSection
+        }
+    }
+
     TestCase {
         name: "ApplicationModuleSmoke"
+
+        function test_backend_value_types_are_registered() {
+            const models = createTemporaryObject(modelTypesComponent, root);
+            verify(models !== null, "All backend value types must resolve from wikipedia_qt");
+            compare(models.searchResult.title, "");
+            compare(models.articlePage.title, "");
+            compare(models.featuredArticle.title, "");
+            compare(models.newsItem.title, "");
+            compare(models.onThisDayEvent.event, "");
+            compare(models.didYouKnowItem.text, "");
+            compare(models.historyItem.title, "");
+            compare(models.articleSection.title, "");
+            compare(testSupport.requestCount, 0);
+            compare(testSupport.qmlWarningCount, 0, testSupport.qmlWarnings.join("\n"));
+        }
 
         function test_state_singletons_are_usable() {
             verify(GlobalState !== null && GlobalState !== undefined,

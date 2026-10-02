@@ -32,13 +32,7 @@ qt_add_resources(QmlTests "qml_test_icons"
 
 target_link_libraries(QmlTests PRIVATE
     Qt::QuickTest
-    Qt::Qml
     Qt::Quick
-    Qt::Network
-    Qt::Sql
-    Qt::Core
-    Qt::Gui
-    Qt::Svg
     Qt::SvgWidgets
     wikipedia_qt
     SearchBarModule
@@ -50,6 +44,7 @@ target_link_libraries(QmlTests PRIVATE
     ImageDisplayModule
     SectionModule
     wikipedia_runtime
+    wikipedia_qt_core
 )
 
 file(GLOB QML_TEST_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tst_*.qml")

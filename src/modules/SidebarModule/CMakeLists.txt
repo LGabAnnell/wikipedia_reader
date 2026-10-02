@@ -24,4 +24,4 @@ qt_add_qml_module(SidebarModule
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt/Sidebar
 )
 
-target_link_libraries(SidebarModule PRIVATE Qt::Quick Qt::Core)
+target_link_libraries(SidebarModule PRIVATE Qt::Quick wikipedia_qt_core)

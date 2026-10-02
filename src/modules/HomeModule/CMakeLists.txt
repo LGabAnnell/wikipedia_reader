@@ -32,7 +32,7 @@ qt6_add_qml_module(HomeModule
 )
 
 # Add this module to the main library
-target_link_libraries(HomeModule PRIVATE Qt::Quick Qt::Core)
+target_link_libraries(HomeModule PRIVATE Qt::Quick wikipedia_qt_core)
 
 qt_add_resources(HomeModule "home_images"
     PREFIX "/images"

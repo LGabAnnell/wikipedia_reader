@@ -24,5 +24,5 @@ qt_add_qml_module(HistoryModule
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt/History
 )
 
-target_link_libraries(HistoryModule PRIVATE Qt::Quick Qt::Core Qt::Network)
+target_link_libraries(HistoryModule PRIVATE Qt::Quick wikipedia_qt_core)
 
