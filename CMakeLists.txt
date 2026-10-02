@@ -103,6 +103,8 @@ target_link_libraries(wikipedia_qt_core PUBLIC
     Qt::Qml
     Qt::Svg
     tinyxml2::tinyxml2
+    PRIVATE lexbor::lexbor
+    tinyxml2::tinyxml2
 )
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
