@@ -11,10 +11,17 @@ set(QT_QML_GENERATE_QMLLS_INI ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_compile_definitions(
-    $<$<CONFIG:Debug>:DEBUG>
-    $<$<CONFIG:Debug>:QT_QML_DEBUG>
-)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(DEBUG TRUE)
+endif()
+
+if (DEBUG)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG -g")
+endif()
+
+if (QT_QML_DEBUG)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DQT_QML_DEBUG")
+endif()
 
 set(QML_DIRS
     "src"
@@ -56,32 +63,76 @@ include_directories(
     src/modules/SectionModule
 )
 
-add_library(wikipedia_runtime STATIC
+# Shared backend implementation and Qt meta-objects, used by the app and tests.
+add_library(wikipedia_qt_core SHARED
+    src/wikipedia_search_client.cpp
+    src/wikipedia_search_client.h
+    src/wikipedia_page_client.cpp
+    src/wikipedia_page_client.h
+    src/wikipedia_featured_client.cpp
+    src/wikipedia_featured_client.h
+    src/wikipedia_home_client.cpp
+    src/wikipedia_home_client.h
+    src/wikipedia_models.h
+    src/wikipedia_network_access_manager.h
     src/state/GlobalState.cpp
+    src/state/GlobalState.h
     src/state/HistoryState.cpp
-    src/state/NavigationState.cpp
+    src/state/HistoryState.h
     src/state/db/HistoryDatabase.cpp
+    src/state/db/HistoryDatabase.h
     src/html_processor.cpp
+    src/html_processor.h
 )
 
-target_include_directories(wikipedia_runtime PUBLIC
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/state
-    ${CMAKE_SOURCE_DIR}/src/state/db
+set_target_properties(wikipedia_qt_core PROPERTIES
+    AUTOMOC ON
+    POSITION_INDEPENDENT_CODE ON
 )
 
-target_link_libraries(wikipedia_runtime PUBLIC
+target_include_directories(wikipedia_qt_core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/state
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/state/db
+)
+
+target_link_libraries(wikipedia_qt_core PUBLIC
     Qt::Core
     Qt::Network
     Qt::Sql
     Qt::Gui
     Qt::Qml
-    Qt::Quick
     Qt::Svg
+    tinyxml2::tinyxml2
+    PRIVATE lexbor::lexbor
 )
-target_link_libraries(wikipedia_runtime PRIVATE lexbor::lexbor)
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Prevent executable copy relocations from moving backend static storage
+    # and meta-objects out of the shared core (PIE alone does not prevent them).
+    target_compile_options(wikipedia_qt_core INTERFACE
+        "$<$<CXX_COMPILER_ID:GNU,Clang>:-fPIC>"
+    )
+endif()
+
+# Make the backend meta-objects available to the QML foreign-type registrar.
+qt_extract_metatypes(wikipedia_qt_core)
+
+# Navigation stays separate so the backend does not depend on Qt Quick.
+add_library(wikipedia_runtime STATIC
+    src/state/NavigationState.cpp
+    src/state/NavigationState.h
+)
+
+target_include_directories(wikipedia_runtime PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/state
+)
+
+target_link_libraries(wikipedia_runtime PUBLIC Qt::Quick)
 
 qt_add_executable(appwikipedia_qt
+    MANUAL_FINALIZATION
     src/main.cpp
 )
 
@@ -119,12 +170,7 @@ set_target_properties(appwikipedia_qt PROPERTIES
 
 target_link_libraries(appwikipedia_qt 
 PRIVATE 
-    Qt::Quick 
-    Qt::Core 
-    Qt::Network 
-    Qt::Sql
-    Qt::Gui
-    Qt::Svg
+    Qt::Quick
     Qt::Widgets
     Qt::SvgWidgets
     wikipedia_qt 
@@ -137,14 +183,36 @@ PRIVATE
     ImageDisplayModule
     SectionModule
     wikipedia_runtime
+    wikipedia_qt_core
 )
 
+# Finalize before generating deployment scripts, including with CMake < 3.19.
+qt_finalize_executable(appwikipedia_qt)
+
 include(GNUInstallDirs)
-install(TARGETS appwikipedia_qt
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Resolve the core relative to the executable even after relocating an install.
+    file(RELATIVE_PATH wikipedia_install_bin_to_lib
+        "${CMAKE_INSTALL_FULL_BINDIR}" "${CMAKE_INSTALL_FULL_LIBDIR}")
+    set_target_properties(appwikipedia_qt PROPERTIES
+        INSTALL_RPATH "$ORIGIN/${wikipedia_install_bin_to_lib}"
+    )
+    set_target_properties(wikipedia_qt_core PROPERTIES INSTALL_RPATH "$ORIGIN")
+endif()
+
+install(TARGETS appwikipedia_qt wikipedia_qt_core
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    qt_generate_deploy_qml_app_script(
+        TARGET appwikipedia_qt
+        OUTPUT_SCRIPT wikipedia_deploy_script
+    )
+    install(SCRIPT ${wikipedia_deploy_script})
+endif()
 
 if (BUILD_TESTING)
     enable_testing()

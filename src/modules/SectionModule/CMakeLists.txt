@@ -24,5 +24,5 @@ qt_add_qml_module(SectionModule
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt/Section
 )
 
-target_link_libraries(SectionModule PRIVATE Qt::Quick Qt::Core Qt::Network)
+target_link_libraries(SectionModule PRIVATE Qt::Quick wikipedia_qt_core)
 

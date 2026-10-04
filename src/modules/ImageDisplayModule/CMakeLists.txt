@@ -26,5 +26,5 @@ qt_add_qml_module(ImageDisplayModule
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt/ImageDisplay
 )
 
-target_link_libraries(ImageDisplayModule PRIVATE Qt::Quick Qt::Core Qt::Network)
+target_link_libraries(ImageDisplayModule PRIVATE Qt::Quick wikipedia_qt_core)
 

@@ -1,11 +1,16 @@
 #!/bin/bash
 
+set -e
+
 build_type="Debug"
 cache_file="build/CMakeCache.txt"
 
-if [ -f "$cache_file" ] && grep -q "^CMAKE_BUILD_TYPE:STRING=$build_type$" "$cache_file"; then
-    echo "Build type already configured as $build_type, skipping configure"
+if [ -f "$cache_file" ] \
+    && grep -qx "CMAKE_BUILD_TYPE:STRING=$build_type" "$cache_file" \
+    && grep -qx "BUILD_TESTING:BOOL=OFF" "$cache_file"; then
+    echo "Already configured as $build_type with tests disabled, skipping configure"
 else
-    cmake -DCMAKE_BUILD_TYPE=$build_type -B build
+    rm -rf build
+    cmake -DCMAKE_BUILD_TYPE="$build_type" -DBUILD_TESTING=OFF -B build
 fi
 cmake --build build -j14

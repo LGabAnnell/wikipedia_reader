@@ -21,15 +21,7 @@ qt_add_qml_module(wikipedia_qt
         Main.qml
         SearchScreen.qml
     SOURCES
-        wikipedia_search_client.cpp
-        wikipedia_search_client.h
-        wikipedia_page_client.cpp
-        wikipedia_page_client.h
-        wikipedia_featured_client.cpp
-        wikipedia_featured_client.h
-        wikipedia_home_client.cpp
-        wikipedia_home_client.h
-        wikipedia_models.h
+        wikipedia_model_qml_types.h
         constants.cpp
         constants.h
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt
@@ -47,4 +39,4 @@ qt_add_qml_module(wikipedia_qt
         ImageDisplayModule
 )
 
-target_link_libraries(wikipedia_qt PRIVATE Qt::Svg)
+target_link_libraries(wikipedia_qt PRIVATE wikipedia_qt_core)
