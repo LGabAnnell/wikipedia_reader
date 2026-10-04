@@ -46,6 +46,7 @@ if (BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test QuickTest)
 endif()
 find_package(tinyxml2 REQUIRED)
+find_package(lexbor 3.0 CONFIG REQUIRED)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -104,7 +105,6 @@ target_link_libraries(wikipedia_qt_core PUBLIC
     Qt::Svg
     tinyxml2::tinyxml2
     PRIVATE lexbor::lexbor
-    tinyxml2::tinyxml2
 )
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")

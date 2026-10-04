@@ -74,6 +74,7 @@ qt_add_executable(HtmlProcessorTest
 target_link_libraries(HtmlProcessorTest PRIVATE
     wikipedia_qt_core
     Qt::Test
+    lexbor::lexbor
 )
 
 add_test(NAME HtmlProcessorTest COMMAND HtmlProcessorTest)
