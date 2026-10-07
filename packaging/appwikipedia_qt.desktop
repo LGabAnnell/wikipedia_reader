@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Wikipedia Reader
+Comment=Browse and read Wikipedia articles
+Exec=appwikipedia_qt
+Icon=appwikipedia_qt
+Terminal=false
+Categories=Education;Network;
+Keywords=wikipedia;encyclopedia;reader;articles;
+StartupWMClass=appwikipedia_qt

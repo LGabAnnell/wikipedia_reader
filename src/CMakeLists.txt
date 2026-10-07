@@ -30,6 +30,7 @@ qt_add_qml_module(wikipedia_qt
         ../icons/home.svg
         ../icons/history.svg
         ../icons/back.svg
+        ../icons/app_icon.svg
     DEPENDENCIES TARGET 
         SearchBarModule 
         SidebarModule

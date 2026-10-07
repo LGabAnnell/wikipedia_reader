@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QDebug>
+#include <QIcon>
 #include <QLoggingCategory>
 #include "GlobalState.h"
 #include "HistoryState.h"
@@ -11,6 +12,8 @@
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
+    app.setWindowIcon(QIcon(":/icons/app_icon.svg"));
+    app.setApplicationDisplayName("Wikipedia Reader");
 
     QQmlApplicationEngine engine;
     QObject::connect(

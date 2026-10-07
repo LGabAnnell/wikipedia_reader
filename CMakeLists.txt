@@ -143,6 +143,7 @@ qt_add_resources(appwikipedia_qt
         icons/history.svg
         icons/back.svg
         icons/search.svg
+        icons/app_icon.svg
 )
 
 qt_add_resources(appwikipedia_qt
@@ -212,6 +213,14 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
         OUTPUT_SCRIPT wikipedia_deploy_script
     )
     install(SCRIPT ${wikipedia_deploy_script})
+
+    install(FILES icons/app_icon.svg
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
+        RENAME appwikipedia_qt.svg
+    )
+    install(FILES packaging/appwikipedia_qt.desktop
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+    )
 endif()
 
 if (BUILD_TESTING)
