@@ -1,19 +1,15 @@
 #include "SectionModel.h"
 #include "wikipedia_page_client.h"
-#include "GlobalState.h"
-
-#include <iostream>
+#include "SettingsState.h"
 
 SectionModel::SectionModel(QObject *parent) : QObject(parent), m_isLoading(false) {
-    // Get the WikipediaPageClient instance from GlobalState
-    // We'll create it here for now, but ideally it should be shared
     m_pageClient = new WikipediaPageClient(this);
 
-    auto globalState = GlobalState::instance();
-    if (globalState) {
-        m_pageClient->setLanguage(globalState->language());
-        connect(globalState, &GlobalState::languageChanged, this, [this, globalState]() {
-            m_pageClient->setLanguage(globalState->language());
+    m_settings = SettingsState::instance();
+    if (m_settings) {
+        m_pageClient->setLanguage(m_settings->language());
+        connect(m_settings, &SettingsState::languageChanged, this, [this]() {
+            m_pageClient->setLanguage(m_settings->language());
         });
     }
 
@@ -29,24 +25,33 @@ bool SectionModel::isLoading() const { return m_isLoading; }
 QString SectionModel::errorMessage() const { return m_errorMessage; }
 
 void SectionModel::fetchSections(const QString &title) {
-    if (!title.isEmpty()) {
-        m_isLoading = true;
-        m_errorMessage.clear();
-        emit loadingChanged();
-        emit errorChanged();
-
-        m_pageClient->getSections(title);
+    if (title.isEmpty()) {
+        clearSections();
+        return;
     }
+    m_sections.clear();
+    m_errorMessage.clear();
+    m_isLoading = true;
+    m_acceptResponses = true;
+    emit sectionsChanged();
+    emit loadingChanged();
+    emit errorChanged();
+    m_pageClient->getSections(title);
 }
 
 void SectionModel::clearSections() {
     m_sections.clear();
     m_errorMessage.clear();
+    m_isLoading = false;
+    m_acceptResponses = false;
+    emit loadingChanged();
     emit sectionsChanged();
     emit errorChanged();
 }
 
 void SectionModel::handleSectionsReceived(const QVector<section> &sections) {
+    if (!m_acceptResponses)
+        return;
     m_sections = sections;
     m_isLoading = false;
     emit sectionsChanged();
@@ -54,6 +59,8 @@ void SectionModel::handleSectionsReceived(const QVector<section> &sections) {
 }
 
 void SectionModel::handleError(const QString &error) {
+    if (!m_acceptResponses)
+        return;
     m_errorMessage = error;
     m_isLoading = false;
     emit errorChanged();

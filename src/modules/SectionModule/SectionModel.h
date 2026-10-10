@@ -2,6 +2,7 @@
 #define SECTIONMODEL_H
 
 #include <QObject>
+#include "SettingsState.h"
 #include <QString>
 #include <QQmlEngine>
 #include <QVector>
@@ -38,8 +39,10 @@ private slots:
     void handleError(const QString &error);
 
 private:
+    QPointer<SettingsState> m_settings;
     QVector<section> m_sections;
     bool m_isLoading;
+    bool m_acceptResponses = false;
     QString m_errorMessage;
     WikipediaPageClient* m_pageClient;
 };

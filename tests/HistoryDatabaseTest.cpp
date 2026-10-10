@@ -1,6 +1,7 @@
 // tests/HistoryDatabaseTest.cpp
 #include <QtTest/QtTest>
 #include <QCoreApplication>
+#include <QTemporaryDir>
 #include <QSignalSpy>
 #include <QSqlDatabase>
 #include <QDir>
@@ -11,12 +12,15 @@ class HistoryDatabaseTest : public QObject {
     Q_OBJECT
 
 private:
+    QTemporaryDir m_dataDirectory;
     HistoryDatabase *m_db = nullptr;
     QSignalSpy *m_initSpy = nullptr;
     QSignalSpy *m_errorSpy = nullptr;
 
 private slots:
     void initTestCase() {
+        QVERIFY(m_dataDirectory.isValid());
+        qputenv("XDG_DATA_HOME", m_dataDirectory.path().toUtf8());
         // Use a unique application name so the DB is isolated to this test
         QCoreApplication::setApplicationName("HistoryDatabaseTest");
     }

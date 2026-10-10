@@ -1,10 +1,13 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include <QQmlContext>
 #include <QDebug>
 #include <QIcon>
 #include <QLoggingCategory>
-#include "GlobalState.h"
+#include "ArticleState.h"
+#include "SearchState.h"
+#include "SettingsState.h"
+#include "ImageSelectionState.h"
+#include "ClipboardHelper.h"
 #include "HistoryState.h"
 #include "NavigationState.h"
 #include "SvgImageProvider.h"
@@ -15,44 +18,33 @@ int main(int argc, char *argv[]) {
     app.setWindowIcon(QIcon(":/icons/app_icon.svg"));
     app.setApplicationDisplayName("Wikipedia Reader");
 
-    QQmlApplicationEngine engine;
-    QObject::connect(
-        &engine,
-        &QQmlApplicationEngine::objectCreationFailed,
-        &app,
-        []() { QCoreApplication::exit(-1); },
-        Qt::QueuedConnection);
-
-    #ifdef DEBUG
-    QLoggingCategory::defaultCategory()->setEnabled(QtDebugMsg, true);
-    #endif // DEBUG
-
-
-    // Create and register HistoryState singleton
-    QPointer<HistoryState> historyState = new HistoryState(&app);
-    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "HistoryState", historyState.get());
-
-    // Create and register NavigationState singleton
-    QPointer<NavigationState> navigationState = new NavigationState(&app);
-    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "NavigationState", navigationState.get());
-
-    // Create and register GlobalState singleton
-    QPointer<GlobalState> globalState = new GlobalState(&app, historyState);
-    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "GlobalState", globalState.get());
-
+    // Dependencies outlive their consumers, and all states outlive the QML engine.
+    HistoryState historyState;
+    SettingsState settingsState;
+    ImageSelectionState imageSelectionState;
+    ArticleState articleState(historyState, settingsState);
+    SearchState searchState(settingsState);
+    ClipboardHelper clipboardHelper;
+    NavigationState navigationState;
     HeaderModel headerModel;
+    QQmlApplicationEngine engine;
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
+                     []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
+
+#ifdef DEBUG
+    QLoggingCategory::defaultCategory()->setEnabled(QtDebugMsg, true);
+#endif // DEBUG
+
+    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "HistoryState", &historyState);
+    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "SettingsState", &settingsState);
+    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "ImageSelectionState", &imageSelectionState);
+    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "ArticleState", &articleState);
+    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "SearchState", &searchState);
+    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "ClipboardHelper", &clipboardHelper);
+    qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "NavigationState", &navigationState);
     engine.addImageProvider("svg", new SvgImageProvider(&headerModel));
-
-
-    // Load the QML application
     engine.loadFromModule("wikipedia_qt", "Main");
-
-    qDebug() << engine.importPathList();
-
-    if (engine.rootObjects().isEmpty()) {
+    if (engine.rootObjects().isEmpty())
         return -1;
-    }
-
     return app.exec();
 }
-

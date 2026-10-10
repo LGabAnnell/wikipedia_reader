@@ -50,15 +50,23 @@ Item {
         }
 
         function test_state_singletons_are_usable() {
-            verify(GlobalState !== null && GlobalState !== undefined,
-                   "GlobalState singleton must resolve from wikipedia_qt");
+            verify(ArticleState !== null && ArticleState !== undefined,
+                   "ArticleState singleton must resolve from wikipedia_qt");
             verify(HistoryState !== null && HistoryState !== undefined,
                    "HistoryState singleton must resolve from wikipedia_qt");
             verify(NavigationState !== null && NavigationState !== undefined,
                    "NavigationState singleton must resolve from wikipedia_qt");
 
-            compare(GlobalState.isLoading, false, "GlobalState must start idle");
-            compare(GlobalState.currentPageTitle, "", "GlobalState must start without a page");
+            compare(ArticleState.isLoading, false, "ArticleState must start idle");
+            compare(ArticleState.currentPageTitle, "", "ArticleState must start without a page");
+            compare(SettingsState.language, "en");
+            compare(ImageSelectionState.currentImageUrl, "");
+            compare(ImageSelectionState.currentImageDescription, "");
+            compare(SearchState.isSearching, false);
+            compare(SearchState.hasCompletedSearch, false);
+            compare(SearchState.searchResults.length, 0);
+            compare(SearchState.errorMessage, "");
+            verify(ClipboardHelper !== null && ClipboardHelper !== undefined);
             compare(HistoryState.history.length, 0, "HistoryState must start empty");
             compare(NavigationState.stackView, null, "NavigationState must start without a stack view");
 

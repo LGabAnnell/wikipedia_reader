@@ -75,8 +75,16 @@ add_library(wikipedia_qt_core SHARED
     src/wikipedia_home_client.h
     src/wikipedia_models.h
     src/wikipedia_network_access_manager.h
-    src/state/GlobalState.cpp
-    src/state/GlobalState.h
+    src/state/SettingsState.cpp
+    src/state/SettingsState.h
+    src/state/ImageSelectionState.cpp
+    src/state/ImageSelectionState.h
+    src/state/ArticleState.cpp
+    src/state/ArticleState.h
+    src/state/SearchState.cpp
+    src/state/SearchState.h
+    src/state/ClipboardHelper.cpp
+    src/state/ClipboardHelper.h
     src/state/HistoryState.cpp
     src/state/HistoryState.h
     src/state/db/HistoryDatabase.cpp

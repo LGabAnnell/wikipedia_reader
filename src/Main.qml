@@ -2,7 +2,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import wikipedia_qt // For NavigationState, GlobalState, etc.
+import wikipedia_qt // For NavigationState, ArticleState, etc.
 import wikipedia_qt.History
 import wikipedia_qt.ContentDisplay
 import wikipedia_qt.ImageDisplay
@@ -58,7 +58,7 @@ ApplicationWindow {
             Component {
                 id: articleComponent
                 ContentDisplay {
-                    articleText: GlobalState.currentPageExtract
+                    articleText: ArticleState.currentPageExtract
                     onBackRequested: function () {
                         if (stackView.depth > 1) {
                             stackView.pop();

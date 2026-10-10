@@ -8,6 +8,7 @@
 #include "wikipedia_page_client.h"
 #include <QJSEngine>
 #include <QObject>
+#include "SettingsState.h"
 #include <QPointer>
 #include <QQmlEngine>
 #include <QVariantList>
@@ -62,6 +63,7 @@ class HomeModel : public QObject {
     void handleDidYouKnowItemsReceived(const QVector<did_you_know_item> &items);
 
   private:
+    QPointer<SettingsState> m_settings;
     QPointer<WikipediaFeaturedClient> m_featuredClient;
     QPointer<WikipediaHomeClient> m_homeClient;
     QPointer<WikipediaPageClient> m_pageClient;

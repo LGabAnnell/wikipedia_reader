@@ -1,7 +1,11 @@
 #include "support/FakeNetworkAccessManager.h"
 #include "support/QmlTestSupport.h"
 
-#include "GlobalState.h"
+#include "ArticleState.h"
+#include "SearchState.h"
+#include "ClipboardHelper.h"
+#include "SettingsState.h"
+#include "ImageSelectionState.h"
 #include "HistoryState.h"
 #include "NavigationState.h"
 #include "SvgImageProvider.h"
@@ -33,7 +37,11 @@ class QmlTestSetup final : public QObject {
     }
 
     ~QmlTestSetup() override {
-        delete m_globalState.data();
+        delete m_clipboardHelper.data();
+        delete m_searchState.data();
+        delete m_articleState.data();
+        delete m_imageSelectionState.data();
+        delete m_settingsState.data();
         delete m_navigationState.data();
         delete m_historyState.data();
         WikipediaNetwork::installNetworkAccessManagerFactory(nullptr);
@@ -68,12 +76,17 @@ class QmlTestSetup final : public QObject {
             qFatal("Could not register QML singleton NavigationState");
         }
 
-        m_globalState = new GlobalState(application, m_historyState);
-        const int globalTypeId =
-            qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "GlobalState", m_globalState.data());
-        if (globalTypeId < 0) {
-            qFatal("Could not register QML singleton GlobalState");
-        }
+        m_settingsState = new SettingsState(application);
+        qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "SettingsState", m_settingsState.data());
+        m_imageSelectionState = new ImageSelectionState(application);
+        qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "ImageSelectionState", m_imageSelectionState.data());
+
+        m_articleState = new ArticleState(*m_historyState, *m_settingsState, application);
+        qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "ArticleState", m_articleState.data());
+        m_searchState = new SearchState(*m_settingsState, application);
+        qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "SearchState", m_searchState.data());
+        m_clipboardHelper = new ClipboardHelper(application);
+        qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "ClipboardHelper", m_clipboardHelper.data());
     }
 
     void qmlEngineAvailable(QQmlEngine *engine) {
@@ -101,7 +114,11 @@ class QmlTestSetup final : public QObject {
     HeaderModel m_headerModel;
     QPointer<HistoryState> m_historyState;
     QPointer<NavigationState> m_navigationState;
-    QPointer<GlobalState> m_globalState;
+    QPointer<ArticleState> m_articleState;
+    QPointer<SearchState> m_searchState;
+    QPointer<ClipboardHelper> m_clipboardHelper;
+    QPointer<SettingsState> m_settingsState;
+    QPointer<ImageSelectionState> m_imageSelectionState;
 };
 
 QUICK_TEST_MAIN_WITH_SETUP(wikipedia_qt, QmlTestSetup)

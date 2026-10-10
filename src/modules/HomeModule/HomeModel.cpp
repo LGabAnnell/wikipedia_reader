@@ -2,7 +2,7 @@
 #include <QDate>
 #include <QDebug>
 #include <QString>
-#include "GlobalState.h"
+#include "SettingsState.h"
 #include "wikipedia_featured_client.h"
 #include "wikipedia_home_client.h"
 #include "wikipedia_page_client.h"
@@ -14,14 +14,14 @@ HomeModel::HomeModel(QObject *parent) : QObject(parent) {
     m_homeClient = new WikipediaHomeClient(this);
     m_pageClient = new WikipediaPageClient(this);
 
-    auto globalState = GlobalState::instance();
-    if (globalState) {
-        m_featuredClient->setLanguage(globalState->language());
-        m_homeClient->setLanguage(globalState->language());
-        m_pageClient->setLanguage(globalState->language());
+    m_settings = SettingsState::instance();
+    if (m_settings) {
+        m_featuredClient->setLanguage(m_settings->language());
+        m_homeClient->setLanguage(m_settings->language());
+        m_pageClient->setLanguage(m_settings->language());
 
-        connect(globalState, &GlobalState::languageChanged, this, [this, globalState]() {
-            QString lang = globalState->language();
+        connect(m_settings, &SettingsState::languageChanged, this, [this]() {
+            QString lang = m_settings->language();
             m_featuredClient->setLanguage(lang);
             m_homeClient->setLanguage(lang);
             m_pageClient->setLanguage(lang);
@@ -79,7 +79,7 @@ void HomeModel::handleFeaturedArticleReceived(const QString &title, const QStrin
     m_featuredArticleTitle = title;
     m_featuredArticleExtract = extract;
     m_featuredArticleUrl = QString("https://%1.wikipedia.org/wiki/%2")
-                               .arg(GlobalState::instance() ? GlobalState::instance()->language() : "en",
+                               .arg(m_settings ? m_settings->language() : "en",
                                     m_featuredArticleTitle.replace(' ', '_'));
     
     // Use a placeholder image initially

@@ -28,6 +28,7 @@ Item {
         property var screen: null
 
         function init() {
+            SearchState.reset()
             testSupport.clearRequests()
             testSupport.clearQmlWarnings()
             screen = searchScreenComponent.createObject(root)

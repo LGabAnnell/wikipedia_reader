@@ -70,7 +70,7 @@ Item {
                 }
                 onClicked: function () {
                     if (modelData.pageid > 0) {
-                        GlobalState.loadArticleByPageId(modelData.pageid);
+                        ArticleState.loadArticleByPageId(modelData.pageid);
                         NavigationState.navigateToContent();
                     }
                 }

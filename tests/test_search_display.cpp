@@ -3,7 +3,7 @@
 #include <QDebug>
 #include <QTimer>
 #include <QVector>
-#include "GlobalState.h"
+#include "SearchState.h"
 #include "SearchBarModel.h"
 #include "wikipedia_search_client.h"
 
@@ -15,29 +15,30 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    // Create GlobalState
-    GlobalState globalState;
+    // Create SearchState
+    SettingsState settings;
+    SearchState searchState(settings);
 
-    // Create SearchBarModel — it auto-connects to GlobalState::instance()
+    // Create SearchBarModel — it auto-connects to SearchState::instance()
     SearchBarModel searchBarModel;
 
     // Connect to signals to monitor changes
-    QObject::connect(&globalState, &GlobalState::searchResultsChanged, [&]() {
-        qDebug() << "Search results updated! Count:" << globalState.searchResults().count();
-        for (const auto &result : globalState.searchResults()) {
+    QObject::connect(&searchState, &SearchState::searchResultsChanged, [&]() {
+        qDebug() << "Search results updated! Count:" << searchState.searchResults().count();
+        for (const auto &result : searchState.searchResults()) {
             qDebug() << "  - Title:" << result.title;
             qDebug() << "    Snippet:" << result.snippet;
             qDebug() << "    Page ID:" << result.pageid;
         }
     });
 
-    QObject::connect(&globalState, &GlobalState::isLoadingChanged, [&]() {
-        qDebug() << "Loading state changed:" << globalState.isLoading();
+    QObject::connect(&searchState, &SearchState::isSearchingChanged, [&]() {
+        qDebug() << "Loading state changed:" << searchState.isSearching();
     });
 
-    QObject::connect(&globalState, &GlobalState::errorMessageChanged, [&]() {
-        if (!globalState.errorMessage().isEmpty()) {
-            qDebug() << "Error occurred:" << globalState.errorMessage();
+    QObject::connect(&searchState, &SearchState::errorMessageChanged, [&]() {
+        if (!searchState.errorMessage().isEmpty()) {
+            qDebug() << "Error occurred:" << searchState.errorMessage();
         }
     });
 

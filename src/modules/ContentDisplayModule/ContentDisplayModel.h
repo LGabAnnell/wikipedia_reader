@@ -2,6 +2,7 @@
 #define CONTENTDISPLAYMODEL_H
 
 #include <QQmlEngine>
+#include "ArticleState.h"
 #include <QList>
 #include <QVector>
 
@@ -21,11 +22,16 @@ class ContentDisplayModel : public QObject
     Q_OBJECT
         QML_ELEMENT
 
+    Q_PROPERTY(int currentSectionIndex READ currentSectionIndex WRITE setCurrentSectionIndex NOTIFY currentSectionIndexChanged)
     Q_PROPERTY(int currentResultIndex READ currentResultIndex NOTIFY currentResultIndexChanged)
     Q_PROPERTY(int totalResults READ totalResults NOTIFY totalResultsChanged)
 
 public:
     explicit ContentDisplayModel(QObject *parent = nullptr);
+    int currentSectionIndex() const { return m_currentSectionIndex; }
+    void setCurrentSectionIndex(int index);
+    /** @brief Discard per-view section positions and highlighting. */
+    Q_INVOKABLE void resetSectionTracking();
 
     // Method to navigate to the next search result
     Q_INVOKABLE void navigateToNextResult();
@@ -75,12 +81,15 @@ signals:
     void navigateToResult(qsizetype start, qsizetype end);
 
     // Signal emitted when currentResultIndex changes
+    void currentSectionIndexChanged();
     void currentResultIndexChanged();
 
     // Signal emitted when totalResults changes
     void totalResultsChanged();
 
 private:
+    QPointer<ArticleState> m_article;
+    int m_currentSectionIndex = -1;
     // List of items to search through
     QStringList m_items;
 

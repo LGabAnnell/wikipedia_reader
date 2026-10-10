@@ -11,6 +11,7 @@ Item {
     id: mainContent
 
     property string articleText: ""
+    readonly property int currentSectionIndex: contentDisplay.currentSectionIndex
     property bool sectionResizeInProgress: false
 
     signal backRequested
@@ -119,7 +120,7 @@ Item {
             var point = articleSection.mapFromItem(articleDisplay, articleSection.x + 1, contentY);
             var charPos = articleSection.positionAt(point.x, point.y);
             var sectionIdx = contentDisplay.findSectionAtPosition(charPos);
-            GlobalState.setCurrentSectionIndex(sectionIdx);
+            contentDisplay.currentSectionIndex = sectionIdx;
         }
     }
 
@@ -142,9 +143,7 @@ Item {
     // (Re)compute the character-position map for all sections. Called when
     // both the article HTML and the section list are available.
     function updateSectionTracking() {
-        if (articleText.length > 0 && sectionBar.sections.length > 0) {
-            contentDisplay.updateSectionPositions(articleText, sectionBar.sections);
-        }
+        contentDisplay.updateSectionPositions(articleText, sectionBar.sections);
     }
 
     height: parent ? parent.height : 0
@@ -152,7 +151,7 @@ Item {
 
     onArticleTextChanged: {
         scrollView.ScrollBar.vertical.position = 0;
-        GlobalState.setCurrentSectionIndex(-1);
+        contentDisplay.resetSectionTracking();
         updateSectionTracking();
     }
 
@@ -161,8 +160,8 @@ Item {
         objectName: "articleLoadingIndicator"
 
         anchors.centerIn: parent
-        running: GlobalState.isLoading
-        visible: GlobalState.isLoading
+        running: ArticleState.isLoading
+        visible: ArticleState.isLoading
     }
     Shortcut {
         sequences: [StandardKey.Find]
@@ -254,7 +253,7 @@ Item {
                 id: galleryButton
 
                 text: "Gallery"
-                visible: GlobalState.currentPageTitle.length > 0
+                visible: ArticleState.currentPageTitle.length > 0
 
                 onClicked: {
                     NavigationState.navigateToImageGallery();
@@ -264,10 +263,10 @@ Item {
                 id: copyHtmlButton
 
                 text: "Copy HTML"
-                visible: GlobalState.currentPageTitle.length > 0 && mainContent.articleText.length > 0
+                visible: ArticleState.currentPageTitle.length > 0 && mainContent.articleText.length > 0
 
                 onClicked: {
-                    GlobalState.copyToClipboard(mainContent.articleText);
+                    ClipboardHelper.copyToClipboard(mainContent.articleText);
                 }
             }
         }
@@ -336,8 +335,8 @@ Item {
                     readOnly: true
                     selectByMouse: true
                     selectionColor: articleDisplay.systemPalette.highlight
-                    text: GlobalState.currentPageTitle
-                    visible: GlobalState.currentPageTitle.length > 0
+                    text: ArticleState.currentPageTitle
+                    visible: ArticleState.currentPageTitle.length > 0
                     width: parent.width
                     wrapMode: TextEdit.Wrap
                 }
@@ -377,15 +376,14 @@ Item {
                             if (!image || !image.url)
                                 return;
 
-                            GlobalState.currentImageUrl = image.url;
-                            GlobalState.currentImageDescription = image.description;
+                            ImageSelectionState.selectImage(image.url, image.description);
                             NavigationState.navigateToView(Constants.imageView);
                             return;
                         }
 
                         if (link.startsWith("/wiki/")) {
                             var title = link.substring(6).replace(/_/g, " ");
-                            GlobalState.loadArticleByTitle(title);
+                            ArticleState.loadArticleByTitle(title);
                         } else {
                             Qt.openUrlExternally(link);
                         }
@@ -397,7 +395,7 @@ Item {
                     font.pixelSize: 14
                     horizontalAlignment: Text.AlignHCenter
                     text: "Select an article to view its content"
-                    visible: GlobalState.currentPageTitle.length === 0 && !GlobalState.isLoading
+                    visible: ArticleState.currentPageTitle.length === 0 && !ArticleState.isLoading
                     width: parent.width
                     wrapMode: Text.WordWrap
                 }
@@ -405,8 +403,8 @@ Item {
                     objectName: "articleErrorMessage"
                     anchors.horizontalCenter: parent.horizontalCenter
                     color: articleDisplay.systemPalette.negativeText || articleDisplay.systemPalette.text
-                    text: GlobalState.errorMessage
-                    visible: GlobalState.errorMessage.length > 0
+                    text: ArticleState.errorMessage
+                    visible: ArticleState.errorMessage.length > 0
                     width: parent.width
                     wrapMode: Text.WordWrap
                 }
@@ -417,11 +415,12 @@ Item {
         // Permanent collapsible sections bar anchored to the right
         Section {
             id: sectionBar
+            currentSectionIndex: contentDisplay.currentSectionIndex
 
             Layout.alignment: Qt.AlignRight
             Layout.fillHeight: true
             Layout.preferredWidth: collapsed ? collapsedWidth : expandedWidth
-            visible: GlobalState.currentPageTitle.length > 0
+            visible: ArticleState.currentPageTitle.length > 0
 
             onResizeStarted: {
                 if (!mainContent.sectionResizeInProgress)
@@ -493,14 +492,6 @@ Item {
         target: sectionBar
         function onSectionsChanged() {
             updateSectionTracking();
-        }
-    }
-
-    // Reset the highlight when navigating to a different article.
-    Connections {
-        target: GlobalState
-        function onCurrentPageChanged() {
-            GlobalState.setCurrentSectionIndex(-1);
         }
     }
 }
