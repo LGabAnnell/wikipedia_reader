@@ -44,17 +44,16 @@ Item {
         }
 
         function loadArticle(pageId) {
-            GlobalState.loadArticleByPageId(pageId)
-            tryCompare(GlobalState, "currentPageId", pageId)
-            tryCompare(GlobalState, "isLoading", false)
+            ArticleState.loadArticleByPageId(pageId)
+            tryCompare(ArticleState, "currentPageId", pageId)
+            tryCompare(ArticleState, "isLoading", false)
         }
 
         function init() {
             testSupport.clearRequests()
             testSupport.clearQmlWarnings()
             HistoryState.clearHistory()
-            GlobalState.currentImageUrl = ""
-            GlobalState.currentImageDescription = ""
+            ImageSelectionState.selectImage("", "")
             configureArticleFixture(firstArticleId, "First history article")
             configureArticleFixture(secondArticleId, "Second history article")
         }
@@ -62,8 +61,7 @@ Item {
         function cleanup() {
             while (networkFixtures.pendingReplyCount > 0)
                 networkFixtures.completeNextReply()
-            GlobalState.currentImageUrl = ""
-            GlobalState.currentImageDescription = ""
+            ImageSelectionState.selectImage("", "")
             HistoryState.clearHistory()
             compare(testSupport.qmlWarningCount, 0, testSupport.qmlWarnings.join("\n"))
         }
@@ -79,7 +77,7 @@ Item {
             compare(HistoryState.history[0].pageId, secondArticleId)
             compare(HistoryState.history[1].pageId, firstArticleId)
 
-            // The second visit is served from GlobalState's article cache. It
+            // The second visit is served from ArticleState's article cache. It
             // still records a visit, moving the existing entry to the front.
             loadArticle(firstArticleId)
             compare(HistoryState.history.length, 2)

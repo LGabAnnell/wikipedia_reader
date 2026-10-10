@@ -42,7 +42,7 @@ Column {
                     if (link.startsWith("page://")) {
                         var pageId = parseInt(link.substring(7));
                         if (pageId > 0) {
-                            GlobalState.loadArticleByPageId(pageId);
+                            ArticleState.loadArticleByPageId(pageId);
                             NavigationState.navigateToContent();
                         }
                     }

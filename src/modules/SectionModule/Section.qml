@@ -10,6 +10,7 @@ Item {
     id: root
     objectName: "sectionsPanel"
 
+    property int currentSectionIndex: -1
     property bool collapsed: true
     property int expandedWidth: 260
     property int collapsedWidth: 36
@@ -133,7 +134,7 @@ Item {
 
                     // ItemDelegate.highlighted drives the default background,
                     // so we get the platform hover/press styling for free.
-                    highlighted: modelData.index === GlobalState.currentSectionIndex
+                    highlighted: modelData.index === root.currentSectionIndex
 
                     contentItem: Text {
                         color: parent.highlighted
@@ -168,17 +169,17 @@ Item {
 
     // Automatically fetch sections when the component is ready
     Component.onCompleted: {
-        if (GlobalState.currentPageTitle.length > 0) {
-            sectionModel.fetchSections(GlobalState.currentPageTitle)
+        if (ArticleState.currentPageTitle.length > 0) {
+            sectionModel.fetchSections(ArticleState.currentPageTitle)
         }
     }
 
     // Refetch sections when the current page changes
     Connections {
-        target: GlobalState
+        target: ArticleState
         function onCurrentPageChanged() {
-            if (GlobalState.currentPageTitle.length > 0) {
-                sectionModel.fetchSections(GlobalState.currentPageTitle)
+            if (ArticleState.currentPageTitle.length > 0) {
+                sectionModel.fetchSections(ArticleState.currentPageTitle)
             } else {
                 sectionModel.clearSections()
             }

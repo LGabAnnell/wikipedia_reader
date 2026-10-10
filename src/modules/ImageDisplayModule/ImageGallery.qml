@@ -2,7 +2,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import wikipedia_qt // For GlobalState, NavigationState, Constants
+import wikipedia_qt // For ArticleState, NavigationState, Constants
 import wikipedia_qt.ImageDisplay
 
 Item {
@@ -48,6 +48,20 @@ Item {
             Item {
                 Layout.preferredWidth: 60 // Spacer to balance the back button
             }
+        }
+
+        BusyIndicator {
+            objectName: "galleryLoadingIndicator"
+            Layout.alignment: Qt.AlignHCenter
+            running: imageModel.isLoading
+            visible: running
+        }
+
+        Label {
+            objectName: "galleryErrorMessage"
+            Layout.alignment: Qt.AlignHCenter
+            text: imageModel.errorMessage
+            visible: text.length > 0
         }
 
         // Scrollable grid view for images
@@ -146,11 +160,10 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
-                            GlobalState.currentImageUrl = modelData;
                             var desc = imageModel.imageDescriptions.length > index
                                        ? imageModel.imageDescriptions[index]
                                        : "";
-                            GlobalState.currentImageDescription = desc;
+                            ImageSelectionState.selectImage(modelData, desc);
                             NavigationState.navigateToView(Constants.imageView);
                         }
                     }

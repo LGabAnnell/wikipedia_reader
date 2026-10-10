@@ -142,7 +142,7 @@ Item {
                             historyList.currentIndex = index;
                             // Load the article when clicked
                             if (modelData.pageId > 0) {
-                                GlobalState.loadArticleByPageId(modelData.pageId);
+                                ArticleState.loadArticleByPageId(modelData.pageId);
                                 // Get the StackView from NavigationState and push the article view
                                 NavigationState.navigateToContent();
                             }

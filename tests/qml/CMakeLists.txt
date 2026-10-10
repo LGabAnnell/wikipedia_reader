@@ -1,9 +1,5 @@
 qt_add_executable(QmlTests
     qml_test_main.cpp
-    support/FakeNetworkAccessManager.cpp
-    support/FakeNetworkAccessManager.h
-    support/FakeNetworkReply.cpp
-    support/FakeNetworkReply.h
     support/QmlTestSupport.cpp
     support/QmlTestSupport.h
 )
@@ -45,6 +41,7 @@ target_link_libraries(QmlTests PRIVATE
     SectionModule
     wikipedia_runtime
     wikipedia_qt_core
+    wikipedia_test_network
 )
 
 file(GLOB QML_TEST_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tst_*.qml")

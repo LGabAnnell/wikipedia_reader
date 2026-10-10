@@ -32,14 +32,14 @@ ComboBox {
     implicitWidth: 120
     implicitHeight: 30
     
-    // Connect to GlobalState language property
+    // Connect to SettingsState language property
     onActivated: {
-        GlobalState.setLanguage(currentValue)
+        SettingsState.setLanguage(currentValue)
     }
     
-    // Initialize from GlobalState language
+    // Initialize from SettingsState language
     Component.onCompleted: {
-        var lang = GlobalState.language
+        var lang = SettingsState.language
         for (var i = 0; i < model.length; i++) {
             if (model[i].code === lang) {
                 currentIndex = i

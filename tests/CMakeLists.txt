@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(GlobalStateTests)
+project(StateTests)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,19 +9,31 @@ find_package(Qt6 REQUIRED COMPONENTS Core Test Quick Network Sql Qml Gui Svg)
 
 qt_standard_project_setup()
 
-# ---------------------------------------------------------------------------
-# GlobalStateTest
-# ---------------------------------------------------------------------------
-qt_add_executable(GlobalStateTest
-    GlobalStateTest.cpp
+add_library(wikipedia_test_network STATIC
+    qml/support/FakeNetworkAccessManager.cpp
+    qml/support/FakeNetworkAccessManager.h
+    qml/support/FakeNetworkReply.cpp
+    qml/support/FakeNetworkReply.h
+)
+target_link_libraries(wikipedia_test_network PUBLIC Qt::Network Qt::Qml)
+target_include_directories(wikipedia_test_network PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/qml)
+target_compile_definitions(wikipedia_test_network PRIVATE
+    QML_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml/fixtures"
 )
 
-target_link_libraries(GlobalStateTest PRIVATE
-    wikipedia_qt_core
-    Qt::Test
-)
+foreach(state_test ArticleStateTest SearchStateTest SettingsStateTest ImageSelectionStateTest)
+    qt_add_executable(${state_test} ${state_test}.cpp)
+    target_link_libraries(${state_test} PRIVATE wikipedia_qt_core Qt::Test wikipedia_test_network)
+    add_test(NAME ${state_test} COMMAND ${state_test})
+endforeach()
 
-add_test(NAME GlobalStateTest COMMAND GlobalStateTest)
+qt_add_executable(ContentDisplayModelTest ContentDisplayModelTest.cpp)
+target_include_directories(ContentDisplayModelTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/modules/ContentDisplayModule
+)
+target_link_libraries(ContentDisplayModelTest PRIVATE ContentDisplayModule wikipedia_qt_core Qt::Test)
+add_test(NAME ContentDisplayModelTest COMMAND ContentDisplayModelTest)
+set_tests_properties(ContentDisplayModelTest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 # ---------------------------------------------------------------------------
 # test_search_display (network integration test, guarded by RUN_NETWORK_TESTS)

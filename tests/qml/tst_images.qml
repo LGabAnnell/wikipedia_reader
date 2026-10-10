@@ -105,8 +105,7 @@ Item {
             testSupport.clearRequests()
             testSupport.clearQmlWarnings()
             HistoryState.clearHistory()
-            GlobalState.currentImageUrl = ""
-            GlobalState.currentImageDescription = ""
+            ImageSelectionState.selectImage("", "")
             NavigationState.setStackView(stackView)
             configureArticleFixture()
             gallery = null
@@ -121,8 +120,7 @@ Item {
             if (gallery)
                 gallery.destroy()
             gallery = null
-            GlobalState.currentImageUrl = ""
-            GlobalState.currentImageDescription = ""
+            ImageSelectionState.selectImage("", "")
             HistoryState.clearHistory()
             NavigationState.setStackView(null)
             compare(testSupport.qmlWarningCount, 0, testSupport.qmlWarnings.join("\n"))
@@ -135,23 +133,29 @@ Item {
         }
 
         function test_selecting_gallery_image_shows_caption() {
-            GlobalState.loadArticleByPageId(articleId)
-            tryCompare(GlobalState, "isLoading", true)
-            tryCompare(GlobalState, "isLoading", false)
-            compare(GlobalState.currentPageId, articleId)
+            ArticleState.loadArticleByPageId(articleId)
+            tryCompare(ArticleState, "isLoading", true)
+            tryCompare(ArticleState, "isLoading", false)
+            compare(ArticleState.currentPageId, articleId)
             compare(HistoryState.history.length, 1)
             compare(HistoryState.history[0].pageId, articleId)
 
+            const originalHtml = ArticleState.currentPageExtract
+            const originalHistory = HistoryState.history[0].timestamp
             gallery = galleryComponent.createObject(root)
             verify(gallery !== null, "ImageGallery must be created")
             // The gallery's metadata and thumbnail each load through the fake
             // transport; the fullscreen view requests the selected PNG too.
             tryCompare(networkFixtures, "requestCount", 5)
 
+            compare(ArticleState.currentPageExtract, originalHtml)
+            compare(ArticleState.errorMessage, "")
+            compare(HistoryState.history.length, 1)
+            compare(HistoryState.history[0].timestamp, originalHistory)
             const cell = child("imageGalleryCell-0")
             mouseClick(cell)
-            tryCompare(GlobalState, "currentImageUrl", imageUrl)
-            compare(GlobalState.currentImageDescription, imageDescription)
+            tryCompare(ImageSelectionState, "currentImageUrl", imageUrl)
+            compare(ImageSelectionState.currentImageDescription, imageDescription)
             tryCompare(stackView, "depth", 1)
 
             const fullImage = child("fullScreenImage")
@@ -163,6 +167,12 @@ Item {
             const caption = child("imageCaptionText")
             compare(caption.text, imageDescription)
             compare(testSupport.requestCount, 6)
+            const requestCount = testSupport.requestCount
+            ArticleState.loadArticleByPageId(articleId)
+            compare(testSupport.requestCount, requestCount, "Gallery must preserve the cached HTML article")
+            compare(ArticleState.currentPageExtract, originalHtml)
+
+
         }
     }
 }

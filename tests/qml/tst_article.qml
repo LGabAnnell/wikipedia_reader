@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtTest
 import wikipedia_qt
 import wikipedia_qt.ContentDisplay
+import wikipedia_qt.ImageDisplay
 
 Item {
     id: root
@@ -19,8 +20,13 @@ Item {
         id: articleComponent
 
         ContentDisplay {
-            articleText: GlobalState.currentPageExtract
+            articleText: ArticleState.currentPageExtract
         }
+    }
+
+    Component {
+        id: imageViewComponent
+        ImageView {}
     }
 
     StackView {
@@ -33,6 +39,7 @@ Item {
     Component.onCompleted: {
         NavigationState.setStackView(stackView)
         NavigationState.addView(Constants.contentView, articleComponent)
+        NavigationState.addView(Constants.imageView, imageViewComponent)
     }
 
     Connections {
@@ -101,12 +108,11 @@ Item {
             while (stackView.depth > 1)
                 stackView.pop()
             wait(250)
-            GlobalState.setCurrentPageFromData("", "", "")
-            GlobalState.clearErrorMessage()
-            GlobalState.setIsLoading(false)
-            GlobalState.setSections([])
-            GlobalState.setLoadingSections(false)
-            GlobalState.setSearchResults([])
+            ArticleState.setCurrentPageFromData("", "", "")
+            ArticleState.clearErrorMessage()
+            ArticleState.setIsLoading(false)
+            SearchState.reset()
+            ImageSelectionState.selectImage("", "")
             HistoryState.clearHistory()
             const input = findChild(root, "searchInput")
             if (input)
@@ -155,9 +161,9 @@ Item {
             compare(testSupport.requestCount, 2)
 
             networkFixtures.completeNextReply()
-            tryCompare(GlobalState, "currentPageId", successArticleId)
-            tryCompare(GlobalState, "currentPageTitle", successTitle)
-            tryCompare(GlobalState, "isLoading", false)
+            tryCompare(ArticleState, "currentPageId", successArticleId)
+            tryCompare(ArticleState, "currentPageTitle", successTitle)
+            tryCompare(ArticleState, "isLoading", false)
             tryCompare(networkFixtures, "requestCount", 5)
             tryCompare(networkFixtures, "pendingReplyCount", 0)
 
@@ -186,6 +192,34 @@ Item {
             }), "The article sections request must be made")
         }
 
+        function test_inline_image_selection_and_back_navigation() {
+            const inlineArticleId = 803
+            const inlineTitle = "Inline image fixture"
+            addSuccessArticleFixtures(inlineArticleId, inlineTitle)
+            ArticleState.loadArticleByPageId(inlineArticleId)
+            tryCompare(ArticleState, "isLoading", false)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            const articleView = stackView.currentItem
+            const body = child("articleBody")
+            const imageLink = body.text.match(/href="(wikipedia-image:[^"]+)"/)
+            verify(imageLink !== null)
+            body.linkActivated(imageLink[1])
+            tryCompare(stackView, "depth", 3)
+            tryVerify(function() { return !stackView.busy })
+            compare(ImageSelectionState.currentImageUrl,
+                    "https://upload.wikimedia.org/wikipedia/commons/fixture.png")
+            compare(ImageSelectionState.currentImageDescription, "A Borden house & garden")
+            tryCompare(child("fullScreenImage"), "status", Image.Ready)
+            compare(child("imageCaptionText").text, "A Borden house & garden")
+            mouseClick(child("imageBackButton"))
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            compare(stackView.currentItem, articleView)
+            compare(ArticleState.currentPageTitle, inlineTitle)
+        }
+
         function test_article_load_error_is_shown_without_history_visit() {
             addSearchResult("article-error", failureTitle, failureArticleId)
             networkFixtures.addFixture("GET", pageQueryUrl(failureArticleId), "failure", "text/plain", 500)
@@ -198,8 +232,8 @@ Item {
             compare(child("articleLoadingIndicator").visible, true)
             networkFixtures.completeNextReply()
 
-            tryCompare(GlobalState, "isLoading", false)
-            tryCompare(GlobalState, "errorMessage", "HTTP 500")
+            tryCompare(ArticleState, "isLoading", false)
+            tryCompare(ArticleState, "errorMessage", "HTTP 500")
             const error = child("articleErrorMessage")
             tryCompare(error, "visible", true)
             compare(error.text, "HTTP 500")

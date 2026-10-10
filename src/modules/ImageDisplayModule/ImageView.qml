@@ -2,7 +2,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import wikipedia_qt // For GlobalState, NavigationState
+import wikipedia_qt // For ImageSelectionState, NavigationState
 
 Item {
     id: root
@@ -17,7 +17,7 @@ Item {
             id: fullImage
             objectName: "fullScreenImage"
             anchors.fill: parent
-            source: GlobalState.currentImageUrl
+            source: ImageSelectionState.currentImageUrl
             fillMode: Image.PreserveAspectFit
             asynchronous: true
             cache: true
@@ -64,7 +64,7 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             color: Qt.rgba(0, 0, 0, 0.7)
-            visible: GlobalState.currentImageDescription.length > 0
+            visible: ImageSelectionState.currentImageDescription.length > 0
             height: descriptionColumn.implicitHeight + 2 * descriptionColumn.anchors.margins
 
             ColumnLayout {
@@ -78,7 +78,7 @@ Item {
                 Text {
                     objectName: "imageCaptionText"
                     Layout.fillWidth: true
-                    text: GlobalState.currentImageDescription
+                    text: ImageSelectionState.currentImageDescription
                     color: "white"
                     font.pixelSize: 14
                     wrapMode: Text.WordWrap
@@ -93,6 +93,7 @@ Item {
     // Back button (top-left); pops the stack via NavigationState
     Button {
         id: backButton
+        objectName: "imageBackButton"
         text: "Back"
         anchors.top: parent.top
         anchors.left: parent.left

@@ -6,7 +6,25 @@
 #include <QTextCursor>
 #include <QTextCharFormat>
 
-ContentDisplayModel::ContentDisplayModel(QObject *parent) : QObject(parent) {
+ContentDisplayModel::ContentDisplayModel(QObject *parent) : QObject(parent), m_article(ArticleState::instance()) {
+    if (m_article) {
+        connect(m_article, &ArticleState::currentPageChanged, this, [this]() {
+            resetSectionTracking();
+            performSearch({}, {});
+        });
+    }
+}
+
+void ContentDisplayModel::setCurrentSectionIndex(int index) {
+    if (m_currentSectionIndex == index)
+        return;
+    m_currentSectionIndex = index;
+    emit currentSectionIndexChanged();
+}
+
+void ContentDisplayModel::resetSectionTracking() {
+    m_sectionPositions.clear();
+    setCurrentSectionIndex(-1);
 }
 
 QList<search_indices> ContentDisplayModel::performSearch(const QString &searchText, const QString &text) {
@@ -90,7 +108,7 @@ int ContentDisplayModel::findSectionPosition(const QString &html, const QString 
 }
 
 void ContentDisplayModel::updateSectionPositions(const QString &html, const QVariantList &sections) {
-    m_sectionPositions.clear();
+    resetSectionTracking();
 
     if (html.isEmpty() || sections.isEmpty())
         return;

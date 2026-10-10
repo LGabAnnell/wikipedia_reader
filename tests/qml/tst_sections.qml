@@ -57,12 +57,9 @@ Item {
                 display.destroy()
                 display = null
             }
-            GlobalState.setCurrentPageFromData("", "", "")
-            GlobalState.clearErrorMessage()
-            GlobalState.setIsLoading(false)
-            GlobalState.setSections([])
-            GlobalState.setLoadingSections(false)
-            GlobalState.setCurrentSectionIndex(-1)
+            ArticleState.setCurrentPageFromData("", "", "")
+            ArticleState.clearErrorMessage()
+            ArticleState.setIsLoading(false)
         }
 
         function init() {
@@ -78,12 +75,9 @@ Item {
                 display.destroy()
                 display = null
             }
-            GlobalState.setCurrentPageFromData("", "", "")
-            GlobalState.clearErrorMessage()
-            GlobalState.setIsLoading(false)
-            GlobalState.setSections([])
-            GlobalState.setLoadingSections(false)
-            GlobalState.setCurrentSectionIndex(-1)
+            ArticleState.setCurrentPageFromData("", "", "")
+            ArticleState.clearErrorMessage()
+            ArticleState.setIsLoading(false)
             compare(testSupport.qmlWarningCount, 0, testSupport.qmlWarnings.join("\n"))
         }
 
@@ -93,7 +87,7 @@ Item {
                                        statusCode === undefined ? "application/json" : "text/plain",
                                        statusCode === undefined ? 200 : statusCode)
             root.articleMarkup = articleHtml()
-            GlobalState.setCurrentPageFromData(fixtureTitle, "Sections fixture extract", "")
+            ArticleState.setCurrentPageFromData(fixtureTitle, "Sections fixture extract", "")
             display = displayComponent.createObject(root)
             verify(display !== null, "ContentDisplay must be created")
             wait(0)
@@ -159,7 +153,7 @@ Item {
             scroll.contentItem.contentY = 150
             compare(scroll.contentHeight > scroll.height, true)
             compare(scroll.contentItem.contentY, 150)
-            tryCompare(GlobalState, "currentSectionIndex", 1, 5000,
+            tryCompare(display, "currentSectionIndex", 1, 5000,
                        "Expected first section at scrollY=150; contentHeight=" + scroll.contentHeight
                        + ", viewportHeight=" + scroll.height
                        + ", actual scrollY=" + scroll.contentItem.contentY)
@@ -167,20 +161,63 @@ Item {
 
             const laterScrollY = Math.min(1500, scroll.contentHeight - scroll.height)
             scroll.contentItem.contentY = laterScrollY
-            tryCompare(GlobalState, "currentSectionIndex", 2)
+            tryCompare(display, "currentSectionIndex", 2)
             scroll.contentItem.contentY = 150
-            tryCompare(GlobalState, "currentSectionIndex", 1)
+            tryCompare(display, "currentSectionIndex", 1)
             scroll.contentItem.contentY = laterScrollY
-            tryCompare(GlobalState, "currentSectionIndex", 2)
+            tryCompare(display, "currentSectionIndex", 2)
             tryVerify(function() { return child("sectionEntry-2").highlighted })
             compare(child("sectionEntry-1").highlighted, false)
+        }
+
+        function test_clearing_article_discards_pending_section_feedback_data() {
+            return [{ tag: "success", status: undefined }, { tag: "failure", status: 500 }]
+        }
+
+        function test_clearing_article_discards_pending_section_feedback(data) {
+            networkFixtures.deferNextReply()
+            createDisplay(data.status)
+            const panel = child("sectionsPanel")
+            tryCompare(networkFixtures, "pendingReplyCount", 1)
+            compare(panel.loading, true)
+            root.articleMarkup = ""
+            ArticleState.setCurrentPageFromData("", "", "")
+            compare(panel.loading, false)
+            compare(panel.sections.length, 0)
+            compare(display.currentSectionIndex, -1)
+            compare(child("sectionsErrorMessage").text, "")
+            networkFixtures.completeNextReply()
+            wait(0)
+            compare(panel.loading, false)
+            compare(panel.sections.length, 0)
+            compare(child("sectionsErrorMessage").text, "")
+        }
+
+        function test_panel_resize_preserves_reading_position() {
+            createDisplay()
+            expandPanel()
+            tryCompare(child("sectionsList"), "count", 2)
+            const scroll = child("articleScrollView")
+            const body = child("articleBody")
+            scroll.contentItem.contentY = Math.min(1500, scroll.contentHeight - scroll.height)
+            tryCompare(display, "currentSectionIndex", 2)
+            scroll.pinTopPosition()
+            const pinned = scroll.pinnedPosition
+            const initialY = body.mapToItem(scroll, 0, body.positionToRectangle(pinned).y).y
+            mouseClick(child("sectionsToggleButton"))
+            tryCompare(child("sectionsPanel"), "collapsed", true)
+            tryCompare(display, "sectionResizeInProgress", false)
+            const resizedY = body.mapToItem(scroll, 0, body.positionToRectangle(pinned).y).y
+            verify(Math.abs(initialY - resizedY) < 4,
+                   "Resizing should preserve the top text position; before=" + initialY + ", after=" + resizedY)
+            tryCompare(display, "currentSectionIndex", 2)
         }
 
         function test_empty_sections_show_empty_message() {
             networkFixtures.addFixture("GET", sectionsUrl(),
                                        JSON.stringify({"parse": {"tocdata": {"sections": []}}}))
             root.articleMarkup = articleHtml()
-            GlobalState.setCurrentPageFromData(fixtureTitle, "Sections fixture extract", "")
+            ArticleState.setCurrentPageFromData(fixtureTitle, "Sections fixture extract", "")
             display = displayComponent.createObject(root)
             verify(display !== null)
             expandPanel()
