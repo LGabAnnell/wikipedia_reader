@@ -10,11 +10,54 @@ import wikipedia_qt.Section 1.0
 Item {
     id: mainContent
 
-    property string articleText: ""
+    // Article content displayed by this view. The defaults track the global
+    // ArticleState; freezeArticleContent() detaches them so a view covered by
+    // another page keeps showing its own article when the user navigates back.
+    property string articleTitle: ArticleState.currentPageTitle
+    property string articleText: ArticleState.currentPageExtract
+    property string errorMessage: ArticleState.errorMessage
+    property bool isLoading: ArticleState.isLoading
     readonly property int currentSectionIndex: contentDisplay.currentSectionIndex
     property bool sectionResizeInProgress: false
 
     signal backRequested
+
+    // StackView bookkeeping: a view covered by another push is marked
+    // Inactive, at which point it snapshots the article it is displaying.
+    property int stackStatus: StackView.status
+    readonly property bool managedByStack: StackView.view !== null
+
+    onStackStatusChanged: {
+        if (!managedByStack)
+            return;
+        if (stackStatus === StackView.Inactive) {
+            freezeIfCovered();
+        } else if (stackStatus === StackView.Active) {
+            // The per-article section tracking is reset whenever the global
+            // article changes; rebuild it from this view's own content when
+            // it becomes the visible view again.
+            updateSectionTracking();
+        }
+    }
+
+    onIsLoadingChanged: freezeIfCovered()
+
+    function freezeIfCovered() {
+        // A view whose article is still loading stays attached to the global
+        // state; it freezes once its article has arrived (or failed).
+        if (managedByStack && stackStatus === StackView.Inactive && !isLoading)
+            freezeArticleContent();
+    }
+
+    // Snapshot the article this view is displaying. Assigning the current
+    // values removes the bindings to ArticleState, so the view keeps showing
+    // its own article even after the global state loads another page.
+    function freezeArticleContent() {
+        articleTitle = articleTitle;
+        articleText = articleText;
+        errorMessage = errorMessage;
+        isLoading = isLoading;
+    }
 
     function decodeHtmlAttribute(value) {
         return value.replace(/&amp;/g, "&")
@@ -160,8 +203,8 @@ Item {
         objectName: "articleLoadingIndicator"
 
         anchors.centerIn: parent
-        running: ArticleState.isLoading
-        visible: ArticleState.isLoading
+        running: mainContent.isLoading
+        visible: mainContent.isLoading
     }
     Shortcut {
         sequences: [StandardKey.Find]
@@ -253,7 +296,7 @@ Item {
                 id: galleryButton
 
                 text: "Gallery"
-                visible: ArticleState.currentPageTitle.length > 0
+                visible: mainContent.articleTitle.length > 0
 
                 onClicked: {
                     NavigationState.navigateToImageGallery();
@@ -263,7 +306,7 @@ Item {
                 id: copyHtmlButton
 
                 text: "Copy HTML"
-                visible: ArticleState.currentPageTitle.length > 0 && mainContent.articleText.length > 0
+                visible: mainContent.articleTitle.length > 0 && mainContent.articleText.length > 0
 
                 onClicked: {
                     ClipboardHelper.copyToClipboard(mainContent.articleText);
@@ -335,8 +378,8 @@ Item {
                     readOnly: true
                     selectByMouse: true
                     selectionColor: articleDisplay.systemPalette.highlight
-                    text: ArticleState.currentPageTitle
-                    visible: ArticleState.currentPageTitle.length > 0
+                    text: mainContent.articleTitle
+                    visible: mainContent.articleTitle.length > 0
                     width: parent.width
                     wrapMode: TextEdit.Wrap
                 }
@@ -383,7 +426,11 @@ Item {
 
                         if (link.startsWith("/wiki/")) {
                             var title = link.substring(6).replace(/_/g, " ");
+                            // Keep this view on its article, then push a new
+                            // article view so the back button returns here.
+                            freezeArticleContent();
                             ArticleState.loadArticleByTitle(title);
+                            NavigationState.navigateToContent();
                         } else {
                             Qt.openUrlExternally(link);
                         }
@@ -395,7 +442,7 @@ Item {
                     font.pixelSize: 14
                     horizontalAlignment: Text.AlignHCenter
                     text: "Select an article to view its content"
-                    visible: ArticleState.currentPageTitle.length === 0 && !ArticleState.isLoading
+                    visible: mainContent.articleTitle.length === 0 && !mainContent.isLoading
                     width: parent.width
                     wrapMode: Text.WordWrap
                 }
@@ -403,8 +450,8 @@ Item {
                     objectName: "articleErrorMessage"
                     anchors.horizontalCenter: parent.horizontalCenter
                     color: articleDisplay.systemPalette.negativeText || articleDisplay.systemPalette.text
-                    text: ArticleState.errorMessage
-                    visible: ArticleState.errorMessage.length > 0
+                    text: mainContent.errorMessage
+                    visible: mainContent.errorMessage.length > 0
                     width: parent.width
                     wrapMode: Text.WordWrap
                 }
@@ -415,12 +462,13 @@ Item {
         // Permanent collapsible sections bar anchored to the right
         Section {
             id: sectionBar
+            articleTitle: mainContent.articleTitle
             currentSectionIndex: contentDisplay.currentSectionIndex
 
             Layout.alignment: Qt.AlignRight
             Layout.fillHeight: true
             Layout.preferredWidth: collapsed ? collapsedWidth : expandedWidth
-            visible: ArticleState.currentPageTitle.length > 0
+            visible: mainContent.articleTitle.length > 0
 
             onResizeStarted: {
                 if (!mainContent.sectionResizeInProgress)

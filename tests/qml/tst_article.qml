@@ -79,6 +79,30 @@ Item {
                     + "&prop=tocdata&page=" + encodeURIComponent(title)
         }
 
+        function resolveUrl(title) {
+            return "https://en.wikipedia.org/w/api.php?action=query&format=json"
+                    + "&titles=" + encodeURIComponent(title) + "&prop=pageprops%7Cpageids"
+        }
+
+        function addArticleFixtures(pageId, title, htmlText) {
+            const pages = {}
+            pages[pageId] = {
+                "pageid": pageId,
+                "title": title,
+                "extract": title + " extract",
+                "images": []
+            }
+            networkFixtures.addFixture("GET", pageQueryUrl(pageId), JSON.stringify({"query": {"pages": pages}}))
+            networkFixtures.addFixture("GET", parseUrl(pageId), JSON.stringify({"parse": {
+                "title": title,
+                "pageid": pageId,
+                "text": htmlText
+            }}))
+            networkFixtures.addFixture("GET", sectionsUrl(title), JSON.stringify({"parse": {
+                "tocdata": {"sections": []}
+            }}))
+        }
+
         function addSearchResult(query, title, pageId) {
             networkFixtures.addFixture("GET", searchUrl(query), JSON.stringify({
                 "query": {"search": [{"title": title, "snippet": "Article fixture result", "pageid": pageId}]}
@@ -240,6 +264,79 @@ Item {
             compare(child("articleLoadingIndicator").visible, false)
             compare(HistoryState.history.length, 0)
             compare(testSupport.requestCount, 2)
+        }
+
+        function test_link_click_pushes_article_and_back_restores_previous_article() {
+            const firstId = 811
+            const firstTitle = "First article fixture"
+            const secondId = 812
+            const secondTitle = "Second article fixture"
+            const secondLink = "/wiki/" + secondTitle.replace(/ /g, "_")
+
+            addArticleFixtures(firstId, firstTitle,
+                               "<p>First article body.</p>"
+                               + "<p>See <a href=\"" + secondLink + "\">the second article</a>.</p>")
+            const resolvePages = {}
+            resolvePages[secondId] = {"pageid": secondId, "title": secondTitle}
+            networkFixtures.addFixture("GET", resolveUrl(secondTitle),
+                                       JSON.stringify({"query": {"pages": resolvePages}}))
+            addArticleFixtures(secondId, secondTitle, "<p>Second article body.</p>")
+
+            // Show the first article.
+            ArticleState.loadArticleByPageId(firstId)
+            tryCompare(ArticleState, "isLoading", false)
+            tryCompare(ArticleState, "currentPageTitle", firstTitle)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            const firstView = stackView.currentItem
+            const firstBody = findChild(firstView, "articleBody")
+            verify(firstBody !== null, "First article view must have a body")
+            tryVerify(function() { return firstBody.text.indexOf("First article body") >= 0 })
+            compare(findChild(firstView, "articleTitle").text, firstTitle)
+
+            // Clicking an article link pushes a new article view onto the stack.
+            const linkMatch = firstBody.text.match(/href="(\/wiki\/[^"]+)"/)
+            verify(linkMatch !== null, "Rendered article must contain a /wiki/ link")
+            networkFixtures.deferNextReply()
+            firstBody.linkActivated(linkMatch[1])
+            tryCompare(stackView, "depth", 3)
+            tryVerify(function() { return !stackView.busy })
+            const secondView = stackView.currentItem
+            verify(secondView !== firstView, "Link click must push a new article view")
+            compare(ArticleState.isLoading, true)
+            compare(findChild(secondView, "articleLoadingIndicator").visible, true)
+            compare(findChild(secondView, "articleTitle").text, "",
+                    "New article view must not flash the previous article")
+
+            // The linked article loads into the new view.
+            networkFixtures.completeNextReply()
+            tryCompare(ArticleState, "currentPageTitle", secondTitle)
+            tryCompare(ArticleState, "isLoading", false)
+            const secondBody = findChild(secondView, "articleBody")
+            tryVerify(function() { return secondBody.text.indexOf("Second article body") >= 0 })
+            compare(findChild(secondView, "articleTitle").text, secondTitle)
+
+            // Page query + parse + sections per article, plus the title resolve.
+            tryCompare(networkFixtures, "requestCount", 7)
+            compare(HistoryState.history.length, 2)
+            compare(HistoryState.history[0].pageId, secondId)
+
+            // Back pops to the first article, which kept its own content even
+            // though the global state now points at the second article.
+            stackView.pop()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            compare(stackView.currentItem, firstView)
+            compare(findChild(firstView, "articleTitle").text, firstTitle)
+            tryVerify(function() {
+                return findChild(firstView, "articleBody").text.indexOf("First article body") >= 0
+            })
+            compare(ArticleState.currentPageTitle, secondTitle)
+
+            // The covered view did not refetch its sections.
+            wait(100)
+            compare(networkFixtures.requestCount, 7)
         }
     }
 }

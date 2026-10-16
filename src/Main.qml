@@ -54,11 +54,12 @@ ApplicationWindow {
                 }
             }
 
-            // Define the article view component
+            // Define the article view component. ContentDisplay tracks the
+            // current article itself and keeps showing it when covered by a
+            // later article view, so Back returns to the previous article.
             Component {
                 id: articleComponent
                 ContentDisplay {
-                    articleText: ArticleState.currentPageExtract
                     onBackRequested: function () {
                         if (stackView.depth > 1) {
                             stackView.pop();

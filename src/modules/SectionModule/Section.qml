@@ -15,6 +15,12 @@ Item {
     property int expandedWidth: 260
     property int collapsedWidth: 36
 
+    // Title of the article this bar belongs to. ContentDisplay keeps it in
+    // sync with the article the view is displaying; once the view is covered
+    // by another page the title (and the sections below) stay frozen.
+    property string articleTitle: ""
+    property bool ready: false
+
     property bool loading: sectionModel.isLoading
     property var sections: sectionModel.sections
     signal sectionClicked(var section)
@@ -169,20 +175,22 @@ Item {
 
     // Automatically fetch sections when the component is ready
     Component.onCompleted: {
-        if (ArticleState.currentPageTitle.length > 0) {
-            sectionModel.fetchSections(ArticleState.currentPageTitle)
+        ready = true
+        if (articleTitle.length > 0) {
+            sectionModel.fetchSections(articleTitle)
         }
     }
 
-    // Refetch sections when the current page changes
-    Connections {
-        target: ArticleState
-        function onCurrentPageChanged() {
-            if (ArticleState.currentPageTitle.length > 0) {
-                sectionModel.fetchSections(ArticleState.currentPageTitle)
-            } else {
-                sectionModel.clearSections()
-            }
+    // Fetch sections for the article this bar belongs to. Change handlers can
+    // fire before the component has finished constructing, so updates are
+    // ignored until Component.onCompleted has run.
+    onArticleTitleChanged: {
+        if (!ready)
+            return
+        if (articleTitle.length > 0) {
+            sectionModel.fetchSections(articleTitle)
+        } else {
+            sectionModel.clearSections()
         }
     }
 }

@@ -140,6 +140,29 @@ class ArticleStateTest : public QObject {
         QCOMPARE(historySpy.count(), 1);
     }
 
+    void loadArticleByTitleClearsCurrentArticle() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        article.setCurrentPage(cachedArticle());
+        QCOMPARE(article.currentPageTitle(), QString("Cached article"));
+        m_network.addFixture("GET",
+            QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json&titles=Cached%20article&prop=pageprops%7Cpageids"),
+            R"({"query":{"pages":{"42":{"pageid":42,"title":"Cached article"}}}})");
+        m_network.deferNextReply();
+        article.loadArticleByTitle("Cached article");
+        // The previous article is dropped immediately so a newly pushed
+        // article view does not flash it while the linked article loads.
+        QVERIFY(article.isLoading());
+        QVERIFY(article.currentPageTitle().isEmpty());
+        QVERIFY(article.currentPageExtract().isEmpty());
+        QCOMPARE(article.currentPageId(), 0);
+        m_network.completeNextReply();
+        QTRY_VERIFY(!article.isLoading());
+        QCOMPARE(article.currentPageTitle(), QString("Cached article"));
+        QCOMPARE(article.currentPageExtract(), QString("<p>Cached HTML</p>"));
+        QCOMPARE(m_network.requestCount(), 1);
+    }
+
     void languageChangeInvalidatesCacheWithoutReloading() {
         SettingsState settings;
         ArticleState article(*m_history, settings);

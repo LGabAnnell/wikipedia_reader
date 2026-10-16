@@ -48,6 +48,10 @@ void ArticleState::loadArticleByPageId(int pageId) {
 
 void ArticleState::loadArticleByTitle(const QString &title) {
     clearErrorMessage();
+    // Drop the current article so a newly pushed article view does not
+    // briefly display the previous article while the new one loads.
+    m_currentPage = page{};
+    emit currentPageChanged();
     setIsLoading(true);
     m_pageClient->resolveTitleToPageId(title);
 }
