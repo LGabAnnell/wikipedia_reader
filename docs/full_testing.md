@@ -1,10 +1,13 @@
 # Testing
 
-## Lexbor dependency
+## Dependencies
 
-Article HTML parsing requires Lexbor 3.0 or newer. Install the Lexbor CMake
-package before configuring this project. For a local installation, build and
-install Lexbor with its upstream CMake project, for example:
+Building the tests requires the application's C++20 toolchain, CMake 3.16+,
+Qt 6.8+ (including Qt Test and Qt Quick Test), tinyxml2, and Lexbor 3.0+.
+Article HTML processing uses Lexbor's HTML5 fragment parser and DOM;
+HeaderModule still uses tinyxml2 for SVG icon recoloring.
+
+For a local Lexbor installation:
 
 ```bash
 git clone --branch v3.0.0 https://github.com/lexbor/lexbor.git
@@ -13,84 +16,187 @@ cmake --build lexbor/build -j14
 cmake --install lexbor/build
 ```
 
-Then configure Wikipedia Reader with that prefix so CMake can find
-`lexbor-config.cmake`:
+Pass that installation prefix when configuring Wikipedia Reader so CMake can
+find `lexbor-config.cmake`:
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON \
     -DCMAKE_PREFIX_PATH="$PWD/lexbor/install"
 ```
 
-The HTML processor uses Lexbor's HTML5 fragment parser and DOM. `tinyxml2`
-remains a dependency of HeaderModule for SVG icon recoloring.
-
 ## Run the tests
 
-Configure with `BUILD_TESTING=ON` before building:
+`BUILD_TESTING` defaults to `OFF`. Configure with it enabled, then build and
+run CTest from the repository root. If dependencies are already discoverable:
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
 cmake --build build -j14
-ctest --test-dir build --output-on-failure
+QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
 ```
 
-For a headless run, give the C++ tests an offscreen Qt platform and a writable
-application-data directory:
+Use the prefix option above when Lexbor is installed locally. Several C++
+tests still use `QTEST_MAIN` and require a GUI platform even though they test
+backend behavior. Setting `QT_QPA_PLATFORM=offscreen` for the full run supports
+headless execution. CTest already sets it individually for QML tests,
+`ContentDisplayModelTest`, and `test_sidebar_layout`.
+
+Database-using state tests, `HistoryDatabaseTest`, and the QML harness redirect
+`XDG_DATA_HOME` to their own temporary directories. To also supply a writable
+application-data location for the overall run:
 
 ```bash
 test_data_dir=$(mktemp -d)
 QT_QPA_PLATFORM=offscreen XDG_DATA_HOME="$test_data_dir" \
     ctest --test-dir build --output-on-failure
+rm -r "$test_data_dir"
 ```
 
-Run the QML tests as a group or select one test file:
+List registered tests, run QML tests as a group, or select individual entries:
 
 ```bash
-ctest --test-dir build -R QmlTests --output-on-failure
+ctest --test-dir build -N
+ctest --test-dir build -R '^QmlTests\.' --output-on-failure
 ctest --test-dir build -R '^QmlTests\.tst_article$' --output-on-failure
-ctest --test-dir build -R '^QmlTests\.tst_images$' --output-on-failure
-ctest --test-dir build -R '^QmlTests\.tst_history$' --output-on-failure
-ctest --test-dir build -R '^QmlTests\.tst_navigation$' --output-on-failure
-ctest --test-dir build -R '^QmlTests\.tst_sections$' --output-on-failure
+ctest --test-dir build -R '^QmlTests\.tst_feature_isolation$' --output-on-failure
+ctest --test-dir build -R '^WikipediaRequestIsolationTest$' --output-on-failure
 ```
 
-`BUILD_TESTING` defaults to `OFF`. The QML tests already run with
-`QT_QPA_PLATFORM=offscreen`; each `tests/qml/tst_*.qml` file is registered as a
-separate CTest process. The suite currently registers **17 tests: 9 C++ and 8 QML**.
-`test_search_display` only starts its live network search when
-`RUN_NETWORK_TESTS=1`; without it, the target exits successfully without
-exercising search.
+`scripts/run_tests.sh` configures when needed, builds incrementally, and runs
+CTest with the offscreen platform. It accepts `-R <regex>`, `-n` for live
+network testing, and `-r` to delete and rebuild `build/`. Configure local
+dependency prefixes first. The separate root `test.sh` always deletes
+`build/` before configuring and rebuilding.
 
-## Current coverage
+The current source configuration registers **25 CTest entries: 15 C++ and
+10 QML**. These are executables/test files, not individual test cases or
+data rows. The inventory below reflects the sources reviewed on 2026-10-16;
+it is not a record of a passing test run.
 
-| Area | Tests in place |
+## C++ coverage
+
+Each named entry below has a matching `.cpp` file under `tests/`.
+
+| CTest entry | Coverage |
 | --- | --- |
-| C++ tests | Nine targets cover global state, HTML processing, history database, Wikipedia search/page/featured/home API parsing, and sidebar layout. The search-display target is network-gated as noted above. |
-| QML smoke | Singleton registration and initial state; Sidebar creation without requests or warnings (`tst_smoke.qml`). |
-| Search | Blank input, mouse and Enter submission, pending controls, populated and empty responses, and recovery after an error (`tst_search.qml`). |
-| Article | Select a search result, verify pending loading and rendered article content, and display an article load error without recording a failed visit (`tst_article.qml`). |
-| Inline images | Thumbnail-to-original URL conversion and full-resolution image links in rendered article HTML (`tst_inline_images.qml`). |
-| Gallery image | Load an article through the fake API, open its gallery, select an image, and verify the selected URL and description in `GlobalState` and the full-screen image and caption in `ImageView` (`tst_images.qml`). |
-| History | Load two fixture articles through `GlobalState`, then revisit one; verify visit order and that the revisit moves it to the front without a duplicate (`tst_history.qml`). |
-| Navigation | Exercise Home → Search → History using the real Main window; verify Search and History push, toolbar Back and the mouse Back button pop one view, and Home returns to the original root without adding entries (`tst_navigation.qml`). |
-| Sections | Verify deferred loading, section entries, click-to-heading navigation, viewport tracking and active highlight, empty results, and request errors (`tst_sections.qml`). |
+| `ArticleStateTest` | Initial state and notifications, HTML loading and caching, history on repeat visits, title resolution/cache hits, clearing old content before title loads, errors/retry, settings at construction, language-driven content/cache clearing, rejection of obsolete article/title replies, cached selections superseding pending loads, and singleton teardown/recreation. |
+| `SearchStateTest` | Blank queries, trimming, pending/completed/reset state, duplicate submission while busy, errors/retry, settings at construction, restarting stored search text once after language changes, blank-query behavior, stale reply rejection, rapid language changes, and teardown/recreation. |
+| `SettingsStateTest` | Default language, change notifications, ignoring an unchanged language, and singleton teardown/recreation. |
+| `ImageSelectionStateTest` | URL/caption updated together before notifications, unchanged-selection notification suppression, clearing selection on language changes, and teardown/recreation. |
+| `WikipediaRequestIsolationTest` | Obsolete search successes/errors and featured replies are ignored; old page and random-title replies cannot start follow-up HTML or summary requests after a language switch. |
+| `WikipediaNetworkAccessManagerTest` | Both API-client and QML-image managers apply the runtime HTTP/2 policy: disabled for Qt 6.11.2, otherwise left at its default. Uses a temporary local file, not a live HTTP server. |
+| `ContentDisplayModelTest` | Per-view section state, section-position/highlight resets, article-driven search/section resets, and case-insensitive text-search navigation wrapping. |
+| `HtmlProcessorTest` | Lexbor-based cleanup and repaired HTML, style/script/link removal, legacy colors, figure/thumbnail conversion, captions and fallback descriptions, preserved surrounding text, inline/table/multiple images, math accessibility cleanup, entities, and URL normalization. |
+| `HistoryDatabaseTest` | Database opens, add/load/clear, duplicate page IDs, explicit pruning, load limits, and timestamp ordering. Its error-signal test only checks that no error was emitted; it does not inject a failure. |
+| `WikipediaSearchClientTest` | Search-result fields/counts, empty responses, missing keys, and malformed JSON. |
+| `WikipediaPageClientTest` | Page fields, title/ID mismatch, image titles, sections, empty/missing sections, and malformed JSON. |
+| `WikipediaFeaturedClientTest` | Featured-article parsing, missing `tfa`, partial fields, and malformed JSON. |
+| `WikipediaHomeClientTest` | News and thumbnails, on-this-day entries, summary/did-you-know data, missing fields, empty data, and malformed JSON. |
+| `test_sidebar_layout` | Sidebar creation, presence of a ListView, and the `searchResults` property. CTest supplies its working directory and QML import path. |
+| `test_search_display` | Opt-in live search through `SearchBarModel` and `SearchState`; see the limitations below. |
 
-The gallery test uses the committed `tests/qml/fixtures/fixture.png`. All QML
-tests use the fake network transport, so unexpected requests fail immediately;
-they also check for QML warnings. The article test resets page, search, error,
-history, and navigation state between its success and failure cases.
+The parser tests call parsing helpers directly; they do not establish complete
+HTTP error handling. Some deliberately expect empty/default data for malformed
+JSON or missing fields.
 
-## QML test harness
+`ArticleStateTest`, `SearchStateTest`, and `WikipediaRequestIsolationTest` use
+the shared fixture transport. Backend implementation and meta-objects are
+linked through `wikipedia_qt_core`; fake-network support is compiled into
+`wikipedia_test_network`. `ContentDisplayModelTest` links its feature module.
+The search-display and sidebar-layout executables still compile their feature
+models directly.
 
-`tests/qml/qml_test_main.cpp` uses `QUICK_TEST_MAIN_WITH_SETUP` to register the real state singletons before importing the `wikipedia_qt` QML module. It installs the SVG provider and exposes `networkFixtures` and `testSupport` to the tests. The fake network manager matches requests to committed or test-defined fixtures, records requests, and can defer replies to test loading states. Both the C++ clients and QML image loading use this transport.
+### Live search
 
-The harness sets `XDG_DATA_HOME` to a temporary directory before creating `HistoryState`. Each QML test file runs in its own process, so its SQLite history database is isolated from user data and other test files.
+```bash
+RUN_NETWORK_TESTS=1 ctest --test-dir build -R '^test_search_display$' --output-on-failure
+```
 
-Add further QML coverage by creating a `tst_*.qml` file in `tests/qml/`. CMake discovers it automatically. Use fixture URLs for every request, stable `objectName` selectors for controls, and `tryCompare` or `tryVerify` for asynchronous behavior. Check `testSupport.qmlWarningCount`; unexpected network requests already fail immediately.
+Without a nonzero integer `RUN_NETWORK_TESTS` value, this executable exits
+successfully without exercising search. When enabled, it submits “Quantum
+Computing,” logs state/results/errors, and exits after ten seconds. It has no
+assertion that a response arrived or that search succeeded, so a passing CTest
+result is not proof of a successful live search. The remaining tests use
+fixtures, in-memory inputs, or local files rather than live Wikipedia requests.
 
-## Remaining QML coverage
+## QML coverage
 
-- Home screen feed content and partial failure behavior. The home API parser has
-  C++ tests, but the QML feed has no dedicated integration test yet.
+Each file under `tests/qml/` is registered as `QmlTests.<filename without .qml>`.
 
-The history QML test checks visits within one app run. Persistence across restarts is outside this QML test; database behavior has separate C++ tests.
+| Test file | Coverage |
+| --- | --- |
+| `tst_smoke.qml` | Backend value-type registration, usable state singletons and initial values, and Sidebar creation without requests or QML warnings. |
+| `tst_search.qml` | Blank input, mouse and Enter submission, pending controls, populated/empty responses, and error recovery/retry. |
+| `tst_article.qml` | Search-result selection, deferred loading and rendered HTML, inline image captions/fullscreen selection and Back, load errors without failed history visits, clearing visible and covered article views on language changes without changing stack depth, and article-link navigation preserving the previous view's content on Back. |
+| `tst_inline_images.qml` | Thumbnail-to-original conversion, SVG/lossy thumbnail handling, unchanged non-thumbnail URLs, full-resolution image links, and captions carried into image links. |
+| `tst_images.qml` | Fixture article/gallery loading, selecting an image, URL/caption in `ImageSelectionState`, and the fullscreen image/caption in `ImageView`. |
+| `tst_history.qml` | Article visits through `ArticleState`, newest-first order, and revisiting an article without duplicating its history entry. |
+| `tst_navigation.qml` | Real Main window: Search/History push, toolbar and mouse Back pop, Home returns to the original root and is idempotent. Language changes retain that root, clear home news, and request/refill data for the selected edition. |
+| `tst_sections.qml` | Deferred sections, click-to-heading scrolling, viewport tracking/highlight, discarding pending success/error feedback when the article clears, preserving reading position on panel resize, empty results, and request errors. |
+| `tst_feature_isolation.qml` | Search success/empty/error responses do not complete a pending article or clear its errors; section/gallery failures do not affect article feedback. Language transitions clear search, sections, gallery, and image selection and reject an obsolete gallery reply. |
+| `tst_scrollbars.qml` | Article scrollbar placement and interactivity across widths, drag scrolling, and mirrored left-to-right/right-to-left layouts. |
+
+## QML test harness and fixtures
+
+`tests/qml/qml_test_main.cpp` uses `QUICK_TEST_MAIN_WITH_SETUP`. In
+`applicationAvailable()`, it installs the fake network factory and registers
+`HistoryState`, `NavigationState`, `SettingsState`, `ImageSelectionState`,
+`ArticleState`, `SearchState`, and `ClipboardHelper` before the engine imports
+`wikipedia_qt`. Registering after that import would finalize/protect the module
+and reject singleton registration.
+
+The engine setup adds the generated QML import/plugin paths, installs the SVG
+provider, and exposes `networkFixtures` and `testSupport`. Both C++ API clients
+and QML image loading use the fake transport. Requests match by HTTP method
+and normalized URL, including query parameters. Responses come from committed
+fixtures in `tests/qml/fixtures/` or bodies registered by individual tests.
+Unexpected requests cause an immediate fatal failure; there is no live-network
+fallback. Tests also check captured QML warnings.
+
+`NetworkFixtureController` is declared in
+`tests/qml/support/FakeNetworkAccessManager.h`. Useful controls include:
+
+- `addFixture(...)` for response bodies, content type, HTTP status, and network errors.
+- `requestCount`, `requests`, and `clearRequests()` for the request log.
+- `deferNextReply()` and `pendingReplyCount` for deterministic loading checks.
+- `completeNextReply()` or `completeReply(url)` to release deferred replies.
+- `deferNextReply(true)` to allow a deferred response to finish after abort,
+  exercising stale-reply rejection rather than relying on cancellation alone.
+
+Replies normally complete asynchronously. `clearRequests()` clears the request
+log and resets the next-reply deferral flags; it does not remove registered
+fixtures or complete existing pending replies.
+
+The harness redirects `XDG_DATA_HOME` to a temporary directory before creating
+history state, uses dedicated application metadata, and checks that its data
+path stays inside that directory. Each QML file runs in a separate process,
+with its own singleton instances and database. Cases within a file share that
+process, so their setup/cleanup must reset relevant state and finish pending
+replies. The harness destroys its state objects before removing the directory.
+
+## Adding tests
+
+Add a C++ test executable and CTest registration in `tests/CMakeLists.txt`.
+Link backend tests to `wikipedia_qt_core` and `Qt::Test`; link
+`wikipedia_test_network` when fixtures are needed. Use `QTEST_GUILESS_MAIN`
+when a `QCoreApplication` is sufficient; GUI-dependent tests need the offscreen
+platform on headless runners.
+
+Add QML coverage as `tests/qml/tst_*.qml`. CMake's `CONFIGURE_DEPENDS` glob
+registers each file automatically on the next configure/build. Use fixtures
+for every request, stable `objectName` selectors, and `tryCompare`/`tryVerify`
+for asynchronous behavior. Assert `testSupport.qmlWarningCount` and appropriate
+request counts. Prefer deferred replies over timing sleeps for pending states.
+
+## Remaining coverage and limits
+
+- There is no dedicated home-screen integration test for rendered feed cards,
+  empty feeds, partial failures, or retry. `tst_navigation.qml` does cover home
+  refresh on language changes; home parser tests cover response data.
+- History tests cover same-run visits and database helper operations, not a
+  restart/reopen persistence scenario, language-aware identity, state-level
+  retention beyond 50 visits, or database failure recovery.
+- Request-isolation tests cover selected stale-reply paths, not every stage of
+  the HTML/math-image/metadata chains. They do not test request deadlines.
+- Headless fixture tests do not establish live API compatibility or validate
+  installed/packaged application deployment.
