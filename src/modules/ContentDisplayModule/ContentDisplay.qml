@@ -1,7 +1,6 @@
 // ContentDisplay.qml
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
 
 import wikipedia_qt
@@ -262,226 +261,235 @@ Item {
                 visible: false
                 z: 1
 
-            TextField {
-                id: searchField
+                TextField {
+                    id: searchField
 
-                Layout.fillWidth: true
-                placeholderText: "Search..."
-                z: 1
+                    Layout.fillWidth: true
+                    placeholderText: "Search..."
+                    z: 1
 
-                Keys.onReturnPressed: function (event) {
-                    if (event.modifiers & Qt.ShiftModifier) {
-                        contentDisplay.navigateToPreviousResult();
-                        return;
-                    }
-
-                    contentDisplay.navigateToNextResult();
-                }
-                onTextChanged: function () {
-                    searchDebounceTimer.restart();
-                }
-            }
-            Text {
-                color: articleDisplay.systemPalette.text
-                font.pixelSize: 14
-                text: contentDisplay.totalResults > 0 ? contentDisplay.currentResultIndex + " of " + contentDisplay.totalResults : ""
-                verticalAlignment: Text.AlignVCenter
-            }
-            Button {
-                id: upButton
-
-                text: "↑"
-                Accessible.name: "Previous search result"
-
-                onClicked: {
-                    contentDisplay.navigateToPreviousResult();
-                }
-            }
-            Button {
-                id: downButton
-
-                text: "↓"
-                Accessible.name: "Next search result"
-
-                onClicked: {
-                    contentDisplay.navigateToNextResult();
-                }
-            }
-        }
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.leftMargin: 10
-            Layout.preferredHeight: 40
-            Layout.rightMargin: 10
-            spacing: 10
-
-            Item { Layout.fillWidth: true }
-            Button {
-                id: galleryButton
-
-                text: "Gallery"
-                visible: mainContent.articleTitle.length > 0
-
-                onClicked: {
-                    NavigationState.navigateToImageGallery();
-                }
-            }
-            Button {
-                id: copyHtmlButton
-
-                text: "Copy HTML"
-                visible: mainContent.articleTitle.length > 0 && mainContent.articleText.length > 0
-
-                onClicked: {
-                    ClipboardHelper.copyToClipboard(mainContent.articleText);
-                }
-            }
-        }
-        // Breeze ScrollView/ScrollBar geometry can form binding loops.
-        Basic.ScrollView {
-            id: scrollView
-            objectName: "articleScrollView"
-
-            // Character position in articleSection that should stay pinned to the
-            // top of the viewport while the sidebar toggles and reflows the text.
-            property int pinnedPosition: -1
-            property real pinnedOffset: 0
-
-            function pinTopPosition() {
-                let contentY = scrollView.contentItem.contentY;
-                let point = articleSection.mapFromItem(articleDisplay, articleSection.x + 1, contentY);
-                scrollView.pinnedPosition = articleSection.positionAt(point.x, point.y);
-                let rect = articleSection.positionToRectangle(scrollView.pinnedPosition);
-                let charGlobalY = articleSection.mapToItem(articleDisplay, 0, rect.y).y;
-                scrollView.pinnedOffset = contentY - charGlobalY;
-            }
-
-            function applyPinnedPosition() {
-                if (scrollView.pinnedPosition < 0)
-                    return;
-                let rect = articleSection.positionToRectangle(scrollView.pinnedPosition);
-                let charGlobalY = articleSection.mapToItem(articleDisplay, 0, rect.y).y;
-                let newContentY = charGlobalY + scrollView.pinnedOffset;
-                let maxContentY = Math.max(0, scrollView.contentHeight - scrollView.height);
-                scrollView.contentItem.contentY = Math.max(0, Math.min(newContentY, maxContentY));
-            }
-
-            function scrollToCursor(offset) {
-                const cursorRect = articleSection.cursorRectangle;
-                // Map into articleDisplay (the Column), NOT scrollView.contentItem —
-                // articleDisplay scrolls together with articleSection, so this gives
-                // an absolute, scroll-independent position within the content.
-                const contentPoint = articleSection.mapToItem(articleDisplay, 0, cursorRect.y);
-
-                let scrollToY = contentPoint.y - (offset || cursorRect.height);
-                scrollToY = Math.max(0, Math.min(scrollToY, scrollView.contentHeight - scrollView.height));
-
-                scrollView.contentItem.contentY = scrollToY;
-            }
-
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            ScrollBar.vertical.interactive: true
-            ScrollBar.vertical.policy: ScrollBar.AlwaysOn
-            clip: true
-
-            Column {
-                id: articleDisplay
-
-                property SystemPalette systemPalette: SystemPalette {
-                }
-
-                padding: 20
-                spacing: 20
-                width: scrollView.width - scrollView.effectiveScrollBarWidth - leftPadding - rightPadding
-
-                TextEdit {
-                    objectName: "articleTitle"
-                    color: articleDisplay.systemPalette.text
-                    font.bold: true
-                    font.pixelSize: 20
-                    readOnly: true
-                    selectByMouse: true
-                    selectionColor: articleDisplay.systemPalette.highlight
-                    text: mainContent.articleTitle
-                    visible: mainContent.articleTitle.length > 0
-                    width: parent.width
-                    wrapMode: TextEdit.Wrap
-                }
-                TextEdit {
-                    id: articleSection
-                    objectName: "articleBody"
-
-                    color: articleDisplay.systemPalette.text
-                    font.pixelSize: 14
-                    readOnly: true
-                    selectByMouse: true
-                    selectionColor: articleDisplay.systemPalette.highlight
-                    text: mainContent.renderArticleText(mainContent.articleText)
-                    textFormat: TextEdit.RichText
-                    visible: mainContent.articleText.length > 0
-                    width: parent.width
-                    wrapMode: TextEdit.Wrap
-
-                    ContextMenu.menu: Menu {
-                        MenuItem {
-                            text: "Copy"
-
-                            onTriggered: articleSection.copy()
-                        }
-                    }
-
-                    onLinkActivated: function (link) {
-                        const imageLinkPrefix = "wikipedia-image:";
-                        if (link.startsWith(imageLinkPrefix)) {
-                            let image = null;
-                            try {
-                                const imageData = decodeURIComponent(link.substring(imageLinkPrefix.length));
-                                image = JSON.parse(imageData);
-                            } catch (error) {
-                                console.warn("Unable to read inline image link", error);
-                            }
-                            if (!image || !image.url)
-                                return;
-
-                            ImageSelectionState.selectImage(image.url, image.description);
-                            NavigationState.navigateToView(Constants.imageView);
+                    Keys.onReturnPressed: function (event) {
+                        if (event.modifiers & Qt.ShiftModifier) {
+                            contentDisplay.navigateToPreviousResult();
                             return;
                         }
 
-                        if (link.startsWith("/wiki/")) {
-                            var title = link.substring(6).replace(/_/g, " ");
-                            // Keep this view on its article, then push a new
-                            // article view so the back button returns here.
-                            freezeArticleContent();
-                            ArticleState.loadArticleByTitle(title);
-                            NavigationState.navigateToContent();
-                        } else {
-                            Qt.openUrlExternally(link);
-                        }
+                        contentDisplay.navigateToNextResult();
                     }
-                    onLinkHovered: {}
+                    onTextChanged: function () {
+                        searchDebounceTimer.restart();
+                    }
                 }
                 Text {
                     color: articleDisplay.systemPalette.text
                     font.pixelSize: 14
-                    horizontalAlignment: Text.AlignHCenter
-                    text: "Select an article to view its content"
-                    visible: mainContent.articleTitle.length === 0 && !mainContent.isLoading
-                    width: parent.width
-                    wrapMode: Text.WordWrap
+                    text: contentDisplay.totalResults > 0 ? contentDisplay.currentResultIndex + " of " + contentDisplay.totalResults : ""
+                    verticalAlignment: Text.AlignVCenter
                 }
-                Text {
-                    objectName: "articleErrorMessage"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    color: articleDisplay.systemPalette.negativeText || articleDisplay.systemPalette.text
-                    text: mainContent.errorMessage
-                    visible: mainContent.errorMessage.length > 0
-                    width: parent.width
-                    wrapMode: Text.WordWrap
+                Button {
+                    id: upButton
+
+                    text: "↑"
+                    Accessible.name: "Previous search result"
+
+                    onClicked: {
+                        contentDisplay.navigateToPreviousResult();
+                    }
+                }
+                Button {
+                    id: downButton
+
+                    text: "↓"
+                    Accessible.name: "Next search result"
+
+                    onClicked: {
+                        contentDisplay.navigateToNextResult();
+                    }
                 }
             }
-        }
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 10
+                Layout.preferredHeight: 40
+                Layout.rightMargin: 10
+                spacing: 10
+
+                Item { Layout.fillWidth: true }
+                Button {
+                    id: galleryButton
+
+                    text: "Gallery"
+                    visible: mainContent.articleTitle.length > 0
+
+                    onClicked: {
+                        NavigationState.navigateToImageGallery();
+                    }
+                }
+                Button {
+                    id: copyHtmlButton
+
+                    text: "Copy HTML"
+                    visible: mainContent.articleTitle.length > 0 && mainContent.articleText.length > 0
+
+                    onClicked: {
+                        ClipboardHelper.copyToClipboard(mainContent.articleText);
+                    }
+                }
+            }
+            ScrollView {
+                id: scrollView
+                objectName: "articleScrollView"
+
+                // Character position in articleSection that should stay pinned to the
+                // top of the viewport while the sidebar toggles and reflows the text.
+                property int pinnedPosition: -1
+                property real pinnedOffset: 0
+
+                function pinTopPosition() {
+                    let contentY = scrollView.contentItem.contentY;
+                    let point = articleSection.mapFromItem(articleDisplay, articleSection.x + 1, contentY);
+                    scrollView.pinnedPosition = articleSection.positionAt(point.x, point.y);
+                    let rect = articleSection.positionToRectangle(scrollView.pinnedPosition);
+                    let charGlobalY = articleSection.mapToItem(articleDisplay, 0, rect.y).y;
+                    scrollView.pinnedOffset = contentY - charGlobalY;
+                }
+
+                function applyPinnedPosition() {
+                    if (scrollView.pinnedPosition < 0)
+                        return;
+                    let rect = articleSection.positionToRectangle(scrollView.pinnedPosition);
+                    let charGlobalY = articleSection.mapToItem(articleDisplay, 0, rect.y).y;
+                    let newContentY = charGlobalY + scrollView.pinnedOffset;
+                    let maxContentY = Math.max(0, scrollView.contentHeight - scrollView.height);
+                    scrollView.contentItem.contentY = Math.max(0, Math.min(newContentY, maxContentY));
+                }
+
+                function scrollToCursor(offset) {
+                    const cursorRect = articleSection.cursorRectangle;
+                    // Map into articleDisplay (the Column), NOT scrollView.contentItem —
+                    // articleDisplay scrolls together with articleSection, so this gives
+                    // an absolute, scroll-independent position within the content.
+                    const contentPoint = articleSection.mapToItem(articleDisplay, 0, cursorRect.y);
+
+                    let scrollToY = contentPoint.y - (offset || cursorRect.height);
+                    scrollToY = Math.max(0, Math.min(scrollToY, scrollView.contentHeight - scrollView.height));
+
+                    scrollView.contentItem.contentY = scrollToY;
+                }
+
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                // Let the layout size the viewport independently of its content.
+                implicitWidth: 0
+                implicitHeight: 0
+                // Wrap the article to the viewport, including the system
+                // style's scrollbar padding, instead of scrolling horizontally.
+                contentWidth: availableWidth
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                ScrollBar.vertical.interactive: true
+                ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+                // Breeze's decorative separator binds its thickness to its own
+                // width. Keep the native handle without that looping background.
+                ScrollBar.vertical.background: null
+                clip: true
+
+                Column {
+                    id: articleDisplay
+
+                    property SystemPalette systemPalette: SystemPalette {
+                    }
+
+                    padding: 20
+                    spacing: 20
+                    width: scrollView.availableWidth - leftPadding - rightPadding
+
+                    TextEdit {
+                        objectName: "articleTitle"
+                        color: articleDisplay.systemPalette.text
+                        font.bold: true
+                        font.pixelSize: 20
+                        readOnly: true
+                        selectByMouse: true
+                        selectionColor: articleDisplay.systemPalette.highlight
+                        text: mainContent.articleTitle
+                        visible: mainContent.articleTitle.length > 0
+                        width: parent.width
+                        wrapMode: TextEdit.Wrap
+                    }
+                    TextEdit {
+                        id: articleSection
+                        objectName: "articleBody"
+
+                        color: articleDisplay.systemPalette.text
+                        font.pixelSize: 14
+                        readOnly: true
+                        selectByMouse: true
+                        selectionColor: articleDisplay.systemPalette.highlight
+                        text: mainContent.renderArticleText(mainContent.articleText)
+                        textFormat: TextEdit.RichText
+                        visible: mainContent.articleText.length > 0
+                        width: parent.width
+                        wrapMode: TextEdit.Wrap
+
+                        ContextMenu.menu: Menu {
+                            MenuItem {
+                                text: "Copy"
+
+                                onTriggered: articleSection.copy()
+                            }
+                        }
+
+                        onLinkActivated: function (link) {
+                            const imageLinkPrefix = "wikipedia-image:";
+                            if (link.startsWith(imageLinkPrefix)) {
+                                let image = null;
+                                try {
+                                    const imageData = decodeURIComponent(link.substring(imageLinkPrefix.length));
+                                    image = JSON.parse(imageData);
+                                } catch (error) {
+                                    console.warn("Unable to read inline image link", error);
+                                }
+                                if (!image || !image.url)
+                                    return;
+
+                                ImageSelectionState.selectImage(image.url, image.description);
+                                NavigationState.navigateToView(Constants.imageView);
+                                return;
+                            }
+
+                            if (link.startsWith("/wiki/")) {
+                                var title = link.substring(6).replace(/_/g, " ");
+                                // Keep this view on its article, then push a new
+                                // article view so the back button returns here.
+                                freezeArticleContent();
+                                ArticleState.loadArticleByTitle(title);
+                                NavigationState.navigateToContent();
+                            } else {
+                                Qt.openUrlExternally(link);
+                            }
+                        }
+                        onLinkHovered: {}
+                    }
+                    Text {
+                        color: articleDisplay.systemPalette.text
+                        font.pixelSize: 14
+                        horizontalAlignment: Text.AlignHCenter
+                        text: "Select an article to view its content"
+                        visible: mainContent.articleTitle.length === 0 && !mainContent.isLoading
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                    }
+                    Text {
+                        objectName: "articleErrorMessage"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        color: articleDisplay.systemPalette.negativeText || articleDisplay.systemPalette.text
+                        text: mainContent.errorMessage
+                        visible: mainContent.errorMessage.length > 0
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                    }
+                }
+            }
         }
 
         // Permanent collapsible sections bar anchored to the right

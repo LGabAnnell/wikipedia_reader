@@ -66,8 +66,7 @@ Item {
         }
 
         // Scrollable grid view for images
-        // Breeze ScrollView/ScrollBar geometry can form binding loops.
-        Basic.ScrollView {
+        ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true

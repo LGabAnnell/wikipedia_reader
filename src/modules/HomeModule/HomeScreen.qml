@@ -10,8 +10,7 @@ Item {
     id: root
     Layout.fillWidth: true
 
-    // Breeze ScrollView/ScrollBar geometry can form binding loops.
-    Basic.ScrollView {
+    ScrollView {
         id: scrollView
         anchors.fill: parent
         clip: true
