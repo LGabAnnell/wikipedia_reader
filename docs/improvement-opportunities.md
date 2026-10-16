@@ -1,34 +1,34 @@
 # Improvement opportunities
 
-Reviewed: 2026-10-16. Source baseline: `45c773a`.
+Reviewed: 2026-10-16. Source baseline: `e3a184e` (including language-transition implementation `c76d821`; previous review: `45c773a`).
 
 This report is based on static inspection of the current application, build configuration, and tests. No application code was changed, and no build, runtime reproduction, or test suite was run for this review. Findings below distinguish directly observed implementation problems from proposed hardening work. File links are relative to this document; symbol names identify the relevant code.
 
-## Priorities
+## Implementation status and remaining priorities
 
-| Priority | Opportunity | Main benefit |
-| --- | --- | --- |
-| High | Isolate language changes and stale replies | Prevent articles from the wrong Wikipedia edition |
-| High | Make history identities language-aware | Open the correct article from history |
-| High | Enforce persistent history limits and write consistency | Bound storage and avoid misleading history state |
-| High | Add request deadlines and validate API responses | Recover from stalled or invalid responses |
-| Medium | Replace nested network event loops | Simplify cancellation and avoid reentrant request handling |
-| Medium | Complete home-screen feedback and featured handling | Make failures visible and eliminate wasted requests |
-| Medium | Bound article and math-image caches | Control memory usage during long sessions |
-| Medium | Automate regression checks in CI | Catch failures before merging |
-| Low | Refresh developer documentation and test tooling | Make setup reproducible and preserve build output |
+| Priority | Opportunity | Status | Main benefit |
+| --- | --- | --- | --- |
+| Completed | Isolate language changes and stale replies | Implemented; broader chain coverage remains | Prevent articles from the wrong Wikipedia edition |
+| High | Make history identities language-aware | Open | Open the correct article from history |
+| High | Enforce persistent history limits and write consistency | Open | Bound storage and avoid misleading history state |
+| High | Add request deadlines and validate API responses | Open; explicit cancellation is implemented | Recover from stalled or invalid responses |
+| Low | Finish image metadata failure semantics and regression coverage | Nested event loop removed; follow-up remains | Make partial results predictable |
+| Medium | Complete home-screen feedback and featured handling | Partial: refresh and title/URL fixes implemented | Make failures visible and eliminate wasted requests |
+| Medium | Bound article and math-image caches | Open | Control memory usage during long sessions |
+| Medium | Automate regression checks in CI | Open | Catch failures before merging |
+| Low | Refresh developer documentation and test tooling | Partial: current coverage guide and incremental runner exist | Make setup reproducible and preserve build output |
 
-## 1. Treat language changes as complete state transitions
+## 1. Treat language changes as complete state transitions — implemented
 
-**Observed:** [ArticleState.cpp](../src/state/ArticleState.cpp) updates its client's language and clears the cache, but retains the current article. [SearchState.cpp](../src/state/SearchState.cpp) changes the client language without clearing results. [HomeModel.cpp](../src/modules/HomeModule/HomeModel.cpp) updates three clients without clearing or refreshing cards. Client callbacks do not carry a language generation or reject obsolete replies.
+**Implemented:** [SettingsState.cpp](../src/state/SettingsState.cpp) emits `languageTransitionStarted()` before `languageChanged()`. Consumers synchronously cancel pending work and clear edition-bound state, then adopt the new language. [ArticleState.cpp](../src/state/ArticleState.cpp) clears the current article, cache, loading state, and errors. [SearchState.cpp](../src/state/SearchState.cpp) clears results/feedback and resubmits stored nonblank search text once. [HomeModel.cpp](../src/modules/HomeModule/HomeModel.cpp) clears its cards and featured properties and refreshes all feeds. Sections, gallery data, and selected images also reset.
 
-**Impact:** Existing result and home cards retain page IDs from the old edition while subsequent loads use the new edition. An old title-resolution response can also initiate a page request against the newly selected host. Old article responses can repopulate a cache after it was cleared. Overlapping article loads in the same language can similarly publish results in completion order rather than selection order.
+All four Wikipedia clients use [WikipediaRequestTracker](../src/wikipedia_request_context.h) to capture language and generation, invalidate requests before aborting replies, and reject obsolete results/errors and chained work. Article selections invalidate previous work before cache lookup; gallery/section target changes and home refreshes also cancel prior requests. Chained article HTML, math-image, metadata, and random-summary requests carry the captured context.
 
-**Recommended change:** Introduce request context containing language and a generation/request ID. Invalidate it on language changes and superseding article selections; check it before emitting results, errors, or starting chained requests. Abort obsolete replies as an optimization. Clear language-bound views and refresh home data. Define whether previously opened article views preserve their original language or reset, then implement that consistently.
+**Chosen view behavior:** The navigation stack stays in place. [ContentDisplay.qml](../src/modules/ContentDisplayModule/ContentDisplay.qml) clears visible and covered article snapshots on a language transition, so Back does not reveal old-edition content. Browsing history is explicitly outside this implementation and remains unsafe across editions; see section 2.
 
-**Validation:** Use deferred fixtures to complete an English request after switching to French, and to finish article A after article B. Verify that stale results and errors are ignored, stale resolution does not start another request, and rapid language changes leave only the final edition visible.
+**Existing regression coverage:** [WikipediaRequestIsolationTest.cpp](../tests/WikipediaRequestIsolationTest.cpp) checks obsolete search successes/errors, featured replies, and page/random-title follow-up suppression. [ArticleStateTest.cpp](../tests/ArticleStateTest.cpp) checks content/cache clearing, obsolete article/title replies, and cached selections superseding pending work. [SearchStateTest.cpp](../tests/SearchStateTest.cpp) covers search restart and rapid language changes. QML tests cover clearing covered article views without changing stack depth, clearing feature state and rejecting an obsolete gallery reply, and home refresh on language changes in [tst_article.qml](../tests/qml/tst_article.qml), [tst_feature_isolation.qml](../tests/qml/tst_feature_isolation.qml), and [tst_navigation.qml](../tests/qml/tst_navigation.qml).
 
-**Existing work:** [The language isolation plan](language-change-state-isolation-plan.md) already describes much of this, but references the removed `GlobalState`. Update it for `SettingsState`, `ArticleState`, `SearchState`, and feature models. `ArticleStateTest::languageChangeInvalidatesCacheWithoutReloading` currently asserts that old content remains visible, so changing that behavior requires an explicit test update.
+**Remaining validation:** Extend deferred-response coverage across each HTML/math-image/metadata stage and overlapping uncached article selections. Existing tests cover selected paths, not every chain. [The language isolation document](language-change-state-isolation-plan.md) now describes the implemented states and behavior; the old content-preservation test has been replaced by `languageChangeClearsCurrentArticleAndCache`.
 
 ## 2. Include language in browsing-history identity
 
@@ -52,35 +52,35 @@ This report is based on static inspection of the current application, build conf
 
 ## 4. Bound requests and distinguish invalid responses from empty results
 
-**Observed:** [The shared network manager](../src/wikipedia_network_access_manager.h) applies an HTTP/2 compatibility policy but no request timeout. The Wikipedia clients contain no explicit deadline/cancellation policy. Article completion also waits for all requested math images.
+**Observed:** [The shared network manager](../src/wikipedia_network_access_manager.h) applies an HTTP/2 compatibility policy but no request timeout. Clients now expose explicit cancellation and reject obsolete generations (section 1), but there is still no deadline for an active request. Article completion waits for all requested math images; completed math-image failures retain the original source as a fallback, but a stalled reply can still hold up the article.
 
 [WikipediaSearchClient.cpp](../src/wikipedia_search_client.cpp) emits `searchCompleted()` on transport success even when JSON is malformed or the expected response structure is missing. `parseSearchResults()` converts those cases into an empty vector. [WikipediaSearchClientTest.cpp](../tests/WikipediaSearchClientTest.cpp) explicitly expects zero results for malformed JSON and `{}`.
 
 **Impact:** A stalled request can keep controls busy indefinitely. Invalid JSON or a JSON API error can appear as a successful “no results” search. Similar unchecked parsing patterns occur in the page and home clients and should be audited.
 
-**Recommended change:** Add a shared transfer timeout and an overall deadline for multi-stage loads. Treat optional math-image failures as a fallback rather than an unbounded prerequisite. Validate JSON parse status, API error objects, and required fields before emitting success. Keep valid empty responses distinct from failures, and ensure every request ends with a defined success, failure, or cancellation outcome. Consider bounded retries only after cancellation and error semantics are reliable.
+**Recommended change:** Add a shared transfer timeout and an overall deadline for multi-stage loads. Bound the wait for optional math images and retain fallback content when that budget expires. Validate JSON parse status, API error objects, and required fields before emitting success. Keep valid empty responses distinct from failures, and ensure every request ends with a defined success, failure, or cancellation outcome. Preserve the implemented generation checks when adding deadlines or retries.
 
 **Validation:** Cover noncompleting replies, malformed JSON, HTTP-success API errors, missing fields, valid empty results, and retry recovery. Update the tests that currently encode malformed responses as successful emptiness.
 
-## 5. Replace synchronous image metadata lookup with an asynchronous chain
+## 5. Asynchronous image metadata lookup — implemented, with follow-up work
 
-**Observed:** `WikipediaPageClient::fetchImageUrlsFromTitles()` in [wikipedia_page_client.cpp](../src/wikipedia_page_client.cpp) runs a local `QEventLoop::exec()` and fills output references after it exits. Its caller is already a network completion handler. Metadata-request failure is silently converted into an image-less result.
+**Implemented:** `WikipediaPageClient::fetchImageUrlsFromTitles()` in [wikipedia_page_client.cpp](../src/wikipedia_page_client.cpp) now takes owned page data, captured request context, and a completion callback. It completes from `QNetworkReply::finished`; the local `QEventLoop::exec()` and output references are gone. It checks the generation before starting work and before completion, and constructs the URL from the captured language.
 
-**Impact:** The nested loop processes other events while the original callback is still on the stack. That complicates navigation, object lifetime, cancellation, and language changes; it is not equivalent to simply blocking all UI event processing.
+**Remaining issue:** Metadata-request failure still completes successfully with no resolved images and no error or partial-result indication. The same unchecked JSON parsing can silently produce an image-less result.
 
-**Recommended change:** Return results through a callback or signal with owned request data and captured request context. Define whether metadata failure is a recoverable partial result or a user-visible error. Retain the fake network seam.
+**Recommended change:** Define whether metadata failure is a recoverable partial result or a user-visible error, and validate the response accordingly. Retain the asynchronous implementation and fake network seam.
 
-**Validation:** Defer metadata completion, change language or navigate away, and verify safe cancellation and no obsolete result. Test failure and empty-image cases without a nested loop.
+**Remaining validation:** Defer the metadata-stage reply specifically, then switch language or supersede the gallery target and verify no obsolete result. Add explicit failure and empty-image cases; current stale-gallery coverage defers the initial page reply rather than metadata completion.
 
 ## 6. Complete the home experience and featured-article pipeline
 
 **Observed:** [HomeScreen.qml](../src/modules/HomeModule/HomeScreen.qml) renders news, on-this-day, and did-you-know sections, while `HomeModel::fetchHomeData()` also fetches a featured article and its images. The featured properties have no consumer in that screen. `HomeModel` exposes no loading/error status; only the featured client's error is connected to `handleError()`, which logs a warning. Errors from its home and page clients are not connected there.
 
-**Confirmed title mutation:** `handleFeaturedArticleReceived()` calls `m_featuredArticleTitle.replace(' ', '_')` while building the URL. This mutates the stored display title. `handlePageWithImagesReceived()` subsequently compares a returned title against that mutated value, so ordinary titles containing spaces can fail the comparison.
+**Implemented:** Language transitions now clear home data and refresh all feeds, and a refresh cancels the previous generation. `handleFeaturedArticleReceived()` preserves the display title, builds the slug from a separate local value, and percent-encodes it with `QUrl::toPercentEncoding()`. The previous title mutation/comparison defect is fixed.
 
-**Recommended change:** Decide whether featured content belongs on the home screen. If it does, render it and fix URL construction using a separate title value and proper URL handling. Otherwise, remove the unused fetch chain. Expose loading, empty, error, and retry state per section so one failed feed does not obscure successful sections. Connect all relevant errors and refresh on language change.
+**Recommended change:** Decide whether featured content belongs on the home screen: render it or remove the unused fetch chain. Expose loading, empty, error, and retry state per section so one failed feed does not obscure successful sections. Connect all relevant errors.
 
-**Validation:** Add a dedicated `tst_home.qml` using fixtures for successful feeds, partial failures, empty data, retry, and language changes. Test a featured title containing spaces and URL-sensitive characters. Existing QML tests cover several other features, but there is no dedicated home test file.
+**Validation:** Add a dedicated `tst_home.qml` using fixtures for rendered feeds, partial failures, empty data, and retry. Add regression coverage for the fixed featured title/URL behavior using spaces and URL-sensitive characters. `tst_navigation.qml::test_language_change_keeps_home_and_refreshes_its_data` already covers clearing/refilling news on a language change while retaining the home root; there is still no dedicated home test file.
 
 ## 7. Put budgets on caches and math-image work
 
@@ -102,20 +102,20 @@ This report is based on static inspection of the current application, build conf
 
 ## 9. Refresh documentation and make test execution less disruptive
 
-**Observed:** No tracked README is present. `AGENTS.md` and [improvement-observations.md](improvement-observations.md) still describe `GlobalState` and previously duplicated backend compilation. Those have been replaced by separate states and `wikipedia_qt_core`. The build now requires `lexbor 3.0`, absent from the supplied project overview. Testing guidance is split across `TESTING.md` and documents under `docs/`.
+**Implemented:** [full_testing.md](full_testing.md) now documents the current dependencies, separate state classes, shared backend, fixture controls, 25 registered CTest entries, and coverage limits. [scripts/run_tests.sh](../scripts/run_tests.sh) preserves existing build output by default, configures when needed, supports an explicit clean rebuild and test filter, sets the offscreen platform, and uses `set -euo pipefail` for immediate failure propagation.
 
-[test.sh](../test.sh) now deletes `build`, configures, and rebuilds with a hardcoded `-j14`; the agent guide describes it as only running CTest. The script does not enable fail-fast shell behavior, so a configuration/build failure does not immediately stop later steps.
+**Remaining issues:** No tracked README is present. `AGENTS.md`, [TESTING.md](../TESTING.md), and [improvement-observations.md](improvement-observations.md) still describe `GlobalState` and/or previously duplicated backend compilation. Testing guidance remains split across those files and `docs/`. The build requires Lexbor 3.0, absent from the agent guide's dependency overview. The legacy [test.sh](../test.sh) still deletes `build`, rebuilds with `-j14`, and lacks fail-fast behavior; the agent guide incorrectly describes it as only running CTest. The incremental runner also hardcodes `-j14`.
 
-**Recommended change:** Add a concise README with actual dependencies and build/run/test instructions. Consolidate authoritative testing guidance, update the agent guide, and label older proposals with implementation status. Make incremental test execution the default, with an explicit clean-build option, configurable parallelism, and immediate failure propagation. CMake presets could provide shared debug/test configurations.
+**Recommended change:** Add a concise README with actual dependencies and build/run/test instructions. Consolidate authoritative testing guidance around the current coverage guide, update the agent guide, and label older proposals with implementation status. Replace or delegate the legacy `test.sh` to the incremental runner and make build parallelism configurable. CMake presets could provide shared debug/test configurations.
 
-**Validation:** Follow the documented steps from a fresh checkout. Confirm the normal test command preserves existing build output and returns failure when configuration or compilation fails.
+**Remaining validation:** Follow the documented steps from a fresh checkout. Exercise the incremental runner's configuration/build failure paths and confirm failure propagation; verify a unified root test command preserves existing build output by default.
 
 ## Suggested implementation sequence
 
 1. Fix persistent history trimming and add its state-level regression test.
-2. Implement language-aware identity and request generations together with the schema migration and deferred-response tests.
-3. Add deadlines and response validation; replace the nested metadata event loop.
-4. Complete home-screen state and coverage, including the featured-title fix.
-5. Establish CI, refresh setup documentation, and profile caches before selecting budgets.
+2. Implement language-aware history identity with a schema migration and cross-edition/restart tests, building on the completed language-transition isolation.
+3. Add deadlines and response validation, define metadata partial-result semantics, and extend deferred-response coverage across the asynchronous chains.
+4. Complete home-screen feedback and decide whether to render featured content; add dedicated coverage, including regression tests for the completed title/URL fix.
+5. Establish CI, consolidate setup/test documentation and runners, and profile caches before selecting budgets.
 
-The existing shared backend, separated state classes, and fake network transport are useful foundations. Preserve those improvements; the older recommendations to introduce a shared core and split `GlobalState` should no longer be treated as outstanding work.
+The shared backend, separated state classes, language-transition/request isolation, asynchronous metadata lookup, featured-title fix, and incremental test runner are implemented foundations. Preserve those improvements; they should no longer be treated as outstanding implementation work. Test coverage cited here was inspected in source, not executed during this review.
