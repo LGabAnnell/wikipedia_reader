@@ -22,7 +22,6 @@ Item {
         // Header row with title and back button
         RowLayout {
             Layout.fillWidth: true
-            // spacing: 10
 
             Button {
                 id: backButton
@@ -162,8 +161,8 @@ Item {
                         hoverEnabled: true
                         onClicked: {
                             var desc = imageModel.imageDescriptions.length > index
-                                       ? imageModel.imageDescriptions[index]
-                                       : "";
+                                ? imageModel.imageDescriptions[index]
+                                : "";
                             ImageSelectionState.selectImage(modelData, desc);
                             NavigationState.navigateToView(Constants.imageView);
                         }
