@@ -6,6 +6,21 @@ ImageHomeModel::ImageHomeModel(QObject *parent)
       m_pageClient(new WikipediaPageClient(this)), m_currentPageId(-1) {
     if (m_settings) {
         m_pageClient->setLanguage(m_settings->language());
+        connect(m_settings, &SettingsState::languageTransitionStarted, this, [this]() {
+            m_pageClient->cancelPendingRequests();
+            m_imageUrls.clear();
+            m_imageDescriptions.clear();
+            m_articleTitle.clear();
+            m_currentPageId = -1;
+            m_isLoading = false;
+            m_errorMessage.clear();
+            emit imageUrlsChanged();
+            emit imageDescriptionsChanged();
+            emit articleTitleChanged();
+            emit currentPageIdChanged();
+            emit loadingChanged();
+            emit errorChanged();
+        });
         connect(m_settings, &SettingsState::languageChanged, this, [this]() {
             m_pageClient->setLanguage(m_settings->language());
         });
@@ -43,6 +58,7 @@ void ImageHomeModel::loadImagesForCurrentPage() {
 }
 
 void ImageHomeModel::loadImagesForPage(int pageId) {
+    m_pageClient->cancelPendingRequests();
     if (pageId <= 0)
         return;
     m_currentPageId = pageId;

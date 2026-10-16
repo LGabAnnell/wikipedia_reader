@@ -9,6 +9,18 @@ SearchState::SearchState(SettingsState &settings, QObject *parent)
     m_searchClient->setLanguage(settings.language());
     connect(&settings, &SettingsState::languageChanged, this, [this]() {
         m_searchClient->setLanguage(m_settings->language());
+        const QString query = m_searchText.trimmed();
+        if (!query.isEmpty()) {
+            m_isSearching = false;
+            search(query);
+        }
+    });
+    connect(&settings, &SettingsState::languageTransitionStarted, this, [this]() {
+        m_searchClient->cancelPendingRequests();
+        setIsSearching(false);
+        setHasCompletedSearch(false);
+        clearSearchResults();
+        setErrorMessage({});
     });
     connect(m_searchClient, &WikipediaSearchClient::searchCompleted, this,
             [this](const QVector<search_result> &results) {
@@ -28,11 +40,19 @@ void SearchState::search(const QString &text) {
     const QString query = text.trimmed();
     if (query.isEmpty() || m_isSearching)
         return;
+    m_searchClient->cancelPendingRequests();
     setIsSearching(true);
     setHasCompletedSearch(false);
     clearSearchResults();
     setErrorMessage({});
     m_searchClient->search(query);
+}
+
+void SearchState::setSearchText(const QString &text) {
+    if (m_searchText == text)
+        return;
+    m_searchText = text;
+    emit searchTextChanged();
 }
 
 void SearchState::clearSearchResults() {

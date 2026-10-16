@@ -7,7 +7,8 @@ class ImageSelectionStateTest : public QObject {
 
   private slots:
     void atomicSelection() {
-        ImageSelectionState selection;
+        SettingsState settings;
+        ImageSelectionState selection(settings);
         QVERIFY(selection.currentImageUrl().isEmpty());
         QVERIFY(selection.currentImageDescription().isEmpty());
         QSignalSpy urlSpy(&selection, &ImageSelectionState::currentImageUrlChanged);
@@ -26,15 +27,26 @@ class ImageSelectionStateTest : public QObject {
         QCOMPARE(captionSpy.count(), 1);
     }
 
+    void languageTransitionClearsSelection() {
+        SettingsState settings;
+        ImageSelectionState selection(settings);
+        selection.selectImage("old.png", "Old edition caption");
+        settings.setLanguage("fr");
+        QVERIFY(selection.currentImageUrl().isEmpty());
+        QVERIFY(selection.currentImageDescription().isEmpty());
+    }
+
     void teardownAndRecreation() {
         QVERIFY(ImageSelectionState::instance().isNull());
         {
-            ImageSelectionState selection;
+            SettingsState settings;
+            ImageSelectionState selection(settings);
             QCOMPARE(ImageSelectionState::instance().data(), &selection);
             selection.selectImage("image.png", "caption");
         }
         QVERIFY(ImageSelectionState::instance().isNull());
-        ImageSelectionState selection;
+        SettingsState settings;
+        ImageSelectionState selection(settings);
         QVERIFY(selection.currentImageUrl().isEmpty());
         QVERIFY(selection.currentImageDescription().isEmpty());
     }

@@ -1,6 +1,7 @@
 #include "HomeModel.h"
 #include <QDate>
 #include <QDebug>
+#include <QUrl>
 #include <QString>
 #include "SettingsState.h"
 #include "wikipedia_featured_client.h"
@@ -25,6 +26,22 @@ HomeModel::HomeModel(QObject *parent) : QObject(parent) {
             m_featuredClient->setLanguage(lang);
             m_homeClient->setLanguage(lang);
             m_pageClient->setLanguage(lang);
+            fetchHomeData();
+        });
+        connect(m_settings, &SettingsState::languageTransitionStarted, this, [this]() {
+            m_featuredClient->cancelPendingRequests();
+            m_homeClient->cancelPendingRequests();
+            m_pageClient->cancelPendingRequests();
+            m_featuredArticleTitle.clear();
+            m_featuredArticleExtract.clear();
+            m_featuredArticleUrl.clear();
+            m_featuredArticleImageUrl.clear();
+            m_newsItems.clear();
+            m_onThisDayEvents.clear();
+            m_didYouKnowItems.clear();
+            emit featuredArticleUpdated();
+            emit featuredArticleImageUpdated();
+            emit dataUpdated();
         });
     }
 
@@ -62,6 +79,10 @@ QString HomeModel::featuredArticleUrl() const {
 }
 
 void HomeModel::fetchHomeData() {
+    // All independent feeds in this refresh share the same generation.
+    m_featuredClient->cancelPendingRequests();
+    m_homeClient->cancelPendingRequests();
+    m_pageClient->cancelPendingRequests();
     // Fetch featured article of the day
     m_featuredClient->getFeaturedArticleOfTheDay();
 
@@ -78,9 +99,10 @@ void HomeModel::fetchHomeData() {
 void HomeModel::handleFeaturedArticleReceived(const QString &title, const QString &extract, const int &pageid) {
     m_featuredArticleTitle = title;
     m_featuredArticleExtract = extract;
+    QString pageTitle = title;
+    const QString pageSlug = QString::fromLatin1(QUrl::toPercentEncoding(pageTitle.replace(' ', '_')));
     m_featuredArticleUrl = QString("https://%1.wikipedia.org/wiki/%2")
-                               .arg(m_settings ? m_settings->language() : "en",
-                                    m_featuredArticleTitle.replace(' ', '_'));
+                               .arg(m_settings ? m_settings->language() : "en", pageSlug);
     
     // Use a placeholder image initially
     m_featuredArticleImageUrl = "qrc:/images/featured_article_placeholder.jpg";

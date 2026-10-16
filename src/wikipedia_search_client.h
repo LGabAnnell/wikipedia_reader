@@ -3,6 +3,7 @@
 #define WIKIPEDIA_SEARCH_CLIENT_H
 
 #include "wikipedia_models.h"
+#include "wikipedia_request_context.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -20,6 +21,7 @@ class WikipediaSearchClient : public QObject {
 
     void search(const QString &query, int limit = 10);
     void setLanguage(const QString &langCode);
+    void cancelPendingRequests();
 
     static QVector<search_result> parseSearchResults(const QByteArray &responseData);
 
@@ -28,12 +30,12 @@ class WikipediaSearchClient : public QObject {
     void errorOccurred(const QString &error);
 
   private slots:
-    void onSearchReply(QNetworkReply *reply);
+    void onSearchReply(QNetworkReply *reply, const WikipediaRequestContext &context);
 
   private:
     QNetworkAccessManager *networkManager;
     QString baseUrl;
-    QString m_language = "en";
+    WikipediaRequestTracker m_requests;
 };
 
 #endif // WIKIPEDIA_SEARCH_CLIENT_H

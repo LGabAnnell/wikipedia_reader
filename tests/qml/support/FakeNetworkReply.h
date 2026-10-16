@@ -22,6 +22,7 @@ class FakeNetworkReply final : public QNetworkReply {
     qint64 bytesAvailable() const override;
     void abort() override;
     void complete();
+    void preserveCompletionAfterAbort(bool preserve) { m_preserveCompletionAfterAbort = preserve; }
 
   protected:
     qint64 readData(char *data, qint64 maxSize) override;
@@ -34,6 +35,8 @@ class FakeNetworkReply final : public QNetworkReply {
     QNetworkReply::NetworkError m_networkError;
     QString m_errorString;
     bool m_completed = false;
+    bool m_preserveCompletionAfterAbort = false;
+    bool m_wasAborted = false;
 };
 
 #endif // FAKE_NETWORK_REPLY_H

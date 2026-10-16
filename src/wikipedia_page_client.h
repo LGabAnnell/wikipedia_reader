@@ -3,6 +3,7 @@
 #define WIKIPEDIA_PAGE_CLIENT_H
 
 #include "wikipedia_models.h"
+#include "wikipedia_request_context.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -26,6 +27,7 @@ class WikipediaPageClient : public QObject {
     void resolveTitleToPageId(const QString &title);
     void getSections(const QString &title);
     void setLanguage(const QString &langCode);
+    void cancelPendingRequests();
 
     static page parsePage(const QByteArray &responseData, const QString &title);
     static page parsePageWithImages(const QByteArray &responseData, int pageid);
@@ -39,19 +41,21 @@ class WikipediaPageClient : public QObject {
     void errorOccurred(const QString &error);
 
   private slots:
-    void onPageReply(QNetworkReply *reply, const QString &title);
-    void onPageWithImagesReply(QNetworkReply *reply, int pageid);
-    void onSectionsReply(QNetworkReply *reply);
+    void onPageReply(QNetworkReply *reply, const QString &title, const WikipediaRequestContext &context);
+    void onPageWithImagesReply(QNetworkReply *reply, int pageid, const WikipediaRequestContext &context);
+    void onSectionsReply(QNetworkReply *reply, const WikipediaRequestContext &context);
 
   private:
     QNetworkAccessManager *networkManager;
     QString baseUrl;
-    QString m_language = "en";
+    WikipediaRequestTracker m_requests;
     QHash<QString, QString> mathImageDataUrls;
-    void fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls,
-                                  QStringList &imageDescriptions);
-    void fetchPageContentWithImages(int pageid, const page &pageData);
+    void fetchImageUrlsFromTitles(const QStringList &imageTitles, page pageData,
+                                  const WikipediaRequestContext &context,
+                                  std::function<void(page)> completion);
+    void fetchPageContentWithImages(int pageid, const page &pageData, const WikipediaRequestContext &context);
     void fetchMathImageDataUrls(const QString &htmlContent,
+                                const WikipediaRequestContext &context,
                                 std::function<void(const QString &)> completion);
 };
 

@@ -3,7 +3,6 @@
 #include "html_processor.h"
 #include "wikipedia_network_access_manager.h"
 #include <QBuffer>
-#include <QEventLoop>
 #include <QPalette>
 #include <QPainter>
 #include <QRegularExpression>
@@ -95,9 +94,11 @@ WikipediaPageClient::WikipediaPageClient(QObject *parent)
 WikipediaPageClient::~WikipediaPageClient() = default;
 
 void WikipediaPageClient::setLanguage(const QString &langCode) {
-    m_language = langCode;
+    m_requests.setLanguage(langCode);
     baseUrl = QString("https://%1.wikipedia.org/w/api.php").arg(langCode);
 }
+
+void WikipediaPageClient::cancelPendingRequests() { m_requests.cancelPendingRequests(); }
 
 void WikipediaPageClient::getPage(const QString &title) {
     QUrl url(baseUrl);
@@ -109,17 +110,19 @@ void WikipediaPageClient::getPage(const QString &title) {
     urlQuery.addQueryItem("explaintext", "1");
     url.setQuery(urlQuery);
 
+    const auto context = m_requests.context();
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, title]() { this->onPageReply(reply, title); });
+    m_requests.track(reply, context);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, title, context]() { this->onPageReply(reply, title, context); });
 }
 
-void WikipediaPageClient::onPageReply(QNetworkReply *reply, const QString &title) {
-    if (reply->error() == QNetworkReply::NoError) {
+void WikipediaPageClient::onPageReply(QNetworkReply *reply, const QString &title, const WikipediaRequestContext &context) {
+    if (m_requests.isCurrent(context) && reply->error() == QNetworkReply::NoError) {
         page p = parsePage(reply->readAll(), title);
         if (!p.title.isEmpty()) {
             emit pageReceived(p);
         }
-    } else {
+    } else if (m_requests.isCurrent(context) && reply->error() != QNetworkReply::OperationCanceledError) {
         emit errorOccurred(reply->errorString());
     }
     reply->deleteLater();
@@ -154,8 +157,11 @@ void WikipediaPageClient::getPageById(int pageid) {
     urlQuery.addQueryItem("imlimit", "50");
     url.setQuery(urlQuery);
 
+    const auto context = m_requests.context();
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, pageid]() {
+    m_requests.track(reply, context);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, pageid, context]() {
+        if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
         if (reply->error() == QNetworkReply::NoError) {
             QByteArray response = reply->readAll();
             QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
@@ -183,8 +189,8 @@ void WikipediaPageClient::getPageById(int pageid) {
                 }
             }
 
-            fetchPageContentWithImages(pageid, page);
-        } else {
+            fetchPageContentWithImages(pageid, page, context);
+        } else if (reply->error() != QNetworkReply::OperationCanceledError) {
             emit errorOccurred(reply->errorString());
         }
         reply->deleteLater();
@@ -202,9 +208,11 @@ void WikipediaPageClient::getPageWithImages(int pageid) {
     urlQuery.addQueryItem("imlimit", "50");
     url.setQuery(urlQuery);
 
+    const auto context = m_requests.context();
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this,
-            [this, reply, pageid]() { this->onPageWithImagesReply(reply, pageid); });
+            [this, reply, pageid, context]() { this->onPageWithImagesReply(reply, pageid, context); });
 }
 
 void WikipediaPageClient::resolveTitleToPageId(const QString &title) {
@@ -216,8 +224,11 @@ void WikipediaPageClient::resolveTitleToPageId(const QString &title) {
     urlQuery.addQueryItem("prop", "pageprops|pageids");
     url.setQuery(urlQuery);
 
+    const auto context = m_requests.context();
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    m_requests.track(reply, context);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, context]() {
+        if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
         if (reply->error() == QNetworkReply::NoError) {
             QByteArray response = reply->readAll();
             QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
@@ -231,24 +242,27 @@ void WikipediaPageClient::resolveTitleToPageId(const QString &title) {
                     break;
                 }
             }
-        } else {
+        } else if (reply->error() != QNetworkReply::OperationCanceledError) {
             emit errorOccurred(reply->errorString());
         }
         reply->deleteLater();
     });
 }
 
-void WikipediaPageClient::onPageWithImagesReply(QNetworkReply *reply, int pageid) {
+void WikipediaPageClient::onPageWithImagesReply(QNetworkReply *reply, int pageid, const WikipediaRequestContext &context) {
+    if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
     if (reply->error() == QNetworkReply::NoError) {
         page p = parsePageWithImages(reply->readAll(), pageid);
 
         // parsePageWithImages stores image titles in imageUrls temporarily;
         // extract them and fetch the actual URLs
-        QStringList imageTitles = p.imageUrls;
-        p.imageUrls = QStringList();
-        fetchImageUrlsFromTitles(imageTitles, p.imageUrls, p.imageDescriptions);
-        emit pageWithImagesReceived(p);
-    } else {
+        const QStringList imageTitles = p.imageUrls;
+        p.imageUrls.clear();
+        fetchImageUrlsFromTitles(imageTitles, p, context, [this, context](page completedPage) {
+            if (m_requests.isCurrent(context))
+                emit pageWithImagesReceived(completedPage);
+        });
+    } else if (reply->error() != QNetworkReply::OperationCanceledError) {
         emit errorOccurred(reply->errorString());
     }
     reply->deleteLater();
@@ -281,14 +295,16 @@ page WikipediaPageClient::parsePageWithImages(const QByteArray &responseData, in
     return result;
 }
 
-void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitles, QStringList &imageUrls,
-                                                   QStringList &imageDescriptions) {
+void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitles, page pageData,
+                                                   const WikipediaRequestContext &context,
+                                                   std::function<void(page)> completion) {
+    if (!m_requests.isCurrent(context)) return;
     if (imageTitles.isEmpty()) {
+        completion(pageData);
         return;
     }
 
-    QEventLoop loop;
-    QUrl url(baseUrl);
+    QUrl url(QString("https://%1.wikipedia.org/w/api.php").arg(context.language));
     QUrlQuery urlQuery;
     urlQuery.addQueryItem("action", "query");
     urlQuery.addQueryItem("format", "json");
@@ -299,9 +315,10 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
     url.setQuery(urlQuery);
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
-
+    m_requests.track(reply, context);
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, pageData = std::move(pageData), context, completion = std::move(completion)]() mutable {
+    if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
     if (reply->error() == QNetworkReply::NoError) {
         QByteArray response = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
@@ -316,7 +333,7 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
                     QJsonObject info = imageInfo[0].toObject();
                     QString imageUrl = info["url"].toString();
                     if (!imageUrl.isEmpty()) {
-                        imageUrls.append(imageUrl);
+                        pageData.imageUrls.append(imageUrl);
 
                         // Extract the plain-text image description from
                         // extmetadata, if present.
@@ -326,17 +343,20 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
                             description =
                                 stripHtml(extmetadata["ImageDescription"].toObject().value("value").toString());
                         }
-                        imageDescriptions.append(description);
+                        pageData.imageDescriptions.append(description);
                     }
                 }
             }
         }
     }
+    completion(std::move(pageData));
     reply->deleteLater();
+    });
 }
 
-void WikipediaPageClient::fetchPageContentWithImages(int pageid, const page &pageData) {
-    QUrl url(baseUrl);
+void WikipediaPageClient::fetchPageContentWithImages(int pageid, const page &pageData, const WikipediaRequestContext &context) {
+    if (!m_requests.isCurrent(context)) return;
+    QUrl url(QString("https://%1.wikipedia.org/w/api.php").arg(context.language));
     QUrlQuery urlQuery;
     urlQuery.addQueryItem("action", "parse");
     urlQuery.addQueryItem("format", "json");
@@ -347,19 +367,22 @@ void WikipediaPageClient::fetchPageContentWithImages(int pageid, const page &pag
     url.setQuery(urlQuery);
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, pageData] {
+    m_requests.track(reply, context);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, pageData, context] {
+        if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
         if (reply->error() == QNetworkReply::NoError) {
             QByteArray response = reply->readAll();
             QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
             QJsonObject jsonObj = jsonDoc.object();
             QJsonObject pages = jsonObj["parse"].toObject();
 
-            fetchMathImageDataUrls(pages["text"].toString(), [this, pageData](const QString &htmlContent) {
+            fetchMathImageDataUrls(pages["text"].toString(), context, [this, pageData, context](const QString &htmlContent) {
+                if (!m_requests.isCurrent(context)) return;
                 page page = pageData;
                 page.extract = HtmlProcessor::processHtml(htmlContent);
                 emit pageReceived(page);
             });
-        } else {
+        } else if (reply->error() != QNetworkReply::OperationCanceledError) {
             emit errorOccurred(reply->errorString());
         }
         reply->deleteLater();
@@ -367,7 +390,9 @@ void WikipediaPageClient::fetchPageContentWithImages(int pageid, const page &pag
 }
 
 void WikipediaPageClient::fetchMathImageDataUrls(const QString &htmlContent,
+                                                  const WikipediaRequestContext &context,
                                                   std::function<void(const QString &)> completion) {
+    if (!m_requests.isCurrent(context)) return;
     static const QRegularExpression imageTagRegex(R"(<img\b[^>]*>)",
                                                   QRegularExpression::CaseInsensitiveOption);
     static const QRegularExpression sourceRegex(R"(\bsrc\s*=\s*(["'])(.*?)\1)",
@@ -402,7 +427,9 @@ void WikipediaPageClient::fetchMathImageDataUrls(const QString &htmlContent,
         ++request->pendingRequests;
 
         QNetworkReply *mathReply = networkManager->get(QNetworkRequest(QUrl(source)));
-        connect(mathReply, &QNetworkReply::finished, this, [this, mathReply, request, source] {
+        m_requests.track(mathReply, context);
+        connect(mathReply, &QNetworkReply::finished, this, [this, mathReply, request, source, context] {
+            if (!m_requests.isCurrent(context)) { mathReply->deleteLater(); return; }
             if (mathReply->error() == QNetworkReply::NoError) {
                 const QString dataUrl = rasterizeSvg(mathReply->readAll());
                 if (!dataUrl.isEmpty()) {
@@ -444,14 +471,16 @@ void WikipediaPageClient::getSections(const QString &title) {
     urlQuery.addQueryItem("page", title);
     url.setQuery(urlQuery);
 
+    const auto context = m_requests.context();
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() { this->onSectionsReply(reply); });
+    m_requests.track(reply, context);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, context]() { this->onSectionsReply(reply, context); });
 }
 
-void WikipediaPageClient::onSectionsReply(QNetworkReply *reply) {
-    if (reply->error() == QNetworkReply::NoError) {
+void WikipediaPageClient::onSectionsReply(QNetworkReply *reply, const WikipediaRequestContext &context) {
+    if (m_requests.isCurrent(context) && reply->error() == QNetworkReply::NoError) {
         emit sectionsReceived(parseSections(reply->readAll()));
-    } else {
+    } else if (m_requests.isCurrent(context) && reply->error() != QNetworkReply::OperationCanceledError) {
         emit errorOccurred(reply->errorString());
     }
     reply->deleteLater();

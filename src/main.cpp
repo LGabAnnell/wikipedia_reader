@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     // Dependencies outlive their consumers, and all states outlive the QML engine.
     HistoryState historyState;
     SettingsState settingsState;
-    ImageSelectionState imageSelectionState;
+    ImageSelectionState imageSelectionState(settingsState);
     ArticleState articleState(historyState, settingsState);
     SearchState searchState(settingsState);
     ClipboardHelper clipboardHelper;

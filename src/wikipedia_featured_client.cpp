@@ -9,29 +9,33 @@ WikipediaFeaturedClient::WikipediaFeaturedClient(QObject *parent)
 WikipediaFeaturedClient::~WikipediaFeaturedClient() = default;
 
 void WikipediaFeaturedClient::setLanguage(const QString &langCode) {
-    m_language = langCode;
+    m_requests.setLanguage(langCode);
 }
+
+void WikipediaFeaturedClient::cancelPendingRequests() { m_requests.cancelPendingRequests(); }
 
 void WikipediaFeaturedClient::getFeaturedArticleOfTheDay() {
     QDate currentDate = QDate::currentDate();
     QString dateString = currentDate.toString("yyyy/MM/dd");
 
-    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2").arg(m_language, dateString));
+    const auto context = m_requests.context();
+    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2").arg(context.language, dateString));
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        this->onFeaturedArticleReply(reply);
+    m_requests.track(reply, context);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, context]() {
+        this->onFeaturedArticleReply(reply, context);
         reply->deleteLater();
     });
 }
 
-void WikipediaFeaturedClient::onFeaturedArticleReply(QNetworkReply *reply) {
-    if (reply->error() == QNetworkReply::NoError) {
+void WikipediaFeaturedClient::onFeaturedArticleReply(QNetworkReply *reply, const WikipediaRequestContext &context) {
+    if (m_requests.isCurrent(context) && reply->error() == QNetworkReply::NoError) {
         QString title, extract;
         int pageid;
         parseFeaturedArticle(reply->readAll(), title, extract, pageid);
         emit featuredArticleReceived(title, extract, pageid);
-    } else {
+    } else if (m_requests.isCurrent(context) && reply->error() != QNetworkReply::OperationCanceledError) {
         emit errorOccurred(reply->errorString());
     }
     reply->deleteLater();

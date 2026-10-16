@@ -20,6 +20,7 @@ RowLayout {
         id: searchText
         objectName: "searchInput"
         placeholderText: "Search Wikipedia"
+        text: searchBarModel.searchText
         onTextChanged: searchBarModel.searchText = text
         onAccepted: searchBarModel.performSearch()
         enabled: !searchBarModel.isSearching

@@ -48,22 +48,42 @@ QVariantList NetworkFixtureController::requests() const {
 
 int NetworkFixtureController::pendingReplyCount() const {
     QMutexLocker locker(&m_mutex);
-    return m_pendingReplies.size();
+    return static_cast<int>(std::count_if(m_pendingReplies.cbegin(), m_pendingReplies.cend(),
+                                         [](const auto &reply) { return reply && !reply->isFinished(); }));
 }
 
-void NetworkFixtureController::deferNextReply() {
+void NetworkFixtureController::deferNextReply(bool completeAfterAbort) {
     QMutexLocker locker(&m_mutex);
     m_deferNextReply = true;
+    m_completeAfterAbort = completeAfterAbort;
+}
+
+void NetworkFixtureController::completeReply(const QUrl &url) {
+    QPointer<FakeNetworkReply> selected;
+    {
+        QMutexLocker locker(&m_mutex);
+        for (int i = 0; i < m_pendingReplies.size(); ++i) {
+            if (m_pendingReplies.at(i) && m_pendingReplies.at(i)->url() == url) {
+                selected = m_pendingReplies.takeAt(i);
+                break;
+            }
+        }
+    }
+    if (selected)
+        selected->complete();
+    emit pendingRepliesChanged();
 }
 
 void NetworkFixtureController::completeNextReply() {
     QPointer<FakeNetworkReply> reply;
     {
         QMutexLocker locker(&m_mutex);
-        if (m_pendingReplies.isEmpty()) {
-            return;
+        while (!m_pendingReplies.isEmpty()) {
+            reply = m_pendingReplies.dequeue();
+            if (reply && !reply->isFinished())
+                break;
+            reply.clear();
         }
-        reply = m_pendingReplies.dequeue();
     }
     emit pendingRepliesChanged();
     if (reply) {
@@ -87,10 +107,9 @@ void NetworkFixtureController::addFixture(const QString &method, const QUrl &url
 void NetworkFixtureController::clearRequests() {
     {
         QMutexLocker locker(&m_mutex);
-        if (m_requests.isEmpty()) {
-            return;
-        }
         m_requests.clear();
+        m_deferNextReply = false;
+        m_completeAfterAbort = false;
     }
     emit requestsChanged();
 }
@@ -169,18 +188,29 @@ FakeNetworkReply *NetworkFixtureController::handleRequest(QNetworkAccessManager:
     }
 
     bool deferred = false;
+    bool completeAfterAbort = false;
     {
         QMutexLocker locker(&m_mutex);
         deferred = m_deferNextReply;
+        completeAfterAbort = m_completeAfterAbort;
         m_deferNextReply = false;
+        m_completeAfterAbort = false;
     }
     auto *reply = new FakeNetworkReply(request, operation, response, deferred, parent);
+    reply->preserveCompletionAfterAbort(completeAfterAbort);
     if (deferred) {
         {
             QMutexLocker locker(&m_mutex);
             m_pendingReplies.enqueue(reply);
         }
         emit pendingRepliesChanged();
+        connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+            {
+                QMutexLocker locker(&m_mutex);
+                m_pendingReplies.removeAll(reply);
+            }
+            emit pendingRepliesChanged();
+        });
     }
     return reply;
 }

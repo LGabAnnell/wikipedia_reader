@@ -8,6 +8,11 @@ SectionModel::SectionModel(QObject *parent) : QObject(parent), m_isLoading(false
     m_settings = SettingsState::instance();
     if (m_settings) {
         m_pageClient->setLanguage(m_settings->language());
+        connect(m_settings, &SettingsState::languageTransitionStarted, this, [this]() {
+            m_acceptResponses = false;
+            m_pageClient->cancelPendingRequests();
+            clearSections();
+        });
         connect(m_settings, &SettingsState::languageChanged, this, [this]() {
             m_pageClient->setLanguage(m_settings->language());
         });
@@ -30,6 +35,7 @@ void SectionModel::fetchSections(const QString &title) {
         return;
     }
     m_sections.clear();
+    m_pageClient->cancelPendingRequests();
     m_errorMessage.clear();
     m_isLoading = true;
     m_acceptResponses = true;

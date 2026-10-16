@@ -163,20 +163,84 @@ class ArticleStateTest : public QObject {
         QCOMPARE(m_network.requestCount(), 1);
     }
 
-    void languageChangeInvalidatesCacheWithoutReloading() {
+    void languageChangeClearsCurrentArticleAndCache() {
         SettingsState settings;
         ArticleState article(*m_history, settings);
         article.setCurrentPage(cachedArticle());
         addArticle("fr", "French article");
         settings.setLanguage("fr");
         QCOMPARE(m_network.requestCount(), 0);
-        QCOMPARE(article.currentPageTitle(), QString("Cached article"));
+        QVERIFY(article.currentPageTitle().isEmpty());
+        QVERIFY(article.currentPageExtract().isEmpty());
+        QCOMPARE(article.currentPageId(), 0);
+        QVERIFY(article.errorMessage().isEmpty());
+        QVERIFY(!article.isLoading());
         article.loadArticleByPageId(42);
         QVERIFY(article.isLoading());
         QTRY_VERIFY(!article.isLoading());
         QCOMPARE(article.currentPageTitle(), QString("French article"));
         QCOMPARE(m_network.requestCount(), 2);
         QCOMPARE(m_network.requests().first().toMap().value("host").toString(), QString("fr.wikipedia.org"));
+    }
+
+    void obsoleteArticleReplyCannotReplaceNewLanguage() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        addArticle("fr", "French article");
+        m_network.addFixture("GET", articleUrl("en"),
+            R"({"query":{"pages":{"42":{"pageid":42,"title":"Old article","extract":"old","images":[]}}}})");
+        m_network.deferNextReply(true);
+        article.loadArticleByPageId(42);
+        QVERIFY(article.isLoading());
+        QCOMPARE(m_network.pendingReplyCount(), 1);
+        settings.setLanguage("fr");
+        QVERIFY(!article.isLoading());
+        QCOMPARE(m_network.pendingReplyCount(), 1);
+        m_network.completeReply(articleUrl("en"));
+        QCoreApplication::processEvents();
+        QVERIFY(article.currentPageTitle().isEmpty());
+        QVERIFY(article.errorMessage().isEmpty());
+        QVERIFY(!article.isLoading());
+        QCOMPARE(m_history->history().size(), 0);
+        QCOMPARE(m_network.requestCount(), 1);
+    }
+
+    void obsoleteTitleResolutionCannotStartPageRequest() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        const QUrl resolveUrl("https://en.wikipedia.org/w/api.php?action=query&format=json&titles=Old%20title&prop=pageprops%7Cpageids");
+        m_network.addFixture("GET", resolveUrl,
+            R"({"query":{"pages":{"42":{"pageid":42,"title":"Old title"}}}})");
+        m_network.deferNextReply(true);
+        article.loadArticleByTitle("Old title");
+        settings.setLanguage("fr");
+        m_network.completeReply(resolveUrl);
+        QCoreApplication::processEvents();
+        QCOMPARE(m_network.requestCount(), 1);
+        QVERIFY(article.currentPageTitle().isEmpty());
+        QVERIFY(!article.isLoading());
+        QVERIFY(article.errorMessage().isEmpty());
+    }
+
+    void cachedSelectionSupersedesPendingArticle() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        article.setCurrentPage(cachedArticle());
+        const QUrl obsoleteUrl("https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts%7Cimages&pageids=43&explaintext=1&imlimit=50");
+        m_network.addFixture("GET", obsoleteUrl,
+            R"({"query":{"pages":{"43":{"pageid":43,"title":"Obsolete","extract":"","images":[]}}}})");
+        m_network.deferNextReply(true);
+        article.loadArticleByPageId(43);
+        QVERIFY(article.isLoading());
+        article.loadArticleByPageId(42);
+        QVERIFY(!article.isLoading());
+        QCOMPARE(article.currentPageTitle(), QString("Cached article"));
+        m_network.completeReply(obsoleteUrl);
+        QCoreApplication::processEvents();
+        QCOMPARE(article.currentPageTitle(), QString("Cached article"));
+        QVERIFY(article.errorMessage().isEmpty());
+        QCOMPARE(m_history->history().size(), 1);
+        QCOMPARE(m_network.requestCount(), 1);
     }
 
     void clientStartsFromCurrentSettings() {

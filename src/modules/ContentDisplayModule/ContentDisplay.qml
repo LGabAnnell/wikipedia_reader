@@ -18,6 +18,7 @@ Item {
     property string articleText: ArticleState.currentPageExtract
     property string errorMessage: ArticleState.errorMessage
     property bool isLoading: ArticleState.isLoading
+    property bool followsArticleState: true
     readonly property int currentSectionIndex: contentDisplay.currentSectionIndex
     property bool sectionResizeInProgress: false
 
@@ -58,6 +59,7 @@ Item {
         articleText = articleText;
         errorMessage = errorMessage;
         isLoading = isLoading;
+        followsArticleState = false;
     }
 
     function decodeHtmlAttribute(value) {
@@ -188,6 +190,27 @@ Item {
     // both the article HTML and the section list are available.
     function updateSectionTracking() {
         contentDisplay.updateSectionPositions(articleText, sectionBar.sections);
+    }
+
+    Connections {
+        target: SettingsState
+        function onLanguageTransitionStarted() {
+            sectionTrackTimer.stop();
+            sectionResizeSettleTimer.stop();
+            searchField.clear();
+            searchDebounceTimer.stop();
+            contentDisplay.performSearch("", "");
+            contentDisplay.resetSectionTracking();
+            if (!mainContent.followsArticleState) {
+                mainContent.articleTitle = "";
+                mainContent.articleText = "";
+                mainContent.errorMessage = "";
+                mainContent.isLoading = false;
+            }
+            scrollView.contentItem.contentY = 0;
+            scrollView.pinnedPosition = -1;
+            mainContent.sectionResizeInProgress = false;
+        }
     }
 
     height: parent ? parent.height : 0

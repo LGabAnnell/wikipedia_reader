@@ -3,6 +3,12 @@
 SearchBarModel::SearchBarModel(QObject *parent) : QObject(parent), m_searchState(SearchState::instance()) {
     if (!m_searchState)
         return;
+    m_searchText = m_searchState->searchText();
+    connect(m_searchState, &SearchState::searchTextChanged, this, [this]() {
+        if (m_searchText == m_searchState->searchText()) return;
+        m_searchText = m_searchState->searchText();
+        emit searchTextChanged(m_searchText);
+    });
     connect(m_searchState, &SearchState::isSearchingChanged, this, [this]() {
         emit isSearchingChanged(isSearching());
     });
@@ -25,6 +31,8 @@ void SearchBarModel::setSearchText(const QString &text) {
         return;
     m_searchText = text;
     emit searchTextChanged(text);
+    if (m_searchState)
+        m_searchState->setSearchText(text);
 }
 
 void SearchBarModel::performSearch() {

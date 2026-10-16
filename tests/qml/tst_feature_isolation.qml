@@ -123,5 +123,48 @@ Item {
             compare(model.errorMessage, "HTTP 500")
             verifyArticleUnchanged()
         }
+
+        function test_language_transition_clears_search_sections_gallery_and_image_selection() {
+            const searchUrl = "https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=isolation&srlimit=10"
+            networkFixtures.addFixture("GET", searchUrl,
+                                       '{"query":{"search":[{"title":"Isolation","snippet":"","pageid":42}]}}')
+            networkFixtures.addFixture("GET", sectionUrl,
+                                       '{"parse":{"tocdata":{"sections":[{"line":"History","tocLevel":1,"anchor":"History","index":"1"}]}}}')
+            networkFixtures.addFixture("GET", galleryUrl,
+                                       '{"query":{"pages":{"901":{"pageid":901,"title":"Gallery","extract":"","images":[]}}}}')
+
+            SearchState.searchText = ""
+            SearchState.search("isolation")
+            tryCompare(SearchState, "isSearching", false)
+            compare(SearchState.searchResults.length, 1)
+            model = sectionComponent.createObject(root)
+            model.fetchSections("Isolation")
+            tryCompare(model, "isLoading", false)
+            compare(model.sections.length, 1)
+            const gallery = galleryComponent.createObject(root)
+            networkFixtures.deferNextReply(true)
+            gallery.loadImagesForPage(901)
+            tryCompare(networkFixtures, "pendingReplyCount", 1)
+            ImageSelectionState.selectImage("old.png", "Old edition")
+
+            SettingsState.setLanguage("fr")
+            compare(SearchState.searchResults.length, 0)
+            verify(!SearchState.isSearching)
+            compare(model.sections.length, 0)
+            verify(!model.isLoading)
+            compare(gallery.imageUrls.length, 0)
+            compare(gallery.imageDescriptions.length, 0)
+            verify(!gallery.isLoading)
+            compare(ImageSelectionState.currentImageUrl, "")
+            compare(ImageSelectionState.currentImageDescription, "")
+
+            networkFixtures.completeNextReply()
+            wait(0)
+            compare(gallery.imageUrls.length, 0)
+            SettingsState.setLanguage("en")
+            gallery.destroy()
+            model.destroy()
+            model = null
+        }
     }
 }

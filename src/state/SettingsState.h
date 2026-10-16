@@ -20,6 +20,7 @@ class SettingsState : public QObject {
     Q_INVOKABLE void setLanguage(const QString &language);
 
   signals:
+    void languageTransitionStarted();
     void languageChanged();
 
   private:
