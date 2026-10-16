@@ -12,6 +12,7 @@
 #include "NavigationState.h"
 #include "SvgImageProvider.h"
 #include "HeaderModel.h"
+#include "wikipedia_network_access_manager.h"
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
@@ -27,7 +28,9 @@ int main(int argc, char *argv[]) {
     ClipboardHelper clipboardHelper;
     NavigationState navigationState;
     HeaderModel headerModel;
+    WikipediaNetwork::NetworkAccessManagerFactory networkFactory;
     QQmlApplicationEngine engine;
+    engine.setNetworkAccessManagerFactory(&networkFactory);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
 

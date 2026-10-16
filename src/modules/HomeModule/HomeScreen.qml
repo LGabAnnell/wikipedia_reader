@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
 
 
@@ -9,7 +10,8 @@ Item {
     id: root
     Layout.fillWidth: true
 
-    ScrollView {
+    // Breeze ScrollView/ScrollBar geometry can form binding loops.
+    Basic.ScrollView {
         id: scrollView
         anchors.fill: parent
         clip: true

@@ -1,6 +1,7 @@
 // ImageGallery.qml
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
 import wikipedia_qt // For ArticleState, NavigationState, Constants
 import wikipedia_qt.ImageDisplay
@@ -65,7 +66,8 @@ Item {
         }
 
         // Scrollable grid view for images
-        ScrollView {
+        // Breeze ScrollView/ScrollBar geometry can form binding loops.
+        Basic.ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true

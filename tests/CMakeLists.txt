@@ -27,6 +27,10 @@ foreach(state_test ArticleStateTest SearchStateTest SettingsStateTest ImageSelec
     add_test(NAME ${state_test} COMMAND ${state_test})
 endforeach()
 
+qt_add_executable(WikipediaNetworkAccessManagerTest WikipediaNetworkAccessManagerTest.cpp)
+target_link_libraries(WikipediaNetworkAccessManagerTest PRIVATE wikipedia_qt_core Qt::Test)
+add_test(NAME WikipediaNetworkAccessManagerTest COMMAND WikipediaNetworkAccessManagerTest)
+
 qt_add_executable(ContentDisplayModelTest ContentDisplayModelTest.cpp)
 target_include_directories(ContentDisplayModelTest PRIVATE
     ${CMAKE_SOURCE_DIR}/src/modules/ContentDisplayModule

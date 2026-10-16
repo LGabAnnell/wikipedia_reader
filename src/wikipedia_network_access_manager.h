@@ -2,13 +2,34 @@
 #define WIKIPEDIA_NETWORK_ACCESS_MANAGER_H
 
 #include <QCoreApplication>
+#include <QLibraryInfo>
 #include <QNetworkAccessManager>
+#include <QNetworkRequest>
 #include <QQmlNetworkAccessManagerFactory>
 #include <QVariant>
+#include <QVersionNumber>
 
 namespace WikipediaNetwork {
 
 inline constexpr auto FactoryProperty = "wikipediaNetworkAccessManagerFactory";
+
+/** @brief Network manager with a workaround for Qt 6.11.2 HTTP/2 socket reads. */
+class NetworkAccessManager final : public QNetworkAccessManager {
+  public:
+    explicit NetworkAccessManager(QObject *parent = nullptr) : QNetworkAccessManager(parent) {}
+
+  protected:
+    QNetworkReply *createRequest(Operation operation, const QNetworkRequest &request,
+                                QIODevice *outgoingData = nullptr) override {
+        QNetworkRequest compatibleRequest(request);
+        // Qt 6.11.2's HTTP/2 frame reader can read a closed TLS socket when an
+        // idle connection closes. Use HTTP/1.1 on the affected runtime only.
+        if (QLibraryInfo::version() == QVersionNumber(6, 11, 2)) {
+            compatibleRequest.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
+        }
+        return QNetworkAccessManager::createRequest(operation, compatibleRequest, outgoingData);
+    }
+};
 
 /**
  * @brief Installs the process-wide manager factory used by Wikipedia clients.
@@ -23,7 +44,7 @@ inline void installNetworkAccessManagerFactory(QQmlNetworkAccessManagerFactory *
 }
 
 /**
- * @brief Creates a manager through the installed factory, or a normal Qt manager.
+ * @brief Creates a manager through the installed factory, or the runtime policy manager.
  * @param parent QObject that owns the returned manager.
  */
 inline QNetworkAccessManager *createNetworkAccessManager(QObject *parent) {
@@ -33,8 +54,16 @@ inline QNetworkAccessManager *createNetworkAccessManager(QObject *parent) {
                               application->property(FactoryProperty).value<void *>())
                         : nullptr;
 
-    return factory ? factory->create(parent) : new QNetworkAccessManager(parent);
+    return factory ? factory->create(parent) : new NetworkAccessManager(parent);
 }
+
+/** @brief Applies the same network policy to QML images and Wikipedia clients. */
+class NetworkAccessManagerFactory final : public QQmlNetworkAccessManagerFactory {
+  public:
+    QNetworkAccessManager *create(QObject *parent) override {
+        return createNetworkAccessManager(parent);
+    }
+};
 
 } // namespace WikipediaNetwork
 

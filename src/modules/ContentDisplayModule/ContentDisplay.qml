@@ -1,6 +1,7 @@
 // ContentDisplay.qml
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
 
 import wikipedia_qt
@@ -313,7 +314,8 @@ Item {
                 }
             }
         }
-        ScrollView {
+        // Breeze ScrollView/ScrollBar geometry can form binding loops.
+        Basic.ScrollView {
             id: scrollView
             objectName: "articleScrollView"
 
