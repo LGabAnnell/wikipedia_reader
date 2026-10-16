@@ -50,6 +50,7 @@ class ArticleState : public QObject {
 
   private slots:
     void handleArticleLoadError(const QString &error);
+    void continueResolvedArticleLoad(int pageId);
 
   private:
     static QPointer<ArticleState> m_instance;

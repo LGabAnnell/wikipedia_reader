@@ -11,9 +11,17 @@ ArticleState::ArticleState(HistoryState &history, SettingsState &settings, QObje
         m_pageClient->setLanguage(m_settings->language());
         m_articleCache.clear();
     });
+    connect(&settings, &SettingsState::languageTransitionStarted, this, [this]() {
+        m_pageClient->cancelPendingRequests();
+        m_articleCache.clear();
+        m_currentPage = page{};
+        setIsLoading(false);
+        clearErrorMessage();
+        emit currentPageChanged();
+    });
     connect(m_pageClient, &WikipediaPageClient::pageReceived, this, &ArticleState::setCurrentPage);
     connect(m_pageClient, &WikipediaPageClient::errorOccurred, this, &ArticleState::handleArticleLoadError);
-    connect(m_pageClient, &WikipediaPageClient::pageIdResolved, this, &ArticleState::loadArticleByPageId);
+    connect(m_pageClient, &WikipediaPageClient::pageIdResolved, this, &ArticleState::continueResolvedArticleLoad);
 }
 
 void ArticleState::setCurrentPage(const page &article) {
@@ -36,6 +44,7 @@ void ArticleState::setCurrentPageFromData(const QString &title, const QString &e
 }
 
 void ArticleState::loadArticleByPageId(int pageId) {
+    m_pageClient->cancelPendingRequests();
     clearErrorMessage();
     if (m_articleCache.contains(pageId)) {
         const page article = m_articleCache.value(pageId);
@@ -46,7 +55,20 @@ void ArticleState::loadArticleByPageId(int pageId) {
     m_pageClient->getPageById(pageId);
 }
 
+void ArticleState::continueResolvedArticleLoad(int pageId) {
+    if (pageId <= 0) {
+        setIsLoading(false);
+        return;
+    }
+    if (m_articleCache.contains(pageId)) {
+        setCurrentPage(m_articleCache.value(pageId));
+        return;
+    }
+    m_pageClient->getPageById(pageId);
+}
+
 void ArticleState::loadArticleByTitle(const QString &title) {
+    m_pageClient->cancelPendingRequests();
     clearErrorMessage();
     // Drop the current article so a newly pushed article view does not
     // briefly display the previous article while the new one loads.

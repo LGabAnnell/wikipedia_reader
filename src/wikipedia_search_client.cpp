@@ -12,9 +12,11 @@ WikipediaSearchClient::WikipediaSearchClient(QObject *parent)
 WikipediaSearchClient::~WikipediaSearchClient() = default;
 
 void WikipediaSearchClient::setLanguage(const QString &langCode) {
-    m_language = langCode;
+    m_requests.setLanguage(langCode);
     baseUrl = QString("https://%1.wikipedia.org/w/api.php").arg(langCode);
 }
+
+void WikipediaSearchClient::cancelPendingRequests() { m_requests.cancelPendingRequests(); }
 
 void WikipediaSearchClient::search(const QString &query, int limit) {
     QUrl url(baseUrl);
@@ -26,14 +28,16 @@ void WikipediaSearchClient::search(const QString &query, int limit) {
     urlQuery.addQueryItem("srlimit", QString::number(limit));
     url.setQuery(urlQuery);
 
+    const auto context = m_requests.context();
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() { this->onSearchReply(reply); });
+    m_requests.track(reply, context);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, context]() { this->onSearchReply(reply, context); });
 }
 
-void WikipediaSearchClient::onSearchReply(QNetworkReply *reply) {
-    if (reply->error() == QNetworkReply::NoError) {
+void WikipediaSearchClient::onSearchReply(QNetworkReply *reply, const WikipediaRequestContext &context) {
+    if (m_requests.isCurrent(context) && reply->error() == QNetworkReply::NoError) {
         emit searchCompleted(parseSearchResults(reply->readAll()));
-    } else {
+    } else if (m_requests.isCurrent(context) && reply->error() != QNetworkReply::OperationCanceledError) {
         emit errorOccurred(reply->errorString());
     }
     reply->deleteLater();

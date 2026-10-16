@@ -15,6 +15,7 @@ class SearchState : public QObject {
     Q_PROPERTY(bool isSearching READ isSearching NOTIFY isSearchingChanged)
     Q_PROPERTY(bool hasCompletedSearch READ hasCompletedSearch NOTIFY hasCompletedSearchChanged)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
+    Q_PROPERTY(QString searchText READ searchText WRITE setSearchText NOTIFY searchTextChanged)
 
   public:
     explicit SearchState(SettingsState &settings, QObject *parent = nullptr);
@@ -23,6 +24,8 @@ class SearchState : public QObject {
     bool isSearching() const { return m_isSearching; }
     bool hasCompletedSearch() const { return m_hasCompletedSearch; }
     QString errorMessage() const { return m_errorMessage; }
+    QString searchText() const { return m_searchText; }
+    void setSearchText(const QString &text);
     /** @brief Submit nonblank text unless a search is already pending. */
     Q_INVOKABLE void search(const QString &text);
     Q_INVOKABLE void clearSearchResults();
@@ -38,6 +41,7 @@ class SearchState : public QObject {
     void hasCompletedSearchChanged();
     void errorMessageChanged();
     void errorOccurred(const QString &error);
+    void searchTextChanged();
 
   private:
     static QPointer<SearchState> m_instance;
@@ -47,6 +51,7 @@ class SearchState : public QObject {
     bool m_isSearching = false;
     bool m_hasCompletedSearch = false;
     QString m_errorMessage;
+    QString m_searchText;
     void setIsSearching(bool searching);
     void setHasCompletedSearch(bool completed);
     void setErrorMessage(const QString &error);

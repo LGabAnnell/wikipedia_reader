@@ -23,17 +23,19 @@ Item {
         function registerHomeFixtures() {
             const date = Qt.formatDate(new Date(), "yyyy/MM/dd")
             const monthDay = Qt.formatDate(new Date(), "MM/dd")
-            const featuredUrl = "https://api.wikimedia.org/feed/v1/wikipedia/en/featured/" + date
-            const onThisDayUrl = "https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/" + monthDay
-            const randomTitleUrl = "https://en.wikipedia.org/api/rest_v1/page/random/title"
-            const pageImagesUrl = "https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts%7Cimages&pageids=1&explaintext=1&imlimit=50"
-
-            networkFixtures.addFixture("GET", featuredUrl,
-                                       '{"tfa":{"title":"Navigation fixture","extract":"Fixture article","pageid":1},"mostread":{"articles":[]}}')
-            networkFixtures.addFixture("GET", onThisDayUrl, '{"selected":[]}')
-            networkFixtures.addFixture("GET", randomTitleUrl, '{}')
-            networkFixtures.addFixture("GET", pageImagesUrl,
-                                       '{"query":{"pages":{"1":{"pageid":1,"title":"Navigation fixture","extract":"","images":[]}}}}')
+            for (const lang of ["en", "fr"]) {
+                const featuredUrl = "https://api.wikimedia.org/feed/v1/wikipedia/" + lang + "/featured/" + date
+                const onThisDayUrl = "https://api.wikimedia.org/feed/v1/wikipedia/" + lang + "/onthisday/all/" + monthDay
+                const randomTitleUrl = "https://" + lang + ".wikipedia.org/api/rest_v1/page/random/title"
+                const pageImagesUrl = "https://" + lang + ".wikipedia.org/w/api.php?action=query&format=json&prop=extracts%7Cimages&pageids=1&explaintext=1&imlimit=50"
+                const title = lang === "en" ? "Navigation fixture" : "Navigation fixture français"
+                networkFixtures.addFixture("GET", featuredUrl,
+                                           JSON.stringify({"tfa":{"title":title,"extract":"Fixture article","pageid":1},"mostread":{"articles":[{"title":title,"extract":"News item","pageid":1,"content_urls":{"desktop":{"page":"https://" + lang + ".wikipedia.org/wiki/Fixture"}}}]}}))
+                networkFixtures.addFixture("GET", onThisDayUrl, '{"selected":[]}')
+                networkFixtures.addFixture("GET", randomTitleUrl, '{}')
+                networkFixtures.addFixture("GET", pageImagesUrl,
+                                           JSON.stringify({"query":{"pages":{"1":{"pageid":1,"title":title,"extract":"","images":[]}}}}))
+            }
         }
 
         function init() {
@@ -119,6 +121,28 @@ Item {
             verify(testSupport.sendBackButtonPress(appWindow), "Back button event should be handled")
             tryCompare(appStack, "depth", 1)
             compare(appStack.currentItem, homeRoot)
+        }
+
+        function test_language_change_keeps_home_and_refreshes_its_data() {
+            const homeModel = child("homeModel")
+            tryCompare(homeModel.newsItems, "length", 1)
+            testSupport.clearRequests()
+            SettingsState.setLanguage("fr")
+            compare(appStack.depth, 1)
+            compare(appStack.currentItem, homeRoot)
+            compare(homeModel.newsItems.length, 0)
+            tryCompare(testSupport, "requestCount", 5)
+            tryCompare(homeModel.newsItems, "length", 1)
+            verify(testSupport.requests.every(function(request) {
+                return request.host.indexOf("wikipedia.org") < 0
+                    || request.host.indexOf("fr.wikipedia.org") >= 0
+            }))
+
+            testSupport.clearRequests()
+            SettingsState.setLanguage("en")
+            compare(homeModel.newsItems.length, 0)
+            tryCompare(testSupport, "requestCount", 5)
+            tryCompare(homeModel.newsItems, "length", 1)
         }
     }
 }

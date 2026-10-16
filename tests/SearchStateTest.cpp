@@ -116,6 +116,54 @@ class SearchStateTest : public QObject {
         QCOMPARE(m_network.requests().last().toMap().value("host").toString(), QString("de.wikipedia.org"));
     }
 
+    void languageChangeRestartsCurrentSearchOnceAndIgnoresOldReply() {
+        SettingsState settings;
+        SearchState search(settings);
+        search.setSearchText("fixture");
+        m_network.addFixture("GET", searchUrl("fr"),
+            R"({"query":{"search":[{"title":"French result","snippet":"","pageid":7}]}})");
+        m_network.deferNextReply(true);
+        search.search(search.searchText());
+        QVERIFY(search.isSearching());
+        settings.setLanguage("fr");
+        QCOMPARE(m_network.requestCount(), 2);
+        QTRY_VERIFY(!search.isSearching());
+        QCOMPARE(search.searchResults().size(), 1);
+        QCOMPARE(search.searchResults().first().title, QString("French result"));
+        m_network.completeReply(searchUrl("en"));
+        QCoreApplication::processEvents();
+        QCOMPARE(search.searchResults().size(), 1);
+        QCOMPARE(search.searchResults().first().title, QString("French result"));
+        QCOMPARE(m_network.pendingReplyCount(), 0);
+    }
+
+    void languageChangeLeavesBlankQueryIdle() {
+        SettingsState settings;
+        SearchState search(settings);
+        search.setSearchText("  ");
+        settings.setLanguage("fr");
+        QCOMPARE(m_network.requestCount(), 0);
+        QVERIFY(!search.isSearching());
+        QVERIFY(search.searchResults().isEmpty());
+        QVERIFY(search.errorMessage().isEmpty());
+    }
+
+    void rapidLanguageChangesPublishOnlyFinalEdition() {
+        SettingsState settings;
+        SearchState search(settings);
+        search.setSearchText("fixture");
+        m_network.addFixture("GET", searchUrl("fr"),
+            R"({"query":{"search":[{"title":"French result","snippet":"","pageid":8}]}})");
+        m_network.addFixture("GET", searchUrl("de"),
+            R"({"query":{"search":[{"title":"German result","snippet":"","pageid":9}]}})");
+        settings.setLanguage("fr");
+        settings.setLanguage("de");
+        QTRY_VERIFY(!search.isSearching());
+        QCOMPARE(search.searchResults().size(), 1);
+        QCOMPARE(search.searchResults().first().title, QString("German result"));
+        QCOMPARE(m_network.requestCount(), 2);
+    }
+
     void teardownAndRecreation() {
         SettingsState settings;
         {

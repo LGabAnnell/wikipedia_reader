@@ -3,6 +3,7 @@
 #define WIKIPEDIA_FEATURED_CLIENT_H
 
 #include "wikipedia_models.h"
+#include "wikipedia_request_context.h"
 #include <QDate>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -21,6 +22,7 @@ class WikipediaFeaturedClient : public QObject {
 
     void getFeaturedArticleOfTheDay();
     void setLanguage(const QString &langCode);
+    void cancelPendingRequests();
 
     static void parseFeaturedArticle(const QByteArray &responseData,
                                      QString &title, QString &extract, int &pageid);
@@ -30,11 +32,11 @@ class WikipediaFeaturedClient : public QObject {
     void errorOccurred(const QString &error);
 
   private slots:
-    void onFeaturedArticleReply(QNetworkReply *reply);
+    void onFeaturedArticleReply(QNetworkReply *reply, const WikipediaRequestContext &context);
 
   private:
     QNetworkAccessManager *networkManager;
-    QString m_language = "en";
+    WikipediaRequestTracker m_requests;
 };
 
 #endif // WIKIPEDIA_FEATURED_CLIENT_H

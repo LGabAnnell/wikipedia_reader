@@ -10,37 +10,46 @@ WikipediaHomeClient::WikipediaHomeClient(QObject *parent)
 WikipediaHomeClient::~WikipediaHomeClient() = default;
 
 void WikipediaHomeClient::setLanguage(const QString &langCode) {
-    m_language = langCode;
+    m_requests.setLanguage(langCode);
 }
+
+void WikipediaHomeClient::cancelPendingRequests() { m_requests.cancelPendingRequests(); }
 
 void WikipediaHomeClient::getNewsItems() {
     QDate currentDate = QDate::currentDate();
     QString dateString = currentDate.toString("yyyy/MM/dd");
-    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2").arg(m_language, dateString));
+    const auto context = m_requests.context();
+    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2").arg(context.language, dateString));
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() { onNewsItemsReply(reply); });
+    m_requests.track(reply, context);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, context]() { onNewsItemsReply(reply, context); });
 }
 
 void WikipediaHomeClient::getOnThisDayEvents(int month, int day) {
     QDate today = QDate::currentDate();
+    const auto context = m_requests.context();
     QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/onthisday/all/%2/%3")
-                 .arg(m_language)
+                 .arg(context.language)
                  .arg(today.month(), 2, 10, QLatin1Char('0'))
                  .arg(today.day(), 2, 10, QLatin1Char('0')));
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() { onOnThisDayEventsReply(reply); });
+    m_requests.track(reply, context);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, context]() { onOnThisDayEventsReply(reply, context); });
 }
 
 void WikipediaHomeClient::getDidYouKnowItems() {
-    QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/page/random/title").arg(m_language));
+    const auto context = m_requests.context();
+    QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/page/random/title").arg(context.language));
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() { onRandomArticleTitleReply(reply); });
+    m_requests.track(reply, context);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, context]() { onRandomArticleTitleReply(reply, context); });
 }
 
-void WikipediaHomeClient::onNewsItemsReply(QNetworkReply *reply) {
+void WikipediaHomeClient::onNewsItemsReply(QNetworkReply *reply, const WikipediaRequestContext &context) {
+    if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
     if (reply->error() != QNetworkReply::NoError) {
         qWarning() << "Error fetching news:" << reply->errorString();
         emit errorOccurred(tr("Error fetching news: %1").arg(reply->errorString()));
@@ -77,7 +86,8 @@ QVector<news_item> WikipediaHomeClient::parseNewsItems(const QByteArray &respons
     return newsItems;
 }
 
-void WikipediaHomeClient::onOnThisDayEventsReply(QNetworkReply *reply) {
+void WikipediaHomeClient::onOnThisDayEventsReply(QNetworkReply *reply, const WikipediaRequestContext &context) {
+    if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
     if (reply->error() != QNetworkReply::NoError) {
         emit errorOccurred(tr("Error fetching on-this-day events: %1").arg(reply->errorString()));
         reply->deleteLater();
@@ -141,7 +151,8 @@ QVector<on_this_day_event> WikipediaHomeClient::parseOnThisDayEvents(const QByte
     return onThisDayEvents;
 }
 
-void WikipediaHomeClient::onRandomArticleTitleReply(QNetworkReply *reply) {
+void WikipediaHomeClient::onRandomArticleTitleReply(QNetworkReply *reply, const WikipediaRequestContext &context) {
+    if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
     if (reply->error() != QNetworkReply::NoError) {
         emit errorOccurred(tr("Error fetching random article: %1").arg(reply->errorString()));
         reply->deleteLater();
@@ -156,21 +167,25 @@ void WikipediaHomeClient::onRandomArticleTitleReply(QNetworkReply *reply) {
         QJsonArray items = root["items"].toArray();
         if (!items.isEmpty()) {
             QString title = items[0].toObject()["title"].toString();
-            fetchArticleContent(title);
+            fetchArticleContent(title, context);
         }
     }
 
     reply->deleteLater();
 }
 
-void WikipediaHomeClient::fetchArticleContent(const QString &title) {
-    QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/page/summary/%2").arg(m_language, title));
+void WikipediaHomeClient::fetchArticleContent(const QString &title, const WikipediaRequestContext &context) {
+    if (!m_requests.isCurrent(context)) return;
+    QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/page/summary/%2").arg(context.language, title));
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, title]() { onArticleContentReply(reply, title); });
+    m_requests.track(reply, context);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, title, context]() { onArticleContentReply(reply, title, context); });
 }
 
-void WikipediaHomeClient::onArticleContentReply(QNetworkReply *reply, const QString &title) {
+void WikipediaHomeClient::onArticleContentReply(QNetworkReply *reply, const QString &title, const WikipediaRequestContext &context) {
+    Q_UNUSED(title);
+    if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
     if (reply->error() != QNetworkReply::NoError) {
         emit errorOccurred(tr("Error fetching article content: %1").arg(reply->errorString()));
         reply->deleteLater();

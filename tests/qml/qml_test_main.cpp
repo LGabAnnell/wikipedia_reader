@@ -78,7 +78,7 @@ class QmlTestSetup final : public QObject {
 
         m_settingsState = new SettingsState(application);
         qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "SettingsState", m_settingsState.data());
-        m_imageSelectionState = new ImageSelectionState(application);
+        m_imageSelectionState = new ImageSelectionState(*m_settingsState, application);
         qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "ImageSelectionState", m_imageSelectionState.data());
 
         m_articleState = new ArticleState(*m_historyState, *m_settingsState, application);

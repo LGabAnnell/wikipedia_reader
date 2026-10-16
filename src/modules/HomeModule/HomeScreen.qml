@@ -22,6 +22,7 @@ Item {
 
         HomeModel {
             id: homeModel
+            objectName: "homeModel"
         }
 
         ColumnLayout {

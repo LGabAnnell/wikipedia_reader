@@ -45,6 +45,10 @@ void FakeNetworkReply::abort() {
     if (m_completed) {
         return;
     }
+    if (m_preserveCompletionAfterAbort) {
+        m_wasAborted = true;
+        return;
+    }
     m_body.clear();
     m_position = 0;
     m_networkError = QNetworkReply::OperationCanceledError;

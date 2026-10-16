@@ -75,6 +75,7 @@ add_library(wikipedia_qt_core SHARED
     src/wikipedia_home_client.h
     src/wikipedia_models.h
     src/wikipedia_network_access_manager.h
+    src/wikipedia_request_context.h
     src/state/SettingsState.cpp
     src/state/SettingsState.h
     src/state/ImageSelectionState.cpp

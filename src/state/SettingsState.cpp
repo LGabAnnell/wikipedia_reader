@@ -11,5 +11,6 @@ void SettingsState::setLanguage(const QString &language) {
     if (m_language == language)
         return;
     m_language = language;
+    emit languageTransitionStarted();
     emit languageChanged();
 }

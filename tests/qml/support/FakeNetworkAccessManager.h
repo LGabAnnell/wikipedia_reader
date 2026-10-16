@@ -46,8 +46,9 @@ class NetworkFixtureController final : public QObject, public QQmlNetworkAccessM
                                 int statusCode = 200, int networkError = QNetworkReply::NoError,
                                 const QString &errorString = QString());
     Q_INVOKABLE void clearRequests();
-    Q_INVOKABLE void deferNextReply();
+    Q_INVOKABLE void deferNextReply(bool completeAfterAbort = false);
     Q_INVOKABLE void completeNextReply();
+    Q_INVOKABLE void completeReply(const QUrl &url);
 
   signals:
     void requestsChanged();
@@ -69,6 +70,7 @@ class NetworkFixtureController final : public QObject, public QQmlNetworkAccessM
     QVariantList m_requests;
     QQueue<QPointer<FakeNetworkReply>> m_pendingReplies;
     bool m_deferNextReply = false;
+    bool m_completeAfterAbort = false;
     mutable QMutex m_mutex;
 };
 

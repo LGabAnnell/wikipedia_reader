@@ -18,7 +18,7 @@ class search_result {
   public:
     QString title;
     QString snippet;
-    int pageid;
+    int pageid = 0;
 };
 
 // Data structure for a Wikipedia page
@@ -33,7 +33,7 @@ class page {
   public:
     QString title;
     QString extract;
-    int pageid;
+    int pageid = 0;
     QStringList imageUrls;
     QStringList imageDescriptions; // Parallel to imageUrls; plain-text caption per image
 };
@@ -49,7 +49,7 @@ class featured_article {
   public:
     QString title;
     QString extract;
-    int pageid;
+    int pageid = 0;
     QStringList imageUrls;
     QString date;
 };
@@ -68,7 +68,7 @@ class news_item {
     QString imageUrl;
     QString description;
     QString url;
-    int pageid;
+    int pageid = 0;
 };
 
 // Data structure for an "On This Day" event
@@ -83,7 +83,7 @@ class on_this_day_event {
     int year;
     QString event;
     QString url;
-    int pageid;
+    int pageid = 0;
 };
 
 // Data structure for a "Did You Know" item
@@ -96,7 +96,7 @@ class did_you_know_item {
   public:
     QString text;
     QString url;
-    int pageid;
+    int pageid = 0;
 };
 
 // Data structure for a history item
@@ -108,7 +108,7 @@ class history_item {
     Q_PROPERTY(QDateTime timestamp MEMBER timestamp)
   public:
     QString title;
-    int pageId;
+    int pageId = 0;
     QDateTime timestamp;
 };
 

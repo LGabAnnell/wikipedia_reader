@@ -1,144 +1,23 @@
-# Language Change State Isolation Plan
+# Language Change State Isolation
 
-Changing the selected Wikipedia language must be treated as a complete data-domain transition, not merely as a base-URL update. Wikipedia page IDs are local to each language edition, so state or network responses from one language must never be consumed in another.
+Changing Wikipedia language is a transition between separate data domains. Page IDs, search results, article content, and home cards from one edition must not be used by another.
 
-## 1. Reset language-bound application state
+## Transition behavior
 
-Update `GlobalState::setLanguage()` to clear all transient state associated with the previous language:
+`SettingsState` remains the language authority. On a real language change it updates the selected language, emits `languageTransitionStarted()` so consumers synchronously invalidate work and clear edition-bound state, then emits `languageChanged()` so clients adopt the edition and data models refresh.
 
-- Search results
-- Current page
-- Current-page sections
-- Current image URL and description
-- Current section index
-- Loading flags and obsolete errors
-- Article cache
+The current screen and navigation stack remain in place. Shared article content and cache are cleared; covered `ContentDisplay` snapshots are cleared too, so Back cannot reveal old-edition content. Selecting the same language does nothing. Home refreshes, and the latest nonblank search text is submitted once in the new edition.
 
-Emit the corresponding change signals so existing QML views immediately become empty.
+Browsing history remains unchanged in this work. Its page-ID identity must be made language-aware in a separate database migration before history entries can safely cross language switches.
 
-Use value initialization such as `page{}` when resetting state. The integer fields in the data models should also be initialized to zero to prevent an empty page from containing an indeterminate page ID.
+## Request isolation
 
-`SearchBarModel` and `SectionModel` maintain local loading or result state in addition to `GlobalState`. Their `languageChanged` handlers should reset that local state as well.
+All four Wikipedia clients use an internal request context containing the captured language and a monotonically increasing generation. They track active replies and expose `cancelPendingRequests()`. Cancellation advances the generation before aborting replies; callbacks check the captured context before emitting results or errors, updating state, or starting a chained request.
 
-## 2. Make browsing history language-aware
+The context follows the full request chain, including title resolution, article HTML and math images, image metadata, featured article images, and random-title summaries. URLs for chained requests use the captured edition. Image metadata lookup is asynchronous so language changes can invalidate it without a nested event loop.
 
-Language must be part of an article's identity:
+At each new article selection, the prior page request generation is invalidated before consulting the cache. A title resolution continues its original selection. Sections and gallery requests are canceled when their target changes or is cleared. Home’s independent feeds run in one refresh generation.
 
-```text
-(language, page_id)
-```
+## Validation
 
-Add a `language` column to the history table, a unique index on `(language, page_id)`, and an index on `(language, timestamp)`.
-
-History database operations should become language-scoped:
-
-```cpp
-loadHistory(language, limit)
-addToHistory(language, title, pageId, timestamp)
-clearHistory(language)
-removeOldestItems(language, limit)
-```
-
-`HistoryState` should maintain an active language and reload its visible history whenever that language changes. `GlobalState::setCurrentPage()` should explicitly pass the current language when adding an article to history.
-
-Existing database rows cannot reliably be assigned a language because the old schema did not record it. The safest migration is to discard or hide legacy rows rather than assume they are English; otherwise a page ID originally obtained from another edition could still be interpreted against English Wikipedia.
-
-The existing **Clear History** action should clear history for the active language. A separate clear-all operation can be added later if required.
-
-There is also an adjacent trimming issue: the database trimming condition is checked after the in-memory collection has already been reduced to the maximum size, so it is never reached. Run language-scoped database trimming after each successful insertion.
-
-## 3. Invalidate in-flight requests
-
-Add a monotonically increasing generation and active-reply tracking to every Wikipedia client:
-
-```cpp
-QString m_language;
-quint64 m_generation = 0;
-QSet<QNetworkReply *> m_activeReplies;
-```
-
-When the language actually changes:
-
-1. Increment the generation.
-2. Update the language and base URL.
-3. Abort tracked replies.
-4. Ignore aborted or stale callbacks without emitting user-facing errors.
-
-Every request should capture its generation:
-
-```cpp
-const quint64 generation = m_generation;
-
-connect(reply, &QNetworkReply::finished, this,
-        [this, reply, generation] {
-            if (generation != m_generation) {
-                reply->deleteLater();
-                return;
-            }
-
-            // Parse and emit the response.
-        });
-```
-
-Generation validation is the correctness mechanism; aborting requests is an optimization. Both are useful because a reply can finish while cancellation is occurring.
-
-Apply this consistently to:
-
-- `WikipediaPageClient`
-- `WikipediaSearchClient`
-- `WikipediaHomeClient`
-- `WikipediaFeaturedClient`
-
-The captured request context must also be propagated through chained operations:
-
-- Title resolution to page-by-ID loading
-- Initial page request to HTML request to math-image requests
-- Featured article to page-image loading
-- Random title to article-summary loading
-- Image-title lookup
-
-A stale callback must return before starting the next request. Chained request URLs should be built from the captured language or base URL rather than the mutable current language.
-
-The blocking `WikipediaPageClient::fetchImageUrlsFromTitles()` implementation should ideally be converted to an asynchronous chain as part of this work, because its nested event loop complicates cancellation and generation handling.
-
-## 4. Clear and refresh home content
-
-When `HomeModel` receives `GlobalState::languageChanged`:
-
-1. Change the language of all three clients, invalidating their old requests.
-2. Clear the featured article fields, news items, on-this-day events, and did-you-know items.
-3. Emit `featuredArticleUpdated`, `featuredArticleImageUpdated`, and `dataUpdated`.
-4. Call `fetchHomeData()`.
-
-This makes old cards disappear immediately and automatically fetches content for the newly selected language.
-
-## 5. Recommended transition sequence
-
-`GlobalState::setLanguage()` should perform the transition in this order:
-
-```text
-Validate the new language
-    |
-Update and invalidate GlobalState clients
-    |
-Clear transient GlobalState data
-    |
-Switch HistoryState's active language
-    |
-Emit languageChanged
-    |
-Feature models invalidate their clients, clear local data, and refetch
-```
-
-## 6. Tests
-
-Add coverage for the following behavior:
-
-- Changing language clears every transient `GlobalState` property.
-- Identical page IDs in English and French coexist independently in history.
-- History loading, deduplication, trimming, and clearing are language-scoped.
-- An English reply completed after switching to French emits no result or error.
-- Stale title resolution cannot initiate a French request with an English page ID.
-- Stale random-title and featured-article chains cannot repopulate `HomeModel`.
-- Rapid `en -> fr -> de` changes leave only German results visible.
-
+The fake transport can defer a reply, optionally allow it to complete after abort, and complete a selected reply by URL. Tests verify that obsolete replies cannot publish data or start follow-up requests, new selections supersede old ones, searches restart once in the selected language, and retained article views clear without changing navigation depth. The complete CTest suite should run with `QT_QPA_PLATFORM=offscreen` for GUI tests.

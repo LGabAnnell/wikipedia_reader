@@ -266,6 +266,42 @@ Item {
             compare(testSupport.requestCount, 2)
         }
 
+        function test_language_change_clears_covered_article_views_without_navigation() {
+            const firstTitle = "Language transition first"
+            const secondTitle = "Language transition second"
+            networkFixtures.addFixture("GET", sectionsUrl(firstTitle),
+                                       '{"parse":{"tocdata":{"sections":[]}}}')
+            networkFixtures.addFixture("GET", sectionsUrl(secondTitle),
+                                       '{"parse":{"tocdata":{"sections":[]}}}')
+
+            ArticleState.setCurrentPageFromData(firstTitle, "<p>Old edition first</p>", "")
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            const firstView = stackView.currentItem
+            tryVerify(function() { return findChild(firstView, "articleBody").text.indexOf("Old edition first") >= 0 })
+
+            ArticleState.setCurrentPageFromData(secondTitle, "<p>Old edition second</p>", "")
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 3)
+            tryVerify(function() { return !stackView.busy })
+            const secondView = stackView.currentItem
+            tryVerify(function() { return findChild(secondView, "articleBody").text.indexOf("Old edition second") >= 0 })
+
+            SettingsState.setLanguage("fr")
+            compare(stackView.depth, 3)
+            compare(stackView.currentItem, secondView)
+            compare(ArticleState.currentPageTitle, "")
+            compare(findChild(secondView, "articleTitle").text, "")
+            verify(findChild(secondView, "articleBody").text.indexOf("Old edition second") < 0)
+            stackView.pop()
+            tryCompare(stackView, "depth", 2)
+            compare(stackView.currentItem, firstView)
+            compare(findChild(firstView, "articleTitle").text, "")
+            verify(findChild(firstView, "articleBody").text.indexOf("Old edition first") < 0)
+            SettingsState.setLanguage("en")
+        }
+
         function test_link_click_pushes_article_and_back_restores_previous_article() {
             const firstId = 811
             const firstTitle = "First article fixture"

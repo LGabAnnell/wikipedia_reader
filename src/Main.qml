@@ -17,6 +17,12 @@ ApplicationWindow {
     height: 600
     visible: true
 
+    Shortcut {
+        sequence: "Ctrl+Q"
+        context: Qt.ApplicationShortcut
+        onActivated: Qt.quit()
+    }
+
     // Main layout
     ColumnLayout {
         anchors.fill: parent

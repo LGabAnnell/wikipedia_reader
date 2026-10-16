@@ -3,6 +3,7 @@
 #define WIKIPEDIA_HOME_CLIENT_H
 
 #include "wikipedia_models.h"
+#include "wikipedia_request_context.h"
 #include <QDate>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -23,6 +24,7 @@ class WikipediaHomeClient : public QObject {
     void getOnThisDayEvents(int month, int day);
     void getDidYouKnowItems();
     void setLanguage(const QString &langCode);
+    void cancelPendingRequests();
 
     static QVector<news_item> parseNewsItems(const QByteArray &responseData);
     static QVector<on_this_day_event> parseOnThisDayEvents(const QByteArray &responseData);
@@ -35,15 +37,15 @@ class WikipediaHomeClient : public QObject {
     void errorOccurred(const QString &error);
 
   private slots:
-    void onNewsItemsReply(QNetworkReply *reply);
-    void onOnThisDayEventsReply(QNetworkReply *reply);
-    void onRandomArticleTitleReply(QNetworkReply *reply);
-    void onArticleContentReply(QNetworkReply *reply, const QString &title);
+    void onNewsItemsReply(QNetworkReply *reply, const WikipediaRequestContext &context);
+    void onOnThisDayEventsReply(QNetworkReply *reply, const WikipediaRequestContext &context);
+    void onRandomArticleTitleReply(QNetworkReply *reply, const WikipediaRequestContext &context);
+    void onArticleContentReply(QNetworkReply *reply, const QString &title, const WikipediaRequestContext &context);
 
   private:
     QNetworkAccessManager *networkManager;
-    QString m_language = "en";
-    void fetchArticleContent(const QString &title);
+    WikipediaRequestTracker m_requests;
+    void fetchArticleContent(const QString &title, const WikipediaRequestContext &context);
 };
 
 #endif // WIKIPEDIA_HOME_CLIENT_H

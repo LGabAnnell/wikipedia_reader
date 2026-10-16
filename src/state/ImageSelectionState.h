@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QQmlEngine>
+#include "SettingsState.h"
 
 /** @brief Shared selection for the fullscreen image view. */
 class ImageSelectionState : public QObject {
@@ -14,7 +15,7 @@ class ImageSelectionState : public QObject {
     Q_PROPERTY(QString currentImageDescription READ currentImageDescription NOTIFY currentImageDescriptionChanged)
 
   public:
-    explicit ImageSelectionState(QObject *parent = nullptr);
+    explicit ImageSelectionState(SettingsState &settings, QObject *parent = nullptr);
     QString currentImageUrl() const { return m_url; }
     QString currentImageDescription() const { return m_description; }
     static QPointer<ImageSelectionState> instance() { return m_instance; }
