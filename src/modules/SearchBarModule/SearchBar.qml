@@ -12,6 +12,10 @@ RowLayout {
     Layout.margins: 10
     spacing: 10
 
+    function focusInput() {
+        searchText.forceActiveFocus()
+    }
+
     SearchBarModel {
         id: searchBarModel
     }

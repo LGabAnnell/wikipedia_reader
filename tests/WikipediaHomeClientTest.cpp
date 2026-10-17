@@ -2,11 +2,163 @@
 #include <QtTest/QtTest>
 #include <QByteArray>
 #include "wikipedia_home_client.h"
+#include "wikipedia_network_access_manager.h"
+#include "support/FakeNetworkAccessManager.h"
 
 class WikipediaHomeClientTest : public QObject {
     Q_OBJECT
 
+  private:
+    NetworkFixtureController m_network;
+
+    QUrl feedUrl(int daysBack = 0, const QString &language = "en") const {
+        return QUrl(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2")
+                        .arg(language, QDate::currentDate().addDays(-daysBack).toString("yyyy/MM/dd")));
+    }
+
+    QByteArray newsFeed(const QString &title = "Today's news") const {
+        return QJsonDocument(QJsonObject{{"news", QJsonArray{
+            QJsonObject{{"story", title}, {"links", QJsonArray{
+                QJsonObject{{"title", title}, {"pageid", 7}}
+            }}}
+        }}}).toJson();
+    }
+
+    QByteArray mostreadFeed(int count) const {
+        QJsonArray articles;
+        for (int i = 1; i <= count; ++i)
+            articles.append(QJsonObject{{"title", QString("Article %1").arg(i)},
+                                       {"extract", QString("Summary %1").arg(i)}, {"pageid", i}});
+        return QJsonDocument(QJsonObject{{"mostread", QJsonObject{{"articles", articles}}}}).toJson();
+    }
+
   private slots:
+    void initTestCase() {
+        connect(&m_network, &NetworkFixtureController::unexpectedRequest, this,
+                [](const QString &request) { qFatal("%s", qPrintable(request)); });
+        WikipediaNetwork::installNetworkAccessManagerFactory(&m_network);
+    }
+
+    void cleanupTestCase() { WikipediaNetwork::installNetworkAccessManagerFactory(nullptr); }
+    void init() { m_network.clearRequests(); }
+    void cleanup() { QCOMPARE(m_network.pendingReplyCount(), 0); }
+
+    void testCurrentMostreadNeedsNoLookback() {
+        m_network.addFixture("GET", feedUrl(), mostreadFeed(43));
+        WikipediaHomeClient client;
+        QSignalSpy items(&client, &WikipediaHomeClient::newsItemsReceived);
+        client.getNewsItems();
+        QTRY_COMPARE(items.count(), 1);
+        QCOMPARE(items.first().first().value<QVector<news_item>>().size(), 43);
+        QCOMPARE(m_network.requestCount(), 1);
+    }
+
+    void testIncompleteTodayUsesPreviousMostread() {
+        // Today's feed can have only four stories while yesterday has 43 articles.
+        QJsonArray news;
+        for (int i = 0; i < 4; ++i)
+            news.append(QJsonDocument::fromJson(newsFeed()).object()["news"].toArray().first());
+        m_network.addFixture("GET", feedUrl(), QJsonDocument(QJsonObject{{"news", news}}).toJson());
+        m_network.addFixture("GET", feedUrl(1), mostreadFeed(43));
+        WikipediaHomeClient client;
+        QSignalSpy items(&client, &WikipediaHomeClient::newsItemsReceived);
+        QSignalSpy errors(&client, &WikipediaHomeClient::errorOccurred);
+        client.getNewsItems();
+        QTRY_COMPARE(items.count(), 1);
+        const auto articles = items.first().first().value<QVector<news_item>>();
+        QCOMPARE(articles.size(), 43);
+        QCOMPARE(articles.first().title, QString("Article 1"));
+        QCOMPARE(articles.last().title, QString("Article 43"));
+        QCOMPARE(articles.last().description, QString("Summary 43"));
+        QCOMPARE(articles.last().pageid, 43);
+        QCOMPARE(m_network.requestCount(), 2);
+        QCOMPARE(errors.count(), 0);
+    }
+
+    void testLookbackSkipsUnavailableFeeds_data() {
+        QTest::addColumn<int>("status");
+        QTest::newRow("empty") << 200;
+        QTest::newRow("not found") << 404;
+        QTest::newRow("server failure") << 503;
+    }
+
+    void testLookbackSkipsUnavailableFeeds() {
+        QFETCH(int, status);
+        m_network.addFixture("GET", feedUrl(), newsFeed());
+        m_network.addFixture("GET", feedUrl(1), "{}", "application/json", status);
+        m_network.addFixture("GET", feedUrl(2), mostreadFeed(43));
+        WikipediaHomeClient client;
+        QSignalSpy items(&client, &WikipediaHomeClient::newsItemsReceived);
+        client.getNewsItems();
+        QTRY_COMPARE(items.count(), 1);
+        QCOMPARE(items.first().first().value<QVector<news_item>>().size(), 43);
+        QCOMPARE(m_network.requestCount(), 3);
+    }
+
+    void testLookbackIsBoundedAndRetainsTodaysNews_data() {
+        QTest::addColumn<int>("status");
+        QTest::newRow("no mostread") << 200;
+        QTest::newRow("failed historical feeds") << 503;
+    }
+
+    void testLookbackIsBoundedAndRetainsTodaysNews() {
+        QFETCH(int, status);
+        m_network.addFixture("GET", feedUrl(), newsFeed());
+        m_network.addFixture("GET", feedUrl(1), newsFeed("Yesterday's news"), "application/json", status);
+        m_network.addFixture("GET", feedUrl(2), newsFeed("Older news"), "application/json", status);
+        WikipediaHomeClient client;
+        QSignalSpy items(&client, &WikipediaHomeClient::newsItemsReceived);
+        QSignalSpy errors(&client, &WikipediaHomeClient::errorOccurred);
+        client.getNewsItems();
+        QTRY_COMPARE(items.count(), 1);
+        const auto articles = items.first().first().value<QVector<news_item>>();
+        QCOMPARE(articles.size(), 1);
+        QCOMPARE(articles.first().title, QString("Today's news"));
+        QCOMPARE(m_network.requestCount(), 3);
+        QCOMPARE(errors.count(), 0);
+    }
+
+    void testCurrentFeedFailureEmitsError() {
+        m_network.addFixture("GET", feedUrl(), "unavailable", "text/plain", 503);
+        WikipediaHomeClient client;
+        QSignalSpy items(&client, &WikipediaHomeClient::newsItemsReceived);
+        QSignalSpy errors(&client, &WikipediaHomeClient::errorOccurred);
+        client.getNewsItems();
+        QTRY_COMPARE(errors.count(), 1);
+        QCOMPARE(items.count(), 0);
+        QCOMPARE(m_network.requestCount(), 1);
+    }
+
+    void testObsoleteLookbackDoesNotPublishOrContinue_data() {
+        QTest::addColumn<bool>("changeLanguage");
+        QTest::newRow("language change") << true;
+        QTest::newRow("refresh canceled") << false;
+    }
+
+    void testObsoleteLookbackDoesNotPublishOrContinue() {
+        QFETCH(bool, changeLanguage);
+        m_network.addFixture("GET", feedUrl(), newsFeed());
+        m_network.addFixture("GET", feedUrl(1), "{}");
+        WikipediaHomeClient client;
+        QSignalSpy items(&client, &WikipediaHomeClient::newsItemsReceived);
+        QSignalSpy errors(&client, &WikipediaHomeClient::errorOccurred);
+        m_network.deferNextReply();
+        client.getNewsItems();
+        m_network.deferNextReply(true);
+        m_network.completeNextReply();
+        QCOMPARE(m_network.requestCount(), 2);
+        QCOMPARE(m_network.pendingReplyCount(), 1);
+        if (changeLanguage)
+            client.setLanguage("fr");
+        else
+            client.cancelPendingRequests();
+        m_network.completeNextReply();
+        QCoreApplication::processEvents();
+        QCOMPARE(items.count(), 0);
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(m_network.requestCount(), 2);
+    }
+
     void testParseNewsItems() {
         QByteArray json = R"({"mostread":{"articles":[
             {
@@ -70,23 +222,53 @@ class WikipediaHomeClientTest : public QObject {
         QCOMPARE(items[0].imageUrl, QString("https://upload.wikimedia.org/news.jpg"));
     }
 
-    void testNewsTakesPrecedenceOverMostread() {
+    void testMostreadTakesPrecedenceOverNews() {
         const QByteArray json = R"json({
             "news":[{"story":"News story", "links":[{"title":"News", "pageid":7}]}],
-            "mostread":{"articles":[{"title":"Popular", "pageid":8}]}
+            "mostread":{"articles":[
+                {"title":"Popular", "pageid":8, "extract":"Popular article summary"},
+                {"title":"Another popular article", "pageid":9, "extract":"Another summary"}
+            ]}
         })json";
         const auto items = WikipediaHomeClient::parseNewsItems(json);
-        QCOMPARE(items.size(), 1);
-        QCOMPARE(items[0].title, QString("News"));
-        QCOMPARE(items[0].pageid, 7);
+        QCOMPARE(items.size(), 2);
+        QCOMPARE(items[0].title, QString("Popular"));
+        QCOMPARE(items[0].description, QString("Popular article summary"));
+        QCOMPARE(items[0].pageid, 8);
         QVERIFY(items[0].imageUrl.isEmpty());
+        QCOMPARE(items[1].title, QString("Another popular article"));
+        QCOMPARE(items[1].description, QString("Another summary"));
+        QCOMPARE(items[1].pageid, 9);
     }
 
-    void testEmptyNewsDoesNotFallBackToMostread() {
+    void testEmptyNewsDoesNotHideMostread() {
         const QByteArray json = R"json({
             "news":[], "mostread":{"articles":[{"title":"Popular", "pageid":8}]}
         })json";
-        QVERIFY(WikipediaHomeClient::parseNewsItems(json).isEmpty());
+        const auto items = WikipediaHomeClient::parseNewsItems(json);
+        QCOMPARE(items.size(), 1);
+        QCOMPARE(items[0].title, QString("Popular"));
+        QCOMPARE(items[0].pageid, 8);
+    }
+
+    void testNewsFallbackWithoutMostreadArticles_data() {
+        QTest::addColumn<QByteArray>("mostread");
+        QTest::newRow("null") << QByteArray("null");
+        QTest::newRow("missing articles") << QByteArray("{}");
+        QTest::newRow("empty articles") << QByteArray(R"({"articles":[]})");
+        QTest::newRow("invalid articles") << QByteArray(R"({"articles":{}})");
+    }
+
+    void testNewsFallbackWithoutMostreadArticles() {
+        QFETCH(QByteArray, mostread);
+        const QByteArray json = R"({"mostread":)" + mostread + R"(,
+            "news":[{"story":"A <b>news</b> story", "links":[{"title":"News", "pageid":7}]}]
+        })";
+        const auto items = WikipediaHomeClient::parseNewsItems(json);
+        QCOMPARE(items.size(), 1);
+        QCOMPARE(items[0].title, QString("News"));
+        QCOMPARE(items[0].description, QString("A news story"));
+        QCOMPARE(items[0].pageid, 7);
     }
 
     void testNewsWithoutLinkedArticles() {

@@ -9,6 +9,8 @@ import wikipedia_qt.Sidebar 1.0
 
 Item {
     id: searchScreen
+    StackView.onActivated: searchBar.focusInput()
+
     // Let the parent StackView manage our size
     ColumnLayout {
         // Use the searchScreen's dimensions

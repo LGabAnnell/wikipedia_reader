@@ -165,6 +165,7 @@ qt_add_executable(WikipediaHomeClientTest
 target_link_libraries(WikipediaHomeClientTest PRIVATE
     wikipedia_qt_core
     Qt::Test
+    wikipedia_test_network
 )
 
 add_test(NAME WikipediaHomeClientTest COMMAND WikipediaHomeClientTest)

@@ -20,6 +20,7 @@ class WikipediaHomeClient : public QObject {
     explicit WikipediaHomeClient(QObject *parent = nullptr);
     ~WikipediaHomeClient();
 
+    /** @brief Fetch most-read articles, checking the previous two days if today's feed is incomplete. */
     void getNewsItems();
     void getOnThisDayEvents(int month, int day);
     void getDidYouKnowItems();
@@ -37,7 +38,8 @@ class WikipediaHomeClient : public QObject {
     void errorOccurred(const QString &error);
 
   private slots:
-    void onNewsItemsReply(QNetworkReply *reply, const WikipediaRequestContext &context);
+    void onNewsItemsReply(QNetworkReply *reply, const WikipediaRequestContext &context,
+                          const QDate &date, int daysBack, QVector<news_item> fallbackItems);
     void onOnThisDayEventsReply(QNetworkReply *reply, const WikipediaRequestContext &context);
     void onRandomArticleTitleReply(QNetworkReply *reply, const WikipediaRequestContext &context);
     void onArticleContentReply(QNetworkReply *reply, const QString &title, const WikipediaRequestContext &context);
@@ -45,6 +47,8 @@ class WikipediaHomeClient : public QObject {
   private:
     QNetworkAccessManager *networkManager;
     WikipediaRequestTracker m_requests;
+    void fetchNewsItems(const QDate &date, const WikipediaRequestContext &context,
+                        int daysBack, const QVector<news_item> &fallbackItems);
     void fetchArticleContent(const QString &title, const WikipediaRequestContext &context);
 };
 

@@ -17,14 +17,21 @@ void WikipediaHomeClient::setLanguage(const QString &langCode) {
 void WikipediaHomeClient::cancelPendingRequests() { m_requests.cancelPendingRequests(); }
 
 void WikipediaHomeClient::getNewsItems() {
-    QDate currentDate = QDate::currentDate();
-    QString dateString = currentDate.toString("yyyy/MM/dd");
-    const auto context = m_requests.context();
+    fetchNewsItems(QDate::currentDate(), m_requests.context(), 0, {});
+}
+
+void WikipediaHomeClient::fetchNewsItems(const QDate &date, const WikipediaRequestContext &context,
+                                        int daysBack, const QVector<news_item> &fallbackItems) {
+    if (!m_requests.isCurrent(context))
+        return;
+    const QString dateString = date.toString("yyyy/MM/dd");
     QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2").arg(context.language, dateString));
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, context]() { onNewsItemsReply(reply, context); });
+    connect(reply, &QNetworkReply::finished, this, [this, reply, context, date, daysBack, fallbackItems]() {
+        onNewsItemsReply(reply, context, date, daysBack, fallbackItems);
+    });
 }
 
 void WikipediaHomeClient::getOnThisDayEvents(int month, int day) {
@@ -49,17 +56,35 @@ void WikipediaHomeClient::getDidYouKnowItems() {
     connect(reply, &QNetworkReply::finished, this, [this, reply, context]() { onRandomArticleTitleReply(reply, context); });
 }
 
-void WikipediaHomeClient::onNewsItemsReply(QNetworkReply *reply, const WikipediaRequestContext &context) {
+void WikipediaHomeClient::onNewsItemsReply(QNetworkReply *reply, const WikipediaRequestContext &context,
+                                          const QDate &date, int daysBack, QVector<news_item> fallbackItems) {
     if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
     if (reply->error() != QNetworkReply::NoError) {
         qWarning() << "Error fetching news:" << reply->errorString();
-        emit errorOccurred(tr("Error fetching news: %1").arg(reply->errorString()));
-        reply->deleteLater();
-        return;
+        if (daysBack == 0) {
+            emit errorOccurred(tr("Error fetching news: %1").arg(reply->errorString()));
+            reply->deleteLater();
+            return;
+        }
+    } else {
+        const QByteArray data = reply->readAll();
+        const QJsonObject root = QJsonDocument::fromJson(data).object();
+        if (!root["mostread"].toObject()["articles"].toArray().isEmpty()) {
+            emit newsItemsReceived(parseNewsItems(data));
+            reply->deleteLater();
+            return;
+        }
+        if (daysBack == 0)
+            fallbackItems = parseNewsItems(data);
     }
 
-    emit newsItemsReceived(parseNewsItems(reply->readAll()));
     reply->deleteLater();
+    // Most-read statistics can lag behind the rest of the daily feed. Look back
+    // at most two days, retaining today's news if none of those feeds has them.
+    if (daysBack < 2)
+        fetchNewsItems(date.addDays(-1), context, daysBack + 1, fallbackItems);
+    else
+        emit newsItemsReceived(fallbackItems);
 }
 
 QVector<news_item> WikipediaHomeClient::parseNewsItems(const QByteArray &responseData) {
@@ -67,14 +92,14 @@ QVector<news_item> WikipediaHomeClient::parseNewsItems(const QByteArray &respons
     QJsonObject root = doc.object();
 
     QVector<news_item> newsItems;
-    // Feed sections vary by edition and date; mostread is not guaranteed.
-    const bool hasNews = root["news"].isArray();
-    const QJsonArray items = hasNews ? root["news"].toArray()
-                                     : root["mostread"].toObject()["articles"].toArray();
+    // Preserve the full article list; use news for editions/dates without mostread.
+    const QJsonArray mostread = root["mostread"].toObject()["articles"].toArray();
+    const bool useNews = mostread.isEmpty();
+    const QJsonArray items = useNews ? root["news"].toArray() : mostread;
     for (const auto &item : items) {
         const QJsonObject entry = item.toObject();
         QJsonObject article = entry;
-        if (hasNews) {
+        if (useNews) {
             // A news story links to one or more article summaries.
             const QJsonArray links = entry["links"].toArray();
             if (links.isEmpty())
@@ -83,7 +108,7 @@ QVector<news_item> WikipediaHomeClient::parseNewsItems(const QByteArray &respons
         }
         news_item ni;
         ni.title = article["titles"].toObject()["normalized"].toString(article["title"].toString());
-        ni.description = hasNews ? QTextDocumentFragment::fromHtml(entry["story"].toString()).toPlainText()
+        ni.description = useNews ? QTextDocumentFragment::fromHtml(entry["story"].toString()).toPlainText()
                                  : article["extract"].toString();
         ni.url = article["content_urls"].toObject()["desktop"].toObject()["page"].toString();
         ni.pageid = article["pageid"].toInt();

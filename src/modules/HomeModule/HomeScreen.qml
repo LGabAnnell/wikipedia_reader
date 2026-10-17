@@ -12,6 +12,7 @@ Item {
 
     ScrollView {
         id: scrollView
+        objectName: "homeScrollView"
         anchors.fill: parent
         clip: true
         ScrollBar.vertical.interactive: true

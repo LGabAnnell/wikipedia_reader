@@ -29,8 +29,24 @@ Item {
                 const randomTitleUrl = "https://" + lang + ".wikipedia.org/api/rest_v1/page/random/title"
                 const pageImagesUrl = "https://" + lang + ".wikipedia.org/w/api.php?action=query&format=json&prop=extracts%7Cimages&pageids=1&explaintext=1&imlimit=50"
                 const title = lang === "en" ? "Navigation fixture" : "Navigation fixture français"
-                networkFixtures.addFixture("GET", featuredUrl,
-                                           JSON.stringify({"tfa":{"title":title,"extract":"Fixture article","pageid":1},"mostread":{"articles":[{"title":title,"extract":"News item","pageid":1,"content_urls":{"desktop":{"page":"https://" + lang + ".wikipedia.org/wiki/Fixture"}}}]}}))
+                const article = {"title":title,"extract":"Article summary","pageid":1,"content_urls":{"desktop":{"page":"https://" + lang + ".wikipedia.org/wiki/Fixture"}}}
+                const feed = {
+                    "tfa":{"title":title,"extract":"Fixture article","pageid":1},
+                    "news":[{"story":"A news story", "links":[article]}]
+                }
+                networkFixtures.addFixture("GET", featuredUrl, JSON.stringify(feed))
+                const popularArticles = [article]
+                for (let pageId = 2; pageId <= 43; ++pageId)
+                    popularArticles.push({"title":"Article " + pageId,"extract":"Summary " + pageId,"pageid":pageId})
+                for (let daysBack = 1; daysBack <= 2; ++daysBack) {
+                    const previousDate = new Date()
+                    previousDate.setDate(previousDate.getDate() - daysBack)
+                    const previousFeedUrl = "https://api.wikimedia.org/feed/v1/wikipedia/" + lang + "/featured/" + Qt.formatDate(previousDate, "yyyy/MM/dd")
+                    const previousFeed = lang === "en"
+                        ? {"mostread":{"articles":popularArticles}}
+                        : {}
+                    networkFixtures.addFixture("GET", previousFeedUrl, JSON.stringify(previousFeed))
+                }
                 networkFixtures.addFixture("GET", onThisDayUrl, '{"selected":[]}')
                 networkFixtures.addFixture("GET", randomTitleUrl, '{}')
                 networkFixtures.addFixture("GET", pageImagesUrl,
@@ -47,7 +63,7 @@ Item {
                 verify(appWindow !== null, "Main application window must be created")
                 appStack = findChild(appWindow, "applicationStack")
                 verify(appStack !== null, "Main StackView must be available")
-                tryCompare(testSupport, "requestCount", 5)
+                tryCompare(testSupport, "requestCount", 6)
                 homeRoot = appStack.currentItem
                 verify(homeRoot !== null, "Home must be the initial stack item")
                 compare(homeRoot.objectName, "homeView")
@@ -113,6 +129,21 @@ Item {
             compare(appStack.currentItem, homeRoot)
         }
 
+        function test_home_uses_recent_mostread_when_today_only_has_news() {
+            const homeModel = child("homeModel")
+            tryCompare(homeModel.newsItems, "length", 43)
+            compare(homeModel.newsItems[0].title, "Navigation fixture")
+            compare(homeModel.newsItems[0].description, "Article summary")
+            compare(homeModel.newsItems[42].title, "Article 43")
+            compare(homeModel.newsItems[42].pageid, 43)
+            const newsItems = child("homeNewsItems")
+            tryCompare(newsItems, "count", 43)
+            verify(newsItems.itemAt(42) !== null)
+            tryVerify(function() { return newsItems.itemAt(42).height > 0 })
+            const scrollView = child("homeScrollView")
+            tryVerify(function() { return scrollView.contentHeight > scrollView.availableHeight })
+        }
+
         function test_mouse_back_button_pops_one_view() {
             mouseClick(child("searchButton"))
             tryCompare(appStack, "depth", 2)
@@ -125,14 +156,16 @@ Item {
 
         function test_language_change_keeps_home_and_refreshes_its_data() {
             const homeModel = child("homeModel")
-            tryCompare(homeModel.newsItems, "length", 1)
+            tryCompare(homeModel.newsItems, "length", 43)
             testSupport.clearRequests()
             SettingsState.setLanguage("fr")
             compare(appStack.depth, 1)
             compare(appStack.currentItem, homeRoot)
             compare(homeModel.newsItems.length, 0)
-            tryCompare(testSupport, "requestCount", 5)
+            tryCompare(testSupport, "requestCount", 7)
             tryCompare(homeModel.newsItems, "length", 1)
+            compare(homeModel.newsItems[0].title, "Navigation fixture français")
+            compare(homeModel.newsItems[0].description, "A news story")
             verify(testSupport.requests.every(function(request) {
                 return request.host.indexOf("wikipedia.org") < 0
                     || request.host.indexOf("fr.wikipedia.org") >= 0
@@ -141,8 +174,8 @@ Item {
             testSupport.clearRequests()
             SettingsState.setLanguage("en")
             compare(homeModel.newsItems.length, 0)
-            tryCompare(testSupport, "requestCount", 5)
-            tryCompare(homeModel.newsItems, "length", 1)
+            tryCompare(testSupport, "requestCount", 6)
+            tryCompare(homeModel.newsItems, "length", 43)
         }
     }
 }

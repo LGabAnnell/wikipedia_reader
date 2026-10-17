@@ -26,6 +26,7 @@ Column {
 
         Repeater {
             id: repeater
+            objectName: "homeNewsItems"
             delegate: Item {
                 Layout.preferredHeight: rowLayout.implicitHeight
                 Layout.preferredWidth: newsSection.width - 20
