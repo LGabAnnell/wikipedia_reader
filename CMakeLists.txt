@@ -99,6 +99,10 @@ set_target_properties(wikipedia_qt_core PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
+target_compile_definitions(wikipedia_qt_core PUBLIC
+    WIKIPEDIA_READER_VERSION="${PROJECT_VERSION}"
+)
+
 target_include_directories(wikipedia_qt_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/state

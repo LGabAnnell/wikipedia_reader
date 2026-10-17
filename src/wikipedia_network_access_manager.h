@@ -13,7 +13,7 @@ namespace WikipediaNetwork {
 
 inline constexpr auto FactoryProperty = "wikipediaNetworkAccessManagerFactory";
 
-/** @brief Network manager with a workaround for Qt 6.11.2 HTTP/2 socket reads. */
+/** @brief Identifies the app to Wikimedia and applies runtime compatibility fixes. */
 class NetworkAccessManager final : public QNetworkAccessManager {
   public:
     explicit NetworkAccessManager(QObject *parent = nullptr) : QNetworkAccessManager(parent) {}
@@ -22,6 +22,12 @@ class NetworkAccessManager final : public QNetworkAccessManager {
     QNetworkReply *createRequest(Operation operation, const QNetworkRequest &request,
                                 QIODevice *outgoingData = nullptr) override {
         QNetworkRequest compatibleRequest(request);
+        // Wikimedia expects an app name/version and a contact URL, followed by
+        // the framework version: https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy
+        compatibleRequest.setRawHeader("User-Agent",
+                                       QByteArrayLiteral("WikipediaReader/" WIKIPEDIA_READER_VERSION
+                                                         " (https://github.com/LGabAnnell/wikipedia_reader) Qt/")
+                                           + qVersion());
         // Qt 6.11.2's HTTP/2 frame reader can read a closed TLS socket when an
         // idle connection closes. Use HTTP/1.1 on the affected runtime only.
         if (QLibraryInfo::version() == QVersionNumber(6, 11, 2)) {
