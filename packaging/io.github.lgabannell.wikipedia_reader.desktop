@@ -1,11 +1,10 @@
-#!/usr/bin/env xdg-open
 [Desktop Entry]
 Type=Application
 Name=Wikipedia Reader
 Comment=Browse and read Wikipedia articles
 Exec=appwikipedia_qt
-Icon=appwikipedia_qt
+Icon=io.github.lgabannell.wikipedia_reader
 Terminal=false
-Categories=Education;Network;
+Categories=Education;
 Keywords=wikipedia;encyclopedia;reader;articles;
 StartupWMClass=appwikipedia_qt

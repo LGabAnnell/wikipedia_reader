@@ -93,3 +93,9 @@ CMakeLists.txt.user*
 **qmldir
 **.qmlls.ini
 .vibe
+
+# Flatpak build output
+/.flatpak-builder/
+/flatpak-build/
+/flatpak-repo/
+/*.flatpak

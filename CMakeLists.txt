@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.16)
 project(wikipedia_qt VERSION 0.1 LANGUAGES CXX)
 
 option(BUILD_TESTING "Build tests" OFF)
+option(WIKIPEDIA_FLATPAK "Install app modules using Qt from the Flatpak runtime" OFF)
+
+set(WIKIPEDIA_APP_ID "io.github.lgabannell.wikipedia_reader")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -144,27 +147,6 @@ target_include_directories(wikipedia_runtime PUBLIC
 
 target_link_libraries(wikipedia_runtime PUBLIC Qt::Quick)
 
-qt_add_executable(appwikipedia_qt
-    MANUAL_FINALIZATION
-    src/main.cpp
-)
-
-qt_add_resources(appwikipedia_qt
-    "icons"
-    FILES
-        icons/home.svg
-        icons/history.svg
-        icons/back.svg
-        icons/search.svg
-        icons/app_icon.svg
-)
-
-qt_add_resources(appwikipedia_qt
-    "styles"
-    FILES
-        styles/table_style.css
-)
-
 add_subdirectory(src/modules/SearchBarModule)
 add_subdirectory(src/modules/SidebarModule)
 add_subdirectory(src/modules/HistoryModule)
@@ -174,34 +156,6 @@ add_subdirectory(src/modules/HomeModule)
 add_subdirectory(src/modules/ImageDisplayModule)
 add_subdirectory(src/modules/SectionModule)
 add_subdirectory(src)
-
-set_target_properties(appwikipedia_qt PROPERTIES
-    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    MACOSX_BUNDLE TRUE
-    WIN32_EXECUTABLE TRUE
-)
-
-target_link_libraries(appwikipedia_qt 
-PRIVATE 
-    Qt::Quick
-    Qt::Widgets
-    Qt::SvgWidgets
-    wikipedia_qt 
-    SearchBarModule 
-    SidebarModule 
-    HistoryModule
-    ContentDisplayModule
-    HeaderModule
-    HomeModule
-    ImageDisplayModule
-    SectionModule
-    wikipedia_runtime
-    wikipedia_qt_core
-)
-
-# Finalize before generating deployment scripts, including with CMake < 3.19.
-qt_finalize_executable(appwikipedia_qt)
 
 include(GNUInstallDirs)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -221,18 +175,28 @@ install(TARGETS appwikipedia_qt wikipedia_qt_core
 )
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    qt_generate_deploy_qml_app_script(
-        TARGET appwikipedia_qt
-        OUTPUT_SCRIPT wikipedia_deploy_script
-    )
-    install(SCRIPT ${wikipedia_deploy_script})
+    if (WIKIPEDIA_FLATPAK)
+        include(packaging/Flatpak.cmake)
+    else()
+        qt_generate_deploy_qml_app_script(
+            TARGET appwikipedia_qt
+            OUTPUT_SCRIPT wikipedia_deploy_script
+        )
+        install(SCRIPT ${wikipedia_deploy_script})
+    endif()
 
     install(FILES icons/app_icon.svg
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
-        RENAME appwikipedia_qt.svg
+        RENAME ${WIKIPEDIA_APP_ID}.svg
     )
-    install(FILES packaging/appwikipedia_qt.desktop
+    install(FILES packaging/${WIKIPEDIA_APP_ID}.desktop
         DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+    )
+    install(FILES packaging/${WIKIPEDIA_APP_ID}.metainfo.xml
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo
+    )
+    install(FILES LICENSE
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/${WIKIPEDIA_APP_ID}
     )
 endif()
 

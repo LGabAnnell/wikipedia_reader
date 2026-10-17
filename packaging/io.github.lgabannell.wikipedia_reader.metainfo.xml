@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC0-1.0 -->
+<component type="desktop-application">
+  <id>io.github.lgabannell.wikipedia_reader</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Wikipedia Reader</name>
+  <summary>Browse and read Wikipedia articles</summary>
+  <developer id="io.github.lgabannell">
+    <name>LGabAnnell</name>
+  </developer>
+  <description>
+    <p>
+      Search Wikipedia and read articles in a desktop application built with Qt.
+      Explore article sections and image galleries, and revisit articles from
+      your browsing history.
+    </p>
+    <p>
+      Discover featured articles, news, events from this day in history, and
+      did-you-know facts from the home screen. An internet connection is required
+      to retrieve Wikipedia content.
+    </p>
+    <p>This is an independent application, unaffiliated with the Wikimedia Foundation.</p>
+  </description>
+  <launchable type="desktop-id">io.github.lgabannell.wikipedia_reader.desktop</launchable>
+  <url type="homepage">https://github.com/LGabAnnell/wikipedia_reader</url>
+  <url type="bugtracker">https://github.com/LGabAnnell/wikipedia_reader/issues</url>
+  <categories>
+    <category>Education</category>
+  </categories>
+  <provides>
+    <binary>appwikipedia_qt</binary>
+  </provides>
+  <requires>
+    <internet>always</internet>
+  </requires>
+</component>

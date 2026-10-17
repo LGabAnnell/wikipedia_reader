@@ -1,0 +1,74 @@
+# AI-assisted manifest for local builds and direct distribution.
+# Do not submit this manifest to Flathub; see packaging/README.md.
+app-id: io.github.lgabannell.wikipedia_reader
+runtime: org.kde.Platform
+runtime-version: '6.11'
+sdk: org.kde.Sdk
+command: appwikipedia_qt
+
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --env=QML_IMPORT_PATH=/app/qml
+
+cleanup:
+  - /include
+  - /lib/cmake
+  - /lib/pkgconfig
+  - '*.a'
+  - '*.la'
+
+modules:
+  - name: tinyxml2
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_SHARED_LIBS=ON
+      - -Dtinyxml2_BUILD_TESTING=OFF
+    sources:
+      - type: archive
+        url: https://codeload.github.com/leethomason/tinyxml2/tar.gz/refs/tags/11.0.0
+        dest-filename: tinyxml2-11.0.0.tar.gz
+        sha256: 5556deb5081fb246ee92afae73efd943c889cef0cafea92b0b82422d6a18f289
+    post-install:
+      - install -Dm644 LICENSE.txt /app/share/licenses/$FLATPAK_ID/tinyxml2/LICENSE.txt
+
+  - name: lexbor
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DLEXBOR_BUILD_SHARED=ON
+      - -DLEXBOR_BUILD_STATIC=OFF
+      - -DLEXBOR_BUILD_TESTS=OFF
+      - -DLEXBOR_BUILD_EXAMPLES=OFF
+    sources:
+      - type: archive
+        url: https://codeload.github.com/lexbor/lexbor/tar.gz/refs/tags/v3.0.0
+        dest-filename: lexbor-3.0.0.tar.gz
+        sha256: eafaa79ef9871f0bbb1978eda8677d184f7ecdcaa203d7cd25b3f86e32c014c2
+    post-install:
+      - install -Dm644 LICENSE /app/share/licenses/$FLATPAK_ID/lexbor/LICENSE
+      - install -Dm644 NOTICE /app/share/licenses/$FLATPAK_ID/lexbor/NOTICE
+
+  - name: wikipedia-reader
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_TESTING=OFF
+      - -DWIKIPEDIA_FLATPAK=ON
+    sources:
+      - type: dir
+        path: .
+        skip:
+          - .git
+          - .flatpak-builder
+          - build
+          - build-*
+          - cmake-build-*
+          - flatpak-build
+          - flatpak-repo
+          - '*.flatpak'
