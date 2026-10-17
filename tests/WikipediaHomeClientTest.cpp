@@ -51,6 +51,51 @@ class WikipediaHomeClientTest : public QObject {
         QCOMPARE(items[0].imageUrl, QString("https://upload.wikimedia.org/thumb.jpg"));
     }
 
+    void testParseNewsStoriesWithoutMostread() {
+        const QByteArray json = R"json({"news":[{
+            "story":"A <b>new discovery</b> &amp; its implications.",
+            "links":[{
+                "title":"Article_A", "titles":{"normalized":"Article A"},
+                "pageid":7,
+                "content_urls":{"desktop":{"page":"https:\/\/fr.wikipedia.org/wiki/Article_A"}},
+                "thumbnail":{"source":"https:\/\/upload.wikimedia.org/news.jpg"}
+            }]
+        }]})json";
+        const auto items = WikipediaHomeClient::parseNewsItems(json);
+        QCOMPARE(items.size(), 1);
+        QCOMPARE(items[0].title, QString("Article A"));
+        QCOMPARE(items[0].description, QString("A new discovery & its implications."));
+        QCOMPARE(items[0].pageid, 7);
+        QCOMPARE(items[0].url, QString("https://fr.wikipedia.org/wiki/Article_A"));
+        QCOMPARE(items[0].imageUrl, QString("https://upload.wikimedia.org/news.jpg"));
+    }
+
+    void testNewsTakesPrecedenceOverMostread() {
+        const QByteArray json = R"json({
+            "news":[{"story":"News story", "links":[{"title":"News", "pageid":7}]}],
+            "mostread":{"articles":[{"title":"Popular", "pageid":8}]}
+        })json";
+        const auto items = WikipediaHomeClient::parseNewsItems(json);
+        QCOMPARE(items.size(), 1);
+        QCOMPARE(items[0].title, QString("News"));
+        QCOMPARE(items[0].pageid, 7);
+        QVERIFY(items[0].imageUrl.isEmpty());
+    }
+
+    void testEmptyNewsDoesNotFallBackToMostread() {
+        const QByteArray json = R"json({
+            "news":[], "mostread":{"articles":[{"title":"Popular", "pageid":8}]}
+        })json";
+        QVERIFY(WikipediaHomeClient::parseNewsItems(json).isEmpty());
+    }
+
+    void testNewsWithoutLinkedArticles() {
+        const QByteArray json = R"json({
+            "news":[{"story":"No links"}, {"story":"Empty links", "links":[]}]
+        })json";
+        QVERIFY(WikipediaHomeClient::parseNewsItems(json).isEmpty());
+    }
+
     void testParseNewsItemsMissingMostread() {
         QByteArray json = R"({"other":"data"})";
         QVector<news_item> items = WikipediaHomeClient::parseNewsItems(json);

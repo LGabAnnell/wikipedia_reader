@@ -1,6 +1,7 @@
 // wikipedia_home_client.cpp
 #include "wikipedia_home_client.h"
 #include "wikipedia_network_access_manager.h"
+#include <QTextDocumentFragment>
 #include <QUrl>
 #include <QUrlQuery>
 
@@ -66,21 +67,28 @@ QVector<news_item> WikipediaHomeClient::parseNewsItems(const QByteArray &respons
     QJsonObject root = doc.object();
 
     QVector<news_item> newsItems;
-    if (root.contains("mostread")) {
-        QJsonArray items = root["mostread"].toObject()["articles"].toArray();
-        for (const auto &item : items) {
-            QJsonObject article = item.toObject();
-            news_item ni;
-            ni.title = article["title"].toString();
-            ni.description = article["extract"].toString();
-            ni.url = article["content_urls"].toObject()["desktop"].toObject()["page"].toString();
-            ni.pageid = article["pageid"].toInt();
-            ni.imageUrl = article.contains("thumbnail") ? article["thumbnail"].toObject()["source"].toString()
-                                                        : "qrc:/images/news_placeholder.jpg";
-            newsItems.append(ni);
+    // Feed sections vary by edition and date; mostread is not guaranteed.
+    const bool hasNews = root["news"].isArray();
+    const QJsonArray items = hasNews ? root["news"].toArray()
+                                     : root["mostread"].toObject()["articles"].toArray();
+    for (const auto &item : items) {
+        const QJsonObject entry = item.toObject();
+        QJsonObject article = entry;
+        if (hasNews) {
+            // A news story links to one or more article summaries.
+            const QJsonArray links = entry["links"].toArray();
+            if (links.isEmpty())
+                continue;
+            article = links.first().toObject();
         }
-    } else {
-        qWarning() << "mostread field not found in API response";
+        news_item ni;
+        ni.title = article["titles"].toObject()["normalized"].toString(article["title"].toString());
+        ni.description = hasNews ? QTextDocumentFragment::fromHtml(entry["story"].toString()).toPlainText()
+                                 : article["extract"].toString();
+        ni.url = article["content_urls"].toObject()["desktop"].toObject()["page"].toString();
+        ni.pageid = article["pageid"].toInt();
+        ni.imageUrl = article["thumbnail"].toObject()["source"].toString();
+        newsItems.append(ni);
     }
 
     return newsItems;
