@@ -198,6 +198,46 @@ Item {
             compare(appStack.currentItem, homeRoot)
         }
 
+        function test_history_navigation_does_not_duplicate_the_current_view() {
+            mouseClick(child("historyButton"))
+            tryCompare(appStack, "depth", 2)
+            const firstHistoryView = appStack.currentItem
+            // Cover direct NavigationState callers and rapid header presses
+            // before the initial push transition has finished.
+            NavigationState.navigateToHistory()
+            mouseClick(child("historyButton"))
+            tryCompare(appStack, "depth", 2)
+            tryVerify(function() { return !appStack.busy })
+            compare(appStack.currentItem, firstHistoryView)
+            compare(appStack.currentItem.objectName, "historyView")
+
+            // An older history view lower in the stack must not prevent a
+            // fresh history view from opening over another screen.
+            mouseClick(child("searchButton"))
+            tryCompare(appStack, "depth", 3)
+            tryVerify(function() { return !appStack.busy })
+            mouseClick(child("historyButton"))
+            tryCompare(appStack, "depth", 4)
+            tryVerify(function() { return !appStack.busy })
+            compare(appStack.currentItem.objectName, "historyView")
+
+            NavigationState.navigateToHistory()
+            mouseClick(child("historyButton"))
+            compare(appStack.depth, 4)
+
+            // Back restores the earlier history view; pressing History then
+            // remains idempotent because that view is now on top.
+            mouseClick(child("backButton"))
+            tryCompare(appStack, "depth", 3)
+            tryVerify(function() { return !appStack.busy })
+            mouseClick(child("backButton"))
+            tryCompare(appStack, "depth", 2)
+            tryVerify(function() { return !appStack.busy })
+            compare(appStack.currentItem.objectName, "historyView")
+            mouseClick(child("historyButton"))
+            compare(appStack.depth, 2)
+        }
+
         function test_home_returns_to_the_original_root_and_is_idempotent() {
             mouseClick(child("searchButton"))
             tryCompare(appStack, "depth", 2)

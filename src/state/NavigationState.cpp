@@ -75,6 +75,18 @@ void NavigationState::navigateToImageGallery() {
     navigateToView(Constants::imageGalleryView());
 }
 
-void NavigationState::navigateToView(const QString &view) { emit pushView(views.at(view)); }
+void NavigationState::navigateToView(const QString &view) {
+    // Header actions and callers may request history more than once. Keep a
+    // single history view at the top while still allowing it to be pushed
+    // again when another view is currently visible.
+    if (view == Constants::historyView() && m_stackView) {
+        QObject *currentItem = m_stackView->property("currentItem").value<QObject *>();
+        if (currentItem && currentItem->objectName() == QStringLiteral("historyView")) {
+            return;
+        }
+    }
+
+    emit pushView(views.at(view));
+}
 
 void NavigationState::addView(QString view, QQmlComponent *component) { views.emplace(view, component); }
