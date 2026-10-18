@@ -123,10 +123,24 @@ class WikipediaHomeClientTest : public QObject {
         WikipediaHomeClient client;
         QSignalSpy items(&client, &WikipediaHomeClient::newsItemsReceived);
         QSignalSpy errors(&client, &WikipediaHomeClient::errorOccurred);
+        QSignalSpy typedErrors(&client, &WikipediaHomeClient::sectionError);
         client.getNewsItems();
         QTRY_COMPARE(errors.count(), 1);
         QCOMPARE(items.count(), 0);
+        QCOMPARE(typedErrors.count(), 1);
+        QCOMPARE(typedErrors.first().at(0).value<WikipediaHomeClient::Section>(), WikipediaHomeClient::News);
         QCOMPARE(m_network.requestCount(), 1);
+    }
+
+    void testMalformedCurrentNewsFeedEmitsTypedFailure() {
+        m_network.addFixture("GET", feedUrl(), "not json");
+        WikipediaHomeClient client;
+        QSignalSpy items(&client, &WikipediaHomeClient::newsItemsReceived);
+        QSignalSpy errors(&client, &WikipediaHomeClient::sectionError);
+        client.getNewsItems();
+        QTRY_COMPARE(errors.count(), 1);
+        QCOMPARE(items.count(), 0);
+        QCOMPARE(errors.first().at(0).value<WikipediaHomeClient::Section>(), WikipediaHomeClient::News);
     }
 
     void testObsoleteLookbackDoesNotPublishOrContinue_data() {

@@ -151,6 +151,7 @@ qt_add_executable(WikipediaFeaturedClientTest
 target_link_libraries(WikipediaFeaturedClientTest PRIVATE
     wikipedia_qt_core
     Qt::Test
+    wikipedia_test_network
 )
 
 add_test(NAME WikipediaFeaturedClientTest COMMAND WikipediaFeaturedClientTest)

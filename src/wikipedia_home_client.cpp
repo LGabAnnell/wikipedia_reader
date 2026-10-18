@@ -10,18 +10,14 @@ WikipediaHomeClient::WikipediaHomeClient(QObject *parent)
 
 WikipediaHomeClient::~WikipediaHomeClient() = default;
 
-void WikipediaHomeClient::setLanguage(const QString &langCode) {
-    m_requests.setLanguage(langCode);
-}
+void WikipediaHomeClient::setLanguage(const QString &langCode) { m_requests.setLanguage(langCode); }
 
 void WikipediaHomeClient::cancelPendingRequests() { m_requests.cancelPendingRequests(); }
 
-void WikipediaHomeClient::getNewsItems() {
-    fetchNewsItems(QDate::currentDate(), m_requests.context(), 0, {});
-}
+void WikipediaHomeClient::getNewsItems() { fetchNewsItems(QDate::currentDate(), m_requests.context(), 0, {}); }
 
-void WikipediaHomeClient::fetchNewsItems(const QDate &date, const WikipediaRequestContext &context,
-                                        int daysBack, const QVector<news_item> &fallbackItems) {
+void WikipediaHomeClient::fetchNewsItems(const QDate &date, const WikipediaRequestContext &context, int daysBack,
+                                         const QVector<news_item> &fallbackItems) {
     if (!m_requests.isCurrent(context))
         return;
     const QString dateString = date.toString("yyyy/MM/dd");
@@ -44,7 +40,8 @@ void WikipediaHomeClient::getOnThisDayEvents(int month, int day) {
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, context]() { onOnThisDayEventsReply(reply, context); });
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, context]() { onOnThisDayEventsReply(reply, context); });
 }
 
 void WikipediaHomeClient::getDidYouKnowItems() {
@@ -53,22 +50,75 @@ void WikipediaHomeClient::getDidYouKnowItems() {
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, context]() { onRandomArticleTitleReply(reply, context); });
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, context]() { onRandomArticleTitleReply(reply, context); });
 }
 
 void WikipediaHomeClient::onNewsItemsReply(QNetworkReply *reply, const WikipediaRequestContext &context,
-                                          const QDate &date, int daysBack, QVector<news_item> fallbackItems) {
-    if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
+                                           const QDate &date, int daysBack, QVector<news_item> fallbackItems) {
+    if (!m_requests.isCurrent(context)) {
+        reply->deleteLater();
+        return;
+    }
     if (reply->error() != QNetworkReply::NoError) {
         qWarning() << "Error fetching news:" << reply->errorString();
         if (daysBack == 0) {
-            emit errorOccurred(tr("Error fetching news: %1").arg(reply->errorString()));
+            const QString error = tr("Error fetching news: %1").arg(reply->errorString());
+            emit sectionError(News, error);
+            emit errorOccurred(error);
             reply->deleteLater();
             return;
         }
     } else {
         const QByteArray data = reply->readAll();
-        const QJsonObject root = QJsonDocument::fromJson(data).object();
+        QJsonParseError parseError;
+        const auto document = QJsonDocument::fromJson(data, &parseError);
+        const QJsonObject root = document.object();
+        const bool validShape =
+            document.isObject() && !root.contains("error") &&
+            ((root.value("mostread").isObject() && root.value("mostread").toObject().value("articles").isArray()) ||
+             root.value("news").isArray());
+        bool validItems = validShape;
+        if (validItems) {
+            const QJsonArray mostread = root.value("mostread").toObject().value("articles").toArray();
+            if (!mostread.isEmpty()) {
+                for (const auto &value : mostread) {
+                    const auto article = value.toObject();
+                    const QString title = article.value("titles").toObject().value("normalized").toString(
+                        article.value("title").toString());
+                    if (!value.isObject() || title.trimmed().isEmpty() ||
+                        article.value("pageid").toInt() <= 0) {
+                        validItems = false;
+                        break;
+                    }
+                }
+            } else {
+                for (const auto &value : root.value("news").toArray()) {
+                    const auto entry = value.toObject();
+                    const QJsonArray links = entry.value("links").toArray();
+                    if (!value.isObject() || links.isEmpty() || !links.first().isObject() ||
+                        links.first().toObject().value("title").toString().trimmed().isEmpty() ||
+                        links.first().toObject().value("pageid").toInt() <= 0) {
+                        validItems = false;
+                        break;
+                    }
+                }
+            }
+        }
+        if (parseError.error != QJsonParseError::NoError || !validItems) {
+            reply->deleteLater();
+            if (daysBack == 0) {
+                const QString error = tr("Invalid response fetching news");
+                emit sectionError(News, error);
+                emit errorOccurred(error);
+                return;
+            }
+            if (daysBack < 2)
+                fetchNewsItems(date.addDays(-1), context, daysBack + 1, fallbackItems);
+            else
+                emit newsItemsReceived(fallbackItems);
+            return;
+        }
         if (!root["mostread"].toObject()["articles"].toArray().isEmpty()) {
             emit newsItemsReceived(parseNewsItems(data));
             reply->deleteLater();
@@ -120,14 +170,37 @@ QVector<news_item> WikipediaHomeClient::parseNewsItems(const QByteArray &respons
 }
 
 void WikipediaHomeClient::onOnThisDayEventsReply(QNetworkReply *reply, const WikipediaRequestContext &context) {
-    if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
+    if (!m_requests.isCurrent(context)) {
+        reply->deleteLater();
+        return;
+    }
     if (reply->error() != QNetworkReply::NoError) {
-        emit errorOccurred(tr("Error fetching on-this-day events: %1").arg(reply->errorString()));
+        const QString error = tr("Error fetching on-this-day events: %1").arg(reply->errorString());
+        emit sectionError(OnThisDay, error);
+        emit errorOccurred(error);
         reply->deleteLater();
         return;
     }
 
-    emit onThisDayEventsReceived(parseOnThisDayEvents(reply->readAll()));
+    const QByteArray data = reply->readAll();
+    const auto doc = QJsonDocument::fromJson(data);
+    bool validEvents = doc.isObject() && !doc.object().contains("error") && doc.object().value("selected").isArray();
+    if (validEvents) {
+        for (const auto &value : doc.object().value("selected").toArray()) {
+            const auto event = value.toObject();
+            if (!value.isObject() || event.value("year").toInt() == 0 ||
+                event.value("text").toString().trimmed().isEmpty()) {
+                validEvents = false;
+                break;
+            }
+        }
+    }
+    if (!validEvents) {
+        const QString error = tr("Invalid response fetching on-this-day events");
+        emit sectionError(OnThisDay, error);
+        emit errorOccurred(error);
+    } else
+        emit onThisDayEventsReceived(parseOnThisDayEvents(data));
     reply->deleteLater();
 }
 
@@ -185,9 +258,14 @@ QVector<on_this_day_event> WikipediaHomeClient::parseOnThisDayEvents(const QByte
 }
 
 void WikipediaHomeClient::onRandomArticleTitleReply(QNetworkReply *reply, const WikipediaRequestContext &context) {
-    if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
+    if (!m_requests.isCurrent(context)) {
+        reply->deleteLater();
+        return;
+    }
     if (reply->error() != QNetworkReply::NoError) {
-        emit errorOccurred(tr("Error fetching random article: %1").arg(reply->errorString()));
+        const QString error = tr("Error fetching random article: %1").arg(reply->errorString());
+        emit sectionError(DidYouKnow, error);
+        emit errorOccurred(error);
         reply->deleteLater();
         return;
     }
@@ -196,39 +274,65 @@ void WikipediaHomeClient::onRandomArticleTitleReply(QNetworkReply *reply, const 
     QJsonDocument doc = QJsonDocument::fromJson(data);
     QJsonObject root = doc.object();
 
-    if (root.contains("items")) {
-        QJsonArray items = root["items"].toArray();
-        if (!items.isEmpty()) {
-            QString title = items[0].toObject()["title"].toString();
-            fetchArticleContent(title, context);
+    if (!doc.isObject() || root.contains("error") || !root.contains("items") || !root["items"].isArray()) {
+        emit sectionError(DidYouKnow, tr("Invalid response fetching random article"));
+        emit errorOccurred(tr("Invalid response fetching random article"));
+    } else {
+        const QJsonArray items = root["items"].toArray();
+        if (items.isEmpty())
+            emit didYouKnowItemsReceived({});
+        else {
+            const QString title = items[0].toObject()["title"].toString();
+            if (title.trimmed().isEmpty()) {
+                emit sectionError(DidYouKnow, tr("Invalid random article title"));
+                emit errorOccurred(tr("Invalid random article title"));
+            } else
+                fetchArticleContent(title, context);
         }
     }
-
     reply->deleteLater();
 }
 
 void WikipediaHomeClient::fetchArticleContent(const QString &title, const WikipediaRequestContext &context) {
-    if (!m_requests.isCurrent(context)) return;
+    if (!m_requests.isCurrent(context))
+        return;
     QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/page/summary/%2").arg(context.language, title));
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, title, context]() { onArticleContentReply(reply, title, context); });
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, title, context]() { onArticleContentReply(reply, title, context); });
 }
 
-void WikipediaHomeClient::onArticleContentReply(QNetworkReply *reply, const QString &title, const WikipediaRequestContext &context) {
+void WikipediaHomeClient::onArticleContentReply(QNetworkReply *reply, const QString &title,
+                                                const WikipediaRequestContext &context) {
     Q_UNUSED(title);
-    if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
+    if (!m_requests.isCurrent(context)) {
+        reply->deleteLater();
+        return;
+    }
     if (reply->error() != QNetworkReply::NoError) {
-        emit errorOccurred(tr("Error fetching article content: %1").arg(reply->errorString()));
+        const QString error = tr("Error fetching article content: %1").arg(reply->errorString());
+        emit sectionError(DidYouKnow, error);
+        emit errorOccurred(error);
         reply->deleteLater();
         return;
     }
 
-    QVector<did_you_know_item> didYouKnowItems;
-    didYouKnowItems.append(parseArticleContent(reply->readAll()));
-
-    emit didYouKnowItemsReceived(didYouKnowItems);
+    const QByteArray data = reply->readAll();
+    const QJsonDocument doc = QJsonDocument::fromJson(data);
+    const auto item = parseArticleContent(data);
+    const auto summary = doc.object();
+    const QString pageUrl =
+        summary.value("content_urls").toObject().value("desktop").toObject().value("page").toString();
+    if (!doc.isObject() || summary.contains("error") || item.text.trimmed().isEmpty() || item.pageid <= 0 ||
+        pageUrl.isEmpty()) {
+        const QString error = tr("Invalid response fetching article content");
+        emit sectionError(DidYouKnow, error);
+        emit errorOccurred(error);
+    } else {
+        emit didYouKnowItemsReceived({item});
+    }
     reply->deleteLater();
 }
 

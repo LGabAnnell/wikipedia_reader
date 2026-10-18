@@ -23,6 +23,8 @@ qt6_add_qml_module(HomeModule
         DidYouKnowSection.qml
         OnThisDaySection.qml
         NewsSection.qml
+        HomeFeedback.qml
+        FeaturedSection.qml
     SOURCES
         HomeModel.cpp
         HomeModel.h

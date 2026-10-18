@@ -2,7 +2,7 @@
 
 Reviewed: 2026-10-18. Source baseline: `cabd681`.
 
-Completed work has been removed from this document. The remaining items are based on static inspection of the application, build configuration, and tests; no application code was changed and no test suite was run for this review.
+Most entries below describe remaining work. Section 4 records the home-pipeline improvement completed on 2026-10-18; the other observations remain based on static inspection.
 
 ## Remaining priorities
 
@@ -11,7 +11,6 @@ Completed work has been removed from this document. The remaining items are base
 | High | Enforce persistent history limits and write consistency | Bound storage and avoid misleading history state |
 | High | Add request deadlines and validate API responses | Recover from stalled or invalid responses |
 | Low | Define image-metadata failure semantics and add regression coverage | Make partial gallery results predictable |
-| Medium | Complete home-screen feedback and featured handling | Make failures visible and eliminate unused work |
 | Medium | Bound article and math-image caches | Control memory usage during long sessions |
 | Medium | Automate regression checks in CI | Catch failures before merging |
 | Low | Consolidate developer documentation and test tooling | Make setup reproducible and preserve build output |
@@ -32,7 +31,7 @@ Completed work has been removed from this document. The remaining items are base
 
 [WikipediaSearchClient.cpp](../src/wikipedia_search_client.cpp) emits `searchCompleted()` on transport success even when JSON is malformed or the expected response structure is missing. `parseSearchResults()` converts those cases into an empty vector. [WikipediaSearchClientTest.cpp](../tests/WikipediaSearchClientTest.cpp) explicitly expects zero results for malformed JSON and `{}`.
 
-**Impact:** A stalled request can keep controls busy indefinitely. Invalid JSON or a JSON API error can appear as a successful “no results” search. Similar unchecked parsing patterns occur in the page and home clients and should be audited.
+**Impact:** A stalled request can keep controls busy indefinitely. Invalid JSON or a JSON API error can appear as a successful “no results” search. Similar unchecked parsing patterns occur in other clients. The featured, news, on-this-day, and Did-you-know home pipelines now validate their required structures; broader clients and request deadlines remain outstanding.
 
 **Recommended change:** Add a shared transfer timeout and an overall deadline for multi-stage loads. Bound the wait for optional math images and retain fallback content when that budget expires. Validate JSON parse status, API error objects, and required fields before emitting success. Keep valid empty responses distinct from failures, and ensure every request ends with a defined success, failure, or cancellation outcome. Preserve the existing generation checks when adding deadlines or retries.
 
@@ -46,13 +45,11 @@ Completed work has been removed from this document. The remaining items are base
 
 **Validation:** Defer the metadata-stage reply specifically, then switch language or supersede the gallery target and verify no obsolete result. Add explicit failure and empty-image cases; current stale-gallery coverage defers the initial page reply rather than metadata completion.
 
-## 4. Complete the home experience and featured-article pipeline
+## 4. Complete the home experience and featured-article pipeline — completed (2026-10-18)
 
-**Observed:** [HomeScreen.qml](../src/modules/HomeModule/HomeScreen.qml) renders news, on-this-day, and did-you-know sections, while `HomeModel::fetchHomeData()` also fetches a featured article and its images. The featured properties have no consumer in that screen. `HomeModel` exposes no loading or error status; only the featured client's error is connected to `handleError()`, which logs a warning. Errors from its home and page clients are not connected there.
+**Implemented:** [HomeScreen.qml](../src/modules/HomeModule/HomeScreen.qml) renders featured, news, on-this-day, and did-you-know sections. Each section exposes independent loading, empty, error, and retry feedback. The featured feed thumbnail is optional and no page/gallery lookup is made. Home-client errors carry section identity, and malformed feed structures are separated from valid empty collections. The existing news lookback and fallback are preserved.
 
-**Recommended change:** Decide whether featured content belongs on the home screen: render it or remove the unused fetch chain. Expose loading, empty, error, and retry state per section so one failed feed does not obscure successful sections. Connect all relevant errors.
-
-**Remaining validation:** Add dedicated home integration coverage for pending, empty, error, and retry feedback and partial failures across sections, plus featured title/URL regression cases with spaces and URL-sensitive characters.
+**Validation:** `tests/qml/tst_home.qml` exercises independent completion, partial failure, retry scope, featured thumbnail/display URL, and ensures home loads leave article state and browsing history untouched. Backend tests cover news lookback fallback and featured parsing.
 
 ## 5. Put budgets on caches and math-image work
 
@@ -84,5 +81,5 @@ Completed work has been removed from this document. The remaining items are base
 
 1. Fix persistent history trimming and add its state-level regression test.
 2. Add deadlines and response validation, define metadata partial-result semantics, and extend deferred-response coverage across the asynchronous chains.
-3. Complete home-screen feedback and decide whether to render featured content; extend coverage to section failures/retry and featured title/URL behavior.
+3. Complete shared request deadlines and response validation outside the home pipelines.
 4. Establish CI, consolidate setup/test documentation and runners, and profile caches before selecting budgets.

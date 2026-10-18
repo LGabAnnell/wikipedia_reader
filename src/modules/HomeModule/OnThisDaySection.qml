@@ -12,6 +12,9 @@ Column {
     padding: 20
 
     property alias model: repeater.model
+    property int status: 0
+    property string errorMessage: ""
+    signal retryRequested()
     property SystemPalette sysPalette: SystemPalette {}
 
     Label {
@@ -20,6 +23,8 @@ Column {
         font.pixelSize: 20
         font.bold: true
     }
+
+    HomeFeedback { width: parent.width; sectionName: "onThisDay"; status: onThisDaySection.status; errorMessage: onThisDaySection.errorMessage; emptyMessage: "No events available for this day."; onRetryRequested: onThisDaySection.retryRequested() }
 
     // On this day events
     ColumnLayout {

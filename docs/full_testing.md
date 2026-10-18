@@ -68,8 +68,8 @@ network testing, and `-r` to delete and rebuild `build/`. Configure local
 dependency prefixes first. The separate root `test.sh` always deletes
 `build/` before configuring and rebuilding.
 
-The current source configuration registers **25 CTest entries: 15 C++ and
-10 QML**. These are executables/test files, not individual test cases or
+The current source configuration registers **26 CTest entries: 15 C++ and
+11 QML**. These are executables/test files, not individual test cases or
 data rows. The inventory below reflects the sources reviewed on 2026-10-16;
 it is not a record of a passing test run.
 
@@ -90,8 +90,8 @@ Each named entry below has a matching `.cpp` file under `tests/`.
 | `HistoryDatabaseTest` | Database opens, add/load/clear, duplicate page IDs, explicit pruning, load limits, and timestamp ordering. Its error-signal test only checks that no error was emitted; it does not inject a failure. |
 | `WikipediaSearchClientTest` | Search-result fields/counts, empty responses, missing keys, and malformed JSON. |
 | `WikipediaPageClientTest` | Page fields, title/ID mismatch, image titles, sections, empty/missing sections, and malformed JSON. |
-| `WikipediaFeaturedClientTest` | Featured-article parsing, missing `tfa`, partial fields, and malformed JSON. |
-| `WikipediaHomeClientTest` | News and thumbnails, on-this-day entries, summary/did-you-know data, missing fields, empty data, and malformed JSON. |
+| `WikipediaFeaturedClientTest` | Featured parsing, feed thumbnail, missing `tfa`, invalid page IDs, malformed JSON, API errors, and unavailable versus invalid outcomes. |
+| `WikipediaHomeClientTest` | News parsing and thumbnails, bounded lookback and fallback, typed section failures, invalid current feeds, on-this-day validation, and both Did-you-know request stages. |
 | `test_sidebar_layout` | Sidebar creation, presence of a ListView, and the `searchResults` property. CTest supplies its working directory and QML import path. |
 | `test_search_display` | Opt-in live search through `SearchBarModel` and `SearchState`; see the limitations below. |
 
@@ -131,7 +131,8 @@ Each file under `tests/qml/` is registered as `QmlTests.<filename without .qml>`
 | `tst_inline_images.qml` | Thumbnail-to-original conversion, SVG/lossy thumbnail handling, unchanged non-thumbnail URLs, full-resolution image links, and captions carried into image links. |
 | `tst_images.qml` | Fixture article/gallery loading, selecting an image, URL/caption in `ImageSelectionState`, and the fullscreen image/caption in `ImageView`. |
 | `tst_history.qml` | Article visits through `ArticleState`, newest-first order, and revisiting an article without duplicating its history entry. |
-| `tst_navigation.qml` | Real Main window: Search/History push, toolbar and mouse Back pop, Home returns to the original root and is idempotent. Language changes retain that root, clear home news, and request/refill data for the selected edition. |
+| `tst_navigation.qml` | Real Main window: Search/History push, toolbar and mouse Back pop, Home returns to the original root and is idempotent. Language changes retain that root, clear home news, and request/refill data for the selected edition. Featured article navigation and Back are covered. |
+| `tst_home.qml` | Featured/news/on-this-day/did-you-know pending, ready, empty, error, and retry states; partial failures; duplicate-retry suppression; delayed refresh and language-transition rejection across the Did-you-know summary stage; featured thumbnails, image failure independence, article navigation, URL encoding, narrow/normal viewport width, and article/history isolation. |
 | `tst_sections.qml` | Deferred sections, click-to-heading scrolling, viewport tracking/highlight, discarding pending success/error feedback when the article clears, preserving reading position on panel resize, empty results, and request errors. |
 | `tst_feature_isolation.qml` | Search success/empty/error responses do not complete a pending article or clear its errors; section/gallery failures do not affect article feedback. Language transitions clear search, sections, gallery, and image selection and reject an obsolete gallery reply. |
 | `tst_scrollbars.qml` | Article scrollbar placement and interactivity across widths, drag scrolling, and mirrored left-to-right/right-to-left layouts. |
@@ -190,9 +191,10 @@ request counts. Prefer deferred replies over timing sleeps for pending states.
 
 ## Remaining coverage and limits
 
-- There is no dedicated home-screen integration test for rendered feed cards,
-  empty feeds, partial failures, or retry. `tst_navigation.qml` does cover home
-  refresh on language changes; home parser tests cover response data.
+- Home behavior has dedicated fake-transport coverage in `tst_home.qml` and
+  navigation coverage in `tst_navigation.qml`. The home tests use a missing
+  local image path to verify image failure handling; they do not depend on a
+  live image host.
 - History tests cover same-run visits and database helper operations, not a
   restart/reopen persistence scenario, language-aware identity, state-level
   retention beyond 50 visits, or database failure recovery.

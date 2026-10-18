@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import wikipedia_qt
+import wikipedia_qt.Home
 
 Item {
     id: root
@@ -27,7 +28,6 @@ Item {
                 const featuredUrl = "https://api.wikimedia.org/feed/v1/wikipedia/" + lang + "/featured/" + date
                 const onThisDayUrl = "https://api.wikimedia.org/feed/v1/wikipedia/" + lang + "/onthisday/all/" + monthDay
                 const randomTitleUrl = "https://" + lang + ".wikipedia.org/api/rest_v1/page/random/title"
-                const pageImagesUrl = "https://" + lang + ".wikipedia.org/w/api.php?action=query&format=json&prop=extracts%7Cimages&pageids=1&explaintext=1&imlimit=50"
                 const title = lang === "en" ? "Navigation fixture" : "Navigation fixture français"
                 const article = {"title":title,"extract":"Article summary","pageid":1,"content_urls":{"desktop":{"page":"https://" + lang + ".wikipedia.org/wiki/Fixture"}}}
                 const feed = {
@@ -48,9 +48,7 @@ Item {
                     networkFixtures.addFixture("GET", previousFeedUrl, JSON.stringify(previousFeed))
                 }
                 networkFixtures.addFixture("GET", onThisDayUrl, '{"selected":[]}')
-                networkFixtures.addFixture("GET", randomTitleUrl, '{}')
-                networkFixtures.addFixture("GET", pageImagesUrl,
-                                           JSON.stringify({"query":{"pages":{"1":{"pageid":1,"title":title,"extract":"","images":[]}}}}))
+                networkFixtures.addFixture("GET", randomTitleUrl, '{"items":[]}')
             }
         }
 
@@ -63,7 +61,7 @@ Item {
                 verify(appWindow !== null, "Main application window must be created")
                 appStack = findChild(appWindow, "applicationStack")
                 verify(appStack !== null, "Main StackView must be available")
-                tryCompare(testSupport, "requestCount", 6)
+                tryCompare(testSupport, "requestCount", 5)
                 homeRoot = appStack.currentItem
                 verify(homeRoot !== null, "Home must be the initial stack item")
                 compare(homeRoot.objectName, "homeView")
@@ -270,6 +268,20 @@ Item {
             tryVerify(function() { return scrollView.contentHeight > scrollView.availableHeight })
         }
 
+        function test_featured_article_navigation_and_back() {
+            configureHistoryArticle("en", 1, "Navigation fixture")
+            const homeModel = child("homeModel")
+            tryCompare(homeModel, "featuredStatus", HomeModel.Ready)
+            mouseClick(child("featuredReadArticleButton"))
+            tryCompare(appStack, "depth", 2)
+            tryVerify(function() { return !appStack.busy })
+            tryCompare(ArticleState, "isLoading", false)
+            compare(ArticleState.currentPageId, 1)
+            mouseClick(child("backButton"))
+            tryCompare(appStack, "depth", 1)
+            compare(appStack.currentItem, homeRoot)
+        }
+
         function test_mouse_back_button_pops_one_view() {
             mouseClick(child("searchButton"))
             tryCompare(appStack, "depth", 2)
@@ -289,7 +301,7 @@ Item {
             compare(appStack.depth, 1)
             compare(appStack.currentItem, homeRoot)
             compare(homeModel.newsItems.length, 0)
-            tryCompare(testSupport, "requestCount", 7)
+            tryCompare(testSupport, "requestCount", 6)
             tryCompare(homeModel.newsItems, "length", 1)
             compare(homeModel.newsItems[0].title, "Navigation fixture français")
             compare(homeModel.newsItems[0].description, "A news story")
@@ -302,7 +314,7 @@ Item {
             SettingsState.setLanguage("en")
             compare(child("languageSelector").currentValue, "en")
             compare(homeModel.newsItems.length, 0)
-            tryCompare(testSupport, "requestCount", 6)
+            tryCompare(testSupport, "requestCount", 5)
             tryCompare(homeModel.newsItems, "length", 43)
         }
     }

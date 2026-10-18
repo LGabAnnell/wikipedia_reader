@@ -17,6 +17,8 @@
 class WikipediaHomeClient : public QObject {
     Q_OBJECT
   public:
+    enum Section { News, OnThisDay, DidYouKnow };
+    Q_ENUM(Section)
     explicit WikipediaHomeClient(QObject *parent = nullptr);
     ~WikipediaHomeClient();
 
@@ -36,10 +38,11 @@ class WikipediaHomeClient : public QObject {
     void onThisDayEventsReceived(const QVector<on_this_day_event> &events);
     void didYouKnowItemsReceived(const QVector<did_you_know_item> &items);
     void errorOccurred(const QString &error);
+    void sectionError(WikipediaHomeClient::Section section, const QString &error);
 
   private slots:
-    void onNewsItemsReply(QNetworkReply *reply, const WikipediaRequestContext &context,
-                          const QDate &date, int daysBack, QVector<news_item> fallbackItems);
+    void onNewsItemsReply(QNetworkReply *reply, const WikipediaRequestContext &context, const QDate &date, int daysBack,
+                          QVector<news_item> fallbackItems);
     void onOnThisDayEventsReply(QNetworkReply *reply, const WikipediaRequestContext &context);
     void onRandomArticleTitleReply(QNetworkReply *reply, const WikipediaRequestContext &context);
     void onArticleContentReply(QNetworkReply *reply, const QString &title, const WikipediaRequestContext &context);
@@ -47,8 +50,8 @@ class WikipediaHomeClient : public QObject {
   private:
     QNetworkAccessManager *networkManager;
     WikipediaRequestTracker m_requests;
-    void fetchNewsItems(const QDate &date, const WikipediaRequestContext &context,
-                        int daysBack, const QVector<news_item> &fallbackItems);
+    void fetchNewsItems(const QDate &date, const WikipediaRequestContext &context, int daysBack,
+                        const QVector<news_item> &fallbackItems);
     void fetchArticleContent(const QString &title, const WikipediaRequestContext &context);
 };
 

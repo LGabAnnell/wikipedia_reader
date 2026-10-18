@@ -24,11 +24,13 @@ class WikipediaFeaturedClient : public QObject {
     void setLanguage(const QString &langCode);
     void cancelPendingRequests();
 
-    static void parseFeaturedArticle(const QByteArray &responseData,
-                                     QString &title, QString &extract, int &pageid);
+    static void parseFeaturedArticle(const QByteArray &responseData, QString &title, QString &extract, int &pageid,
+                                     QString &thumbnailUrl);
 
   signals:
-    void featuredArticleReceived(const QString &title, const QString &extract, const int &pageid);
+    void featuredArticleReceived(const QString &title, const QString &extract, const int &pageid,
+                                 const QString &thumbnailUrl);
+    void featuredArticleUnavailable();
     void errorOccurred(const QString &error);
 
   private slots:

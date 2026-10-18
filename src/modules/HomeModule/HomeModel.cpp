@@ -1,143 +1,134 @@
 #include "HomeModel.h"
 #include <QDate>
-#include <QDebug>
 #include <QUrl>
-#include <QString>
-#include "SettingsState.h"
-#include "wikipedia_featured_client.h"
-#include "wikipedia_home_client.h"
-#include "wikipedia_page_client.h"
-#include "wikipedia_models.h"
 
 HomeModel::HomeModel(QObject *parent) : QObject(parent) {
-    // Initialize Wikipedia clients
     m_featuredClient = new WikipediaFeaturedClient(this);
     m_homeClient = new WikipediaHomeClient(this);
-    m_pageClient = new WikipediaPageClient(this);
-
     m_settings = SettingsState::instance();
     if (m_settings) {
         m_featuredClient->setLanguage(m_settings->language());
         m_homeClient->setLanguage(m_settings->language());
-        m_pageClient->setLanguage(m_settings->language());
-
-        connect(m_settings, &SettingsState::languageChanged, this, [this]() {
-            QString lang = m_settings->language();
-            m_featuredClient->setLanguage(lang);
-            m_homeClient->setLanguage(lang);
-            m_pageClient->setLanguage(lang);
-            fetchHomeData();
-        });
         connect(m_settings, &SettingsState::languageTransitionStarted, this, [this]() {
             m_featuredClient->cancelPendingRequests();
             m_homeClient->cancelPendingRequests();
-            m_pageClient->cancelPendingRequests();
-            m_featuredArticleTitle.clear();
-            m_featuredArticleExtract.clear();
-            m_featuredArticleUrl.clear();
-            m_featuredArticleImageUrl.clear();
-            m_newsItems.clear();
-            m_onThisDayEvents.clear();
-            m_didYouKnowItems.clear();
-            emit featuredArticleUpdated();
-            emit featuredArticleImageUpdated();
-            emit dataUpdated();
+            for (int i = 0; i < 4; ++i) {
+                clearSection(static_cast<Section>(i));
+                setStatus(static_cast<Section>(i), Idle);
+            }
+        });
+        connect(m_settings, &SettingsState::languageChanged, this, [this]() {
+            m_featuredClient->setLanguage(m_settings->language());
+            m_homeClient->setLanguage(m_settings->language());
+            fetchHomeData();
         });
     }
-
-    // Connect signals from WikipediaFeaturedClient
-    connect(m_featuredClient, &WikipediaFeaturedClient::featuredArticleReceived,
-            this, &HomeModel::handleFeaturedArticleReceived);
-    connect(m_pageClient, &WikipediaPageClient::pageWithImagesReceived,
-            this, &HomeModel::handlePageWithImagesReceived);
-    connect(m_featuredClient, &WikipediaFeaturedClient::errorOccurred,
-            this, &HomeModel::handleError);
-
-    // Connect new signals for News, On This Day, and Did You Know
-    connect(m_homeClient, &WikipediaHomeClient::newsItemsReceived,
-            this, &HomeModel::handleNewsItemsReceived);
-    connect(m_homeClient, &WikipediaHomeClient::onThisDayEventsReceived,
-            this, &HomeModel::handleOnThisDayEventsReceived);
-    connect(m_homeClient, &WikipediaHomeClient::didYouKnowItemsReceived,
-            this, &HomeModel::handleDidYouKnowItemsReceived);
+    connect(m_featuredClient, &WikipediaFeaturedClient::featuredArticleReceived, this,
+            [this](const QString &title, const QString &extract, int pageid, const QString &thumbnail) {
+                m_featuredArticleTitle = title;
+                m_featuredArticleExtract = extract;
+                m_featuredArticlePageId = pageid;
+                m_featuredArticleImageUrl = thumbnail;
+                QString slug = QString::fromLatin1(QUrl::toPercentEncoding(title));
+                m_featuredArticleUrl = QString("https://%1.wikipedia.org/wiki/%2")
+                                           .arg(m_settings ? m_settings->language() : "en", slug.replace("%20", "_"));
+                setStatus(Featured, Ready);
+                emit featuredArticleUpdated();
+            });
+    connect(m_featuredClient, &WikipediaFeaturedClient::errorOccurred, this, [this](const QString &error) {
+        if (m_featuredClient) {
+            setStatus(Featured, Error, error);
+        }
+    });
+    connect(m_featuredClient, &WikipediaFeaturedClient::featuredArticleUnavailable, this,
+            [this]() { setStatus(Featured, Empty); });
+    connect(m_homeClient, &WikipediaHomeClient::sectionError, this, &HomeModel::handleHomeError);
+    connect(m_homeClient, &WikipediaHomeClient::newsItemsReceived, this, [this](const auto &items) {
+        m_newsItems = items;
+        setStatus(News, items.isEmpty() ? Empty : Ready);
+        emit dataUpdated();
+    });
+    connect(m_homeClient, &WikipediaHomeClient::onThisDayEventsReceived, this, [this](const auto &items) {
+        m_onThisDayEvents = items;
+        setStatus(OnThisDay, items.isEmpty() ? Empty : Ready);
+        emit dataUpdated();
+    });
+    connect(m_homeClient, &WikipediaHomeClient::didYouKnowItemsReceived, this, [this](const auto &items) {
+        m_didYouKnowItems = items;
+        setStatus(DidYouKnow, items.isEmpty() ? Empty : Ready);
+        emit dataUpdated();
+    });
 }
 
-QString HomeModel::featuredArticleTitle() const {
-    return m_featuredArticleTitle;
+void HomeModel::setStatus(Section section, Status status, const QString &error) {
+    const int i = static_cast<int>(section);
+    m_status[i] = status;
+    m_errors[i] = error;
+    emit statusChanged();
 }
-
-QString HomeModel::featuredArticleExtract() const {
-    return m_featuredArticleExtract;
-}
-
-QString HomeModel::featuredArticleImageUrl() const {
-    return m_featuredArticleImageUrl;
-}
-
-QString HomeModel::featuredArticleUrl() const {
-    return m_featuredArticleUrl;
-}
-
-void HomeModel::fetchHomeData() {
-    // All independent feeds in this refresh share the same generation.
-    m_featuredClient->cancelPendingRequests();
-    m_homeClient->cancelPendingRequests();
-    m_pageClient->cancelPendingRequests();
-    // Fetch featured article of the day
-    m_featuredClient->getFeaturedArticleOfTheDay();
-
-    // Fetch real data from Wikipedia
-    m_homeClient->getNewsItems();
-
-    // Pass the current month and day to getOnThisDayEvents
-    QDate currentDate = QDate::currentDate();
-    m_homeClient->getOnThisDayEvents(currentDate.month(), currentDate.day());
-
-    m_homeClient->getDidYouKnowItems();
-}
-
-void HomeModel::handleFeaturedArticleReceived(const QString &title, const QString &extract, const int &pageid) {
-    m_featuredArticleTitle = title;
-    m_featuredArticleExtract = extract;
-    QString pageTitle = title;
-    const QString pageSlug = QString::fromLatin1(QUrl::toPercentEncoding(pageTitle.replace(' ', '_')));
-    m_featuredArticleUrl = QString("https://%1.wikipedia.org/wiki/%2")
-                               .arg(m_settings ? m_settings->language() : "en", pageSlug);
-    
-    // Use a placeholder image initially
-    m_featuredArticleImageUrl = "qrc:/images/featured_article_placeholder.jpg";
-
-    // Fetch the page with images to get the actual image URL
-    m_pageClient->getPageWithImages(pageid);
-
-    emit featuredArticleUpdated();
-}
-
-void HomeModel::handlePageWithImagesReceived(const page &page) {
-    if (page.title == m_featuredArticleTitle && !page.imageUrls.isEmpty()) {
-        // Use the first image URL if available
-        m_featuredArticleImageUrl = page.imageUrls.first();
-        emit featuredArticleImageUpdated();
+void HomeModel::clearSection(Section s) {
+    switch (s) {
+    case Featured:
+        m_featuredArticleTitle.clear();
+        m_featuredArticleExtract.clear();
+        m_featuredArticleImageUrl.clear();
+        m_featuredArticleUrl.clear();
+        m_featuredArticlePageId = 0;
+        emit featuredArticleUpdated();
+        break;
+    case News:
+        m_newsItems.clear();
+        emit dataUpdated();
+        break;
+    case OnThisDay:
+        m_onThisDayEvents.clear();
+        emit dataUpdated();
+        break;
+    case DidYouKnow:
+        m_didYouKnowItems.clear();
+        emit dataUpdated();
+        break;
     }
 }
-
-void HomeModel::handleError(const QString &error) {
-    qWarning() << "Wikipedia API error:" << error;
-    // In a production app, you might want to implement fallback to sample data here
+void HomeModel::fetchHomeData() {
+    m_featuredClient->cancelPendingRequests();
+    m_homeClient->cancelPendingRequests();
+    for (int i = 0; i < 4; ++i) {
+        const auto s = static_cast<Section>(i);
+        clearSection(s);
+        setStatus(s, Loading);
+    }
+    for (int i = 0; i < 4; ++i)
+        loadSection(static_cast<Section>(i));
 }
-
-void HomeModel::handleNewsItemsReceived(const QVector<news_item> &items) {
-    m_newsItems = items;
-    emit dataUpdated();
+void HomeModel::retrySection(Section s) {
+    if (s < Featured || s > DidYouKnow || m_status[static_cast<int>(s)] == Loading)
+        return;
+    clearSection(s);
+    setStatus(s, Loading);
+    loadSection(s);
 }
-
-void HomeModel::handleOnThisDayEventsReceived(const QVector<on_this_day_event> &events) {
-    m_onThisDayEvents = events;
-    emit dataUpdated();
+void HomeModel::loadSection(Section s) {
+    switch (s) {
+    case Featured:
+        m_featuredClient->getFeaturedArticleOfTheDay();
+        break;
+    case News:
+        m_homeClient->getNewsItems();
+        break;
+    case OnThisDay: {
+        const auto d = QDate::currentDate();
+        m_homeClient->getOnThisDayEvents(d.month(), d.day());
+        break;
+    }
+    case DidYouKnow:
+        m_homeClient->getDidYouKnowItems();
+        break;
+    }
 }
-
-void HomeModel::handleDidYouKnowItemsReceived(const QVector<did_you_know_item> &items) {
-    m_didYouKnowItems = items;
-    emit dataUpdated();
+void HomeModel::handleHomeError(WikipediaHomeClient::Section section, const QString &error) {
+    setStatus(section == WikipediaHomeClient::News        ? News
+              : section == WikipediaHomeClient::OnThisDay ? OnThisDay
+                                                          : DidYouKnow,
+              Error, error);
 }
-
