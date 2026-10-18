@@ -70,7 +70,7 @@ dependency prefixes first. The separate root `test.sh` always deletes
 
 The current source configuration registers **26 CTest entries: 15 C++ and
 11 QML**. These are executables/test files, not individual test cases or
-data rows. The inventory below reflects the sources reviewed on 2026-10-16;
+data rows. The inventory below reflects the sources reviewed on 2026-10-18;
 it is not a record of a passing test run.
 
 ## C++ coverage
@@ -87,11 +87,11 @@ Each named entry below has a matching `.cpp` file under `tests/`.
 | `WikipediaNetworkAccessManagerTest` | Both API-client and QML-image managers apply the runtime HTTP/2 policy: disabled for Qt 6.11.2, otherwise left at its default. Uses a temporary local file, not a live HTTP server. |
 | `ContentDisplayModelTest` | Per-view section state, section-position/highlight resets, article-driven search/section resets, and case-insensitive text-search navigation wrapping. |
 | `HtmlProcessorTest` | Lexbor-based cleanup and repaired HTML, style/script/link removal, legacy colors, figure/thumbnail conversion, captions and fallback descriptions, preserved surrounding text, inline/table/multiple images, math accessibility cleanup, entities, and URL normalization. |
-| `HistoryDatabaseTest` | Database opens, add/load/clear, duplicate page IDs, explicit pruning, load limits, and timestamp ordering. Its error-signal test only checks that no error was emitted; it does not inject a failure. |
+| `HistoryDatabaseTest` | Database opens, add/load/clear, edition-aware identity and uniqueness across database reopen, legacy-schema migration and idempotence, migration-failure rollback and blocked operations, explicit pruning, load limits, and timestamp ordering. The separate generic error-signal test only checks that no error was emitted; migration tests do inject a failure. |
 | `WikipediaSearchClientTest` | Search-result fields/counts, empty responses, missing keys, and malformed JSON. |
 | `WikipediaPageClientTest` | Page fields, title/ID mismatch, image titles, sections, empty/missing sections, and malformed JSON. |
 | `WikipediaFeaturedClientTest` | Featured parsing, feed thumbnail, missing `tfa`, invalid page IDs, malformed JSON, API errors, and unavailable versus invalid outcomes. |
-| `WikipediaHomeClientTest` | News parsing and thumbnails, bounded lookback and fallback, typed section failures, invalid current feeds, on-this-day validation, and both Did-you-know request stages. |
+| `WikipediaHomeClientTest` | News parsing and thumbnails, current most-read feeds without lookback, bounded lookback, news fallback after older-feed failures, typed section failures, invalid current feeds, on-this-day validation, and both Did-you-know request stages. |
 | `test_sidebar_layout` | Sidebar creation, presence of a ListView, and the `searchResults` property. CTest supplies its working directory and QML import path. |
 | `test_search_display` | Opt-in live search through `SearchBarModel` and `SearchState`; see the limitations below. |
 
@@ -130,8 +130,8 @@ Each file under `tests/qml/` is registered as `QmlTests.<filename without .qml>`
 | `tst_article.qml` | Search-result selection, deferred loading and rendered HTML, inline image captions/fullscreen selection and Back, load errors without failed history visits, clearing visible and covered article views on language changes without changing stack depth, and article-link navigation preserving the previous view's content on Back. |
 | `tst_inline_images.qml` | Thumbnail-to-original conversion, SVG/lossy thumbnail handling, unchanged non-thumbnail URLs, full-resolution image links, and captions carried into image links. |
 | `tst_images.qml` | Fixture article/gallery loading, selecting an image, URL/caption in `ImageSelectionState`, and the fullscreen image/caption in `ImageView`. |
-| `tst_history.qml` | Article visits through `ArticleState`, newest-first order, and revisiting an article without duplicating its history entry. |
-| `tst_navigation.qml` | Real Main window: Search/History push, toolbar and mouse Back pop, Home returns to the original root and is idempotent. Language changes retain that root, clear home news, and request/refill data for the selected edition. Featured article navigation and Back are covered. |
+| `tst_history.qml` | Article visits through `ArticleState`, newest-first order, revisiting an article without duplicating its history entry, and visible but disabled unknown-edition entries. |
+| `tst_navigation.qml` | Real Main window: Search/History push, toolbar and mouse Back pop, Home returns to the original root and is idempotent. Language changes retain that root, clear home news, and request/refill data for the selected edition. Featured article navigation and Back, edition-restoring history navigation, cached history selection, duplicate-history-view prevention, and rendering recent most-read fallback content are covered. |
 | `tst_home.qml` | Featured/news/on-this-day/did-you-know pending, ready, empty, error, and retry states; partial failures; duplicate-retry suppression; delayed refresh and language-transition rejection across the Did-you-know summary stage; featured thumbnails, image failure independence, article navigation, URL encoding, narrow/normal viewport width, and article/history isolation. |
 | `tst_sections.qml` | Deferred sections, click-to-heading scrolling, viewport tracking/highlight, discarding pending success/error feedback when the article clears, preserving reading position on panel resize, empty results, and request errors. |
 | `tst_feature_isolation.qml` | Search success/empty/error responses do not complete a pending article or clear its errors; section/gallery failures do not affect article feedback. Language transitions clear search, sections, gallery, and image selection and reject an obsolete gallery reply. |
@@ -195,9 +195,10 @@ request counts. Prefer deferred replies over timing sleeps for pending states.
   navigation coverage in `tst_navigation.qml`. The home tests use a missing
   local image path to verify image failure handling; they do not depend on a
   live image host.
-- History tests cover same-run visits and database helper operations, not a
-  restart/reopen persistence scenario, language-aware identity, state-level
-  retention beyond 50 visits, or database failure recovery.
+- History tests cover same-run visits, edition-aware identity across database
+  reopen, legacy migration, and migration-failure rollback. They do not cover a
+  full application restart, state-level retention beyond 50 visits, or
+  state-level insertion/clear failure recovery.
 - Request-isolation tests cover selected stale-reply paths, not every stage of
   the HTML/math-image/metadata chains. They do not test request deadlines.
 - Headless fixture tests do not establish live API compatibility or validate

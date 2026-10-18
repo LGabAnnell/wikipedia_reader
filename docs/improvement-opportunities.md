@@ -1,8 +1,9 @@
 # Improvement opportunities
 
-Reviewed: 2026-10-18. Source baseline: `cabd681`.
+Reviewed: 2026-10-18. Source baseline: `2841adb`.
 
-Most entries below describe remaining work. Section 4 records the home-pipeline improvement completed on 2026-10-18; the other observations remain based on static inspection.
+Entries below describe remaining work based on static inspection. Completed
+home behavior is documented in [the testing guide](full_testing.md).
 
 ## Remaining priorities
 
@@ -45,13 +46,7 @@ Most entries below describe remaining work. Section 4 records the home-pipeline 
 
 **Validation:** Defer the metadata-stage reply specifically, then switch language or supersede the gallery target and verify no obsolete result. Add explicit failure and empty-image cases; current stale-gallery coverage defers the initial page reply rather than metadata completion.
 
-## 4. Complete the home experience and featured-article pipeline — completed (2026-10-18)
-
-**Implemented:** [HomeScreen.qml](../src/modules/HomeModule/HomeScreen.qml) renders featured, news, on-this-day, and did-you-know sections. Each section exposes independent loading, empty, error, and retry feedback. The featured feed thumbnail is optional and no page/gallery lookup is made. Home-client errors carry section identity, and malformed feed structures are separated from valid empty collections. The existing news lookback and fallback are preserved.
-
-**Validation:** `tests/qml/tst_home.qml` exercises independent completion, partial failure, retry scope, featured thumbnail/display URL, and ensures home loads leave article state and browsing history untouched. Backend tests cover news lookback fallback and featured parsing.
-
-## 5. Put budgets on caches and math-image work
+## 4. Put budgets on caches and math-image work
 
 **Observed:** [ArticleState.h](../src/state/ArticleState.h) holds an unbounded `QMap<int, page>` cache. [WikipediaPageClient](../src/wikipedia_page_client.cpp) caches rasterized math images as base64 data URLs and starts a request for every distinct uncached formula in an article. Individual raster dimensions are capped at 4096, but there is no aggregate cache budget or application-level work queue.
 
@@ -61,7 +56,7 @@ Most entries below describe remaining work. Section 4 records the home-pipeline 
 
 **Validation:** Browse a large fixture set repeatedly and record memory and load latency. Assert eviction, refetch behavior, and the configured concurrency limit.
 
-## 6. Add reproducible CI around the existing tests
+## 5. Add reproducible CI around the existing tests
 
 **Observed:** No tracked `.github/workflows` configuration is present. [tests/CMakeLists.txt](../tests/CMakeLists.txt) already registers backend and QML tests, and the fixture transport provides a foundation for deterministic network behavior. This observation does not rule out externally configured CI.
 
@@ -69,11 +64,11 @@ Most entries below describe remaining work. Section 4 records the home-pipeline 
 
 **Validation:** Demonstrate a clean checkout build and a failing-test run that fails the job and preserves useful diagnostics. Document the supported dependency baseline, then expand platform coverage as needed.
 
-## 7. Refresh documentation and make test execution less disruptive
+## 6. Refresh documentation and make test execution less disruptive
 
-**Remaining issues:** [AGENTS.md](../AGENTS.md) and [TESTING.md](../TESTING.md) still describe `GlobalState` and/or previously duplicated backend compilation. The README links to that outdated testing guide, and [full_testing.md](full_testing.md) has not yet incorporated the new news fallback/rendering coverage. Testing guidance remains split across those files and `docs/`. The build requires Lexbor 3.0, absent from the agent guide's dependency overview; the guide also incorrectly says no README exists. The legacy [test.sh](../test.sh) still deletes `build`, rebuilds with `-j14`, and lacks fail-fast behavior; the agent guide incorrectly describes it as only running CTest. The incremental runner also hardcodes `-j14`.
+**Remaining issues:** The legacy [test.sh](../test.sh) deletes `build`, rebuilds with `-j14`, and lacks fail-fast behavior. The incremental [runner](../scripts/run_tests.sh) also hardcodes `-j14`. Documentation now points to [full_testing.md](full_testing.md) as the authoritative testing guide; completed proposals are indexed as historical in [the docs index](README.md).
 
-**Recommended change:** Consolidate authoritative testing guidance around the coverage guide, refresh its news coverage, update the agent guide, and label remaining older proposals with implementation status. Replace or delegate the legacy `test.sh` to the incremental runner and make build parallelism configurable. CMake presets could provide shared debug/test configurations.
+**Recommended change:** Replace or delegate the legacy `test.sh` to the incremental runner and make build parallelism configurable. CMake presets could provide shared debug/test configurations.
 
 **Validation:** Follow the documented steps from a fresh checkout. Exercise the incremental runner's configuration/build failure paths and confirm failure propagation; verify a unified root test command preserves existing build output by default.
 
@@ -81,5 +76,4 @@ Most entries below describe remaining work. Section 4 records the home-pipeline 
 
 1. Fix persistent history trimming and add its state-level regression test.
 2. Add deadlines and response validation, define metadata partial-result semantics, and extend deferred-response coverage across the asynchronous chains.
-3. Complete shared request deadlines and response validation outside the home pipelines.
-4. Establish CI, consolidate setup/test documentation and runners, and profile caches before selecting budgets.
+3. Establish CI, consolidate setup/test documentation and runners, and profile caches before selecting budgets.

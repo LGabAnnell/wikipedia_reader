@@ -1,6 +1,7 @@
 # Proposed fix for P2: preserve GUI-less backend test startup
 
-Status: proposal only; the implementation has not been changed or validated.
+Status: open proposal; all four affected tests still use `QTEST_MAIN`
+(reviewed 2026-10-18). The P1 shared-core implementation is already present.
 
 ## Problem
 
@@ -47,8 +48,7 @@ uses application metadata and `QStandardPaths`, so retaining the core
 application is appropriate.
 
 Keep the existing GUI setup for Qt Quick tests and `test_sidebar_layout`,
-including their CTest offscreen environment. `GlobalStateTest`,
-`HtmlProcessorTest`, and `WikipediaPageClientTest` already linked `Qt::Gui`
+including their CTest offscreen environment. `HtmlProcessorTest`, and `WikipediaPageClientTest` already linked `Qt::Gui`
 before this patch; changing their application type is outside this regression
 fix and would require checking their GUI-dependent code paths separately.
 
@@ -56,7 +56,7 @@ Retain the core's current dependency declarations for this focused fix.
 Merely making `Qt::Gui` private is not a reliable substitute: public headers
 currently include GUI headers, and static-library link requirements may
 still reach consumers. Explicit test entry points remain stable when the
-core is made shared as proposed for P1.
+core is shared, as it is in the current build.
 
 ## Alternative
 
@@ -101,5 +101,5 @@ user's normal data and avoids unrelated filesystem failures.
    failures. This broader check supplements the focused run; an all-offscreen
    run alone would conceal the original P2 regression.
 
-The P1 shutdown use-after-free remains a separate issue, covered by
-[the shared-core proposal](p1-shared-core-fix-proposal.md).
+The shared-core ownership change is implemented; its original rationale and
+validation criteria are retained in [the archived P1 proposal](archive/p1-shared-core-fix-proposal.md).

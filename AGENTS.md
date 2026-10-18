@@ -8,9 +8,9 @@ A Qt6 / QML desktop application that reads Wikipedia content: article search,
 full article viewing with HTML rendering, article sections, image galleries,
 a home screen (featured article of the day, in-the-news, on-this-day,
 did-you-know), and persistent browsing history (SQLite). It targets the
-English Wikipedia REST/Action APIs.
+selected Wikipedia edition’s REST/Action APIs.
 
-No README exists. The CMake project is named `wikipedia_qt`; the executable
+See `README.md` for setup and `docs/full_testing.md` for tests. The CMake project is named `wikipedia_qt`; the executable
 is `appwikipedia_qt`.
 
 ## 2. Tech Stack
@@ -19,7 +19,7 @@ is `appwikipedia_qt`.
 - **UI:** QML / Qt Quick (Qt 6.8+, `qt_standard_project_setup(REQUIRES 6.8)`)
 - **Build:** CMake >= 3.16
 - **Qt modules:** Quick, Core, Network, Sql, Gui, Svg, SvgWidgets, Widgets, Test
-- **Third-party:** `tinyxml2` (HTML parsing in `html_processor`)
+- **Third-party:** `Lexbor 3.0+` (HTML5 parsing in `html_processor`) and `tinyxml2` (SVG icon recoloring)
 - **Persistence:** SQLite via QtSql (`QStandardPaths::AppDataLocation/history.db`)
 - **Networking:** `QNetworkAccessManager` against `en.wikipedia.org` and
   `api.wikimedia.org`
@@ -28,7 +28,7 @@ is `appwikipedia_qt`.
 
 ```
 wikipedia_reader/
-├── CMakeLists.txt            # Top-level build config; finds Qt6 + tinyxml2
+├── CMakeLists.txt            # Top-level build config; finds Qt6, Lexbor + tinyxml2
 ├── src/
 │   ├── main.cpp              # Entry point; registers QML singletons
 │   ├── Main.qml              # Root ApplicationWindow + StackView
@@ -39,11 +39,15 @@ wikipedia_reader/
 │   ├── wikipedia_page_client.{h,cpp}      # Action API pages/sections/images
 │   ├── wikipedia_featured_client.{h,cpp} # Wikimedia feed: featured article
 │   ├── wikipedia_home_client.{h,cpp}     # Wikimedia feed: news/on-this-day/dyk
-│   ├── html_processor.{h,cpp}            # tinyxml2-based HTML cleanup
+│   ├── html_processor.{h,cpp}            # Lexbor-based HTML cleanup
 │   ├── wikipedia_network_access_manager.h  # Injectable QNetworkAccessManager factory
 │   ├── CMakeLists.txt        # Main `wikipedia_qt` QML module (URI wikipedia_qt)
 │   ├── state/
-│   │   ├── GlobalState.{h,cpp}     # App-wide singleton: search/page/loading state
+│   │   ├── ArticleState.{h,cpp}    # Article loading, cache, feedback
+│   │   ├── SearchState.{h,cpp}     # Search lifecycle and results
+│   │   ├── SettingsState.{h,cpp}   # Wikipedia edition and transition signals
+│   │   ├── ImageSelectionState.{h,cpp} # Fullscreen image selection
+│   │   ├── ClipboardHelper.{h,cpp} # Clipboard access
 │   │   ├── HistoryState.{h,cpp}   # History singleton (in-memory + DB)
 │   │   ├── NavigationState.{h,cpp}# StackView navigation + back-button event filter
 │   │   └── db/
@@ -67,13 +71,14 @@ wikipedia_reader/
 ├── icons/                    # SVG icons (home, history, back, search)
 ├── styles/                   # CSS (table_style.css)
 ├── scripts/run_debug.sh      # Build + run in debug mode
-├── test.sh                   # `ctest --test-dir build/tests`
+├── test.sh                   # Legacy destructive rebuild + tests
 └── .vibe/                    # Vibe agent config (cpp agent + prompt)
 ```
 
 ### Key entry points
 - `src/main.cpp` — creates `QGuiApplication`, registers singletons
-  (`GlobalState`, `HistoryState`, `NavigationState`) via
+  (`ArticleState`, `SearchState`, `SettingsState`, `ImageSelectionState`,
+  `ClipboardHelper`, `HistoryState`, `NavigationState`) via
   `qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, ...)`, installs the
   `svg` image provider, loads QML via `engine.loadFromModule("wikipedia_qt", "Main")`.
 - `src/Main.qml` — `ApplicationWindow` with a `Header` and a `StackView`
@@ -97,7 +102,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
 cmake --build build -j14
 
 # Run tests via CTest
-ctest --test-dir build            # or: ./test.sh  (runs ctest --test-dir build/tests)
+QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
 
 # Run only the Qt Quick Tests
 ctest --test-dir build -R QmlTests
@@ -117,33 +122,28 @@ enables `QtDebugMsg`) and/or pass `-DQT_QML_DEBUG=ON`. `run_debug.sh` also sets
 ## 5. Architecture & Key Modules
 
 ### State singletons (registered to QML)
-```
-QML (Main.qml, modules)  --properties/slots-->  GlobalState / HistoryState / NavigationState
-        ^                                              |
-        | signals (xxxChanged)                          v
-        └── QML bindings auto-update        Wikipedia*Client (QNetworkAccessManager)
-                                                   -> Wikipedia REST/Action APIs
-```
 
-- **`GlobalState`** (`src/state/GlobalState.h`): central app state. Owns the
-  four `Wikipedia*Client` instances. Exposes `searchResults`, current page
-  (title/extract/id), `isLoading`, `currentPageSections`, `errorMessage`.
-  `Q_INVOKABLE loadArticleByPageId(int)`, `loadArticleByTitle(QString)`,
-  `fetchSectionsForCurrentPage()`, `copyToClipboard(QString)`. Maintains an
-  article cache (`QMap<int, page>`).
-- **`HistoryState`** (`src/state/HistoryState.h`): in-memory history vector
-  (max 50 items) backed by `HistoryDatabase`. Emits `historyChanged`,
-  `databaseError`, `databaseInitialized`.
-- **`NavigationState`** (`src/state/NavigationState.h`): holds the `StackView`,
-  a `std::map<QString, QQmlComponent*>` of named views, and an event filter
-  that emits `backButtonPressed` on `Qt::BackButton`. `Q_INVOKABLE`
-  `navigateToContent/History/Search/ImageGallery`, `navigateToView`,
-  `addView`, `installEventFilter`.
-- **`Constants`** (`src/constants.h`): `QML_SINGLETON` returning view-name
-  strings (`"history"`, `"content"`, `"search"`, `"home"`, `"imageGallery"`).
+- `SettingsState` owns the selected language. It emits `languageTransitionStarted`
+  to invalidate edition-bound state before `languageChanged` triggers refreshes.
+- `ArticleState` owns article loading, feedback, and the article cache. History
+  selection restores the saved edition before loading the page.
+- `SearchState` owns search text, results, busy/completion state, and errors.
+  `SearchBarModel` adapts it to the input controls.
+- `ImageSelectionState` owns the selected image URL and caption; language
+  transitions clear the selection. `ClipboardHelper` provides clipboard access.
+- `HistoryState` keeps up to 50 in-memory entries backed by `HistoryDatabase`.
+  Identity is `(language, pageId)`; legacy unknown-edition entries cannot open.
+  Database retention and write-failure consistency remain known issues.
+- `NavigationState` registers named views, manages StackView navigation, and
+  filters the mouse Back button. `Constants` provides view-name strings.
+
+Backend implementation, meta-objects, and singleton storage live in the shared
+`wikipedia_qt_core` library. `wikipedia_runtime` contains navigation separately.
 
 ### Wikipedia API clients (`src/wikipedia_*_client.{h,cpp}`)
-All use `QNetworkAccessManager` and signal/slot async patterns.
+All use `QNetworkAccessManager` and signal/slot async patterns. URLs below show
+the English defaults; clients capture the selected edition and reject obsolete
+request generations.
 - `WikipediaSearchClient` — `search(query, limit)` -> `searchCompleted(QVector<search_result>)`. Base URL `https://en.wikipedia.org/w/api.php`.
 - `WikipediaPageClient` — `getPage(title)`, `getPageById(pageid)`,
   `getPageWithImages(pageid)`, `resolveTitleToPageId(title)`,
@@ -177,8 +177,7 @@ depends on all submodules.
   `searchStatusLabel` for errors or a successful empty response, and passes
   results to the `searchResults` sidebar. The sidebar list and delegates expose
   `searchResultsList` and `searchResultContent-<index>` selectors respectively.
-- Search success must clear `GlobalState.isLoading`; failures clear it through
-  the error path. “No results found.” is only shown after a successful response,
+- Search completion and failure clear `SearchState.isSearching`. “No results found.” is only shown after a successful response,
   never before the first search or while a retry is pending.
 
 ### Navigation
@@ -228,53 +227,21 @@ Non-blocking: only intercept needed events (e.g. `Qt::BackButton`), return
 
 ## 7. Testing
 
-### C++ tests (`tests/`)
-- **Framework:** Qt Test (`QtTest/QtTest`, `QSignalSpy`, `QTEST_MAIN`).
-- **Runner:** CTest (`enable_testing()` in `tests/CMakeLists.txt`).
-- **Test targets:** `GlobalStateTest`, `test_search_display`,
-  `test_sidebar_layout`, `HtmlProcessorTest`, `HistoryDatabaseTest`,
-  `WikipediaSearchClientTest`, `WikipediaPageClientTest`,
-  `WikipediaFeaturedClientTest`, `WikipediaHomeClientTest`.
-- Shared API clients, state, database, HTML processing, and model meta-objects
-  are compiled once in `wikipedia_qt_core`, which the app and tests link.
-  `wikipedia_runtime` contains navigation only, keeping Qt Quick out of the core.
-  The search-display and sidebar-layout tests still compile their feature models
-  directly; QML tests link the application modules.
-- Run: `ctest --test-dir build` (or `./test.sh`).
+Use [docs/full_testing.md](docs/full_testing.md) as the authoritative guide for
+build dependencies, test inventory, fixtures, coverage limits, and adding tests.
 
-### Qt Quick Test harness (`tests/qml/`)
-- **Framework:** Qt Quick Test — `QUICK_TEST_MAIN_WITH_SETUP` in
-  `qml_test_main.cpp`. Each `tst_*.qml` file is auto-globbed by
-  `tests/qml/CMakeLists.txt` into a CTest named `QmlTests.<file>` and run
-  headless (`QT_QPA_PLATFORM=offscreen`). Adding a new test means dropping a
-  new `tst_*.qml` file in `tests/qml/` — no CMake changes needed.
-- **Fake network transport:** clients obtain their `QNetworkAccessManager`
-  via the injectable factory in `src/wikipedia_network_access_manager.h`
-  (`WikipediaNetwork::installNetworkAccessManagerFactory`). In tests the
-  factory is `NetworkFixtureController` (`support/FakeNetworkAccessManager.h`),
-  which matches requests by method + URL, serves committed fixtures from
-  `tests/qml/fixtures/`, simulates HTTP status / network errors, records
-  requests, and calls `qFatal` on unexpected requests — tests never reach
-  the internet. Replies complete asynchronously by default. For deterministic
-  pending-state tests, call `networkFixtures.deferNextReply()` before issuing a
-  request, inspect `pendingReplyCount`, then release it with
-  `networkFixtures.completeNextReply()`.
-- **QML access:** the setup registers the real singletons before the engine
-  imports `wikipedia_qt` (importing first would finalize the module and
-  reject the registrations) and exposes two context properties to test files:
-  `networkFixtures` (fixture controller: `addFixture`, `clearRequests`,
-  `deferNextReply`, `completeNextReply`, `pendingReplyCount`, `requestCount`,
-  `requests`) and `testSupport` (QML-warning capture, request counts).
-- **Isolation:** app data is redirected to a per-run `QTemporaryDir` via
-  `XDG_DATA_HOME` plus a dedicated organization/application name, so the
-  SQLite history DB never touches real user data.
-- **Existing tests:** `tst_smoke.qml` — singletons usable / start idle, and
-  `Sidebar` loads without network requests or QML warnings. `tst_search.qml`
-  covers blank input, mouse and Enter submission, deferred loading controls,
-  populated and empty responses, plus error recovery and retry.
-- Run: `ctest --test-dir build -R QmlTests`.
-  Run only the search behavior test with
-  `ctest --test-dir build -R '^QmlTests\\.tst_search$' --output-on-failure`.
+- Run `./scripts/run_tests.sh` for an incremental build and offscreen CTest run.
+  It supports `-R <regex>` and opt-in live testing with `-n`.
+- The legacy `test.sh` deletes `build/` on every run; prefer the incremental runner.
+- Backend tests link `wikipedia_qt_core`; fixture tests also link
+  `wikipedia_test_network`. Use `QTEST_GUILESS_MAIN` when a core application
+  suffices. Existing GUI-backed tests need `QT_QPA_PLATFORM=offscreen` headlessly.
+- QML files in `tests/qml/tst_*.qml` are registered individually with CTest.
+  The harness registers real singletons before importing `wikipedia_qt`, installs
+  fake transport for API and QML image requests, and isolates history in a
+  temporary data directory. Unexpected requests fail immediately.
+- Prefer deferred fixture replies and asynchronous assertions for pending states.
+  Check QML warnings and request counts. See the guide for transport controls.
 
 ## 8. Git Workflow
 
@@ -294,8 +261,8 @@ Non-blocking: only intercept needed events (e.g. `Qt::BackButton`), return
 ## 9. Existing Guides / Agent Config
 
 - No `CONTRIBUTING.md` exists.
-- `docs/qt-quick-test-setup-spec.md` and `docs/full_testing.md` — design and
-  rationale for the Qt Quick Test harness in `tests/qml/`.
+- `docs/README.md` indexes current guides and archived designs.
+- `docs/full_testing.md` is the authoritative testing guide.
 - `.continue/rules/` — Continue IDE rule files (most are `alwaysApply: true`):
   `c++.md`, `qt-database-error-handling.md`, `qt-event-filter-best-practices.md`,
   `qt-sqlite-best-practices.md`, `qt-stackview-navigation.md`,
@@ -307,7 +274,7 @@ Non-blocking: only intercept needed events (e.g. `Qt::BackButton`), return
 ## 10. Configuration
 
 - No `.env` / `.env.example`. No runtime config file.
-- API base URLs are hardcoded in the client constructors:
+- API URLs use the selected language; English examples:
   - `https://en.wikipedia.org/w/api.php` (search, page)
   - `https://api.wikimedia.org/feed/v1/wikipedia/en/featured/<date>` (featured)
   - `https://en.wikipedia.org/api/rest_v1/...` (home/random/summary)

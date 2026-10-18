@@ -15,7 +15,7 @@ cmake --build build --parallel
 ```
 
 See [Flatpak packaging](packaging/README.md) for sandboxed builds and bundles,
-and [testing](TESTING.md) for the test suite.
+and [testing](docs/full_testing.md) for the test suite.
 
 ## License
 
