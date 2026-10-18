@@ -15,6 +15,8 @@ class HistoryState : public QObject {
     QML_ELEMENT
     QML_UNCREATABLE("Singleton")
 
+    Q_PROPERTY(bool databaseReady READ databaseReady NOTIFY databaseReadyChanged)
+    Q_PROPERTY(QString lastDatabaseError READ lastDatabaseError NOTIFY lastDatabaseErrorChanged)
     Q_PROPERTY(QVector<history_item> history READ history NOTIFY historyChanged)
 
   public:
@@ -22,6 +24,8 @@ class HistoryState : public QObject {
     ~HistoryState();
 
     QVector<history_item> history() const;
+    bool databaseReady() const { return m_databaseReady; }
+    QString lastDatabaseError() const { return m_lastDatabaseError; }
 
   public slots:
     /** @brief Record a visit identified by a nonblank Wikipedia language and page ID. */
@@ -30,15 +34,18 @@ class HistoryState : public QObject {
 
   signals:
     void historyChanged();
+    void databaseReadyChanged();
+    void lastDatabaseErrorChanged();
     void databaseError(const QString &errorMessage);
     void databaseInitialized();
 
   private:
     QVector<history_item> m_history;
-    static const int MAX_HISTORY_ITEMS = 50;
+    bool m_databaseReady = false;
+    QString m_lastDatabaseError;
+    void setDatabaseError(const QString &message);
     HistoryDatabase *m_database;
 
-    bool itemExistsInHistory(int pageId, const QString &language);
 };
 
 #endif // HISTORYSTATE_H

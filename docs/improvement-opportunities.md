@@ -9,22 +9,25 @@ home behavior is documented in [the testing guide](full_testing.md).
 
 | Priority | Opportunity | Main benefit |
 | --- | --- | --- |
-| High | Enforce persistent history limits and write consistency | Bound storage and avoid misleading history state |
 | High | Add request deadlines and validate API responses | Recover from stalled or invalid responses |
 | Low | Define image-metadata failure semantics and add regression coverage | Make partial gallery results predictable |
 | Medium | Bound article and math-image caches | Control memory usage during long sessions |
 | Medium | Automate regression checks in CI | Catch failures before merging |
 | Low | Consolidate developer documentation and test tooling | Make setup reproducible and preserve build output |
 
-## 1. Fix history retention and database failure semantics
+## 1. History retention and database failure semantics — completed
 
-**Confirmed control-flow defect:** In [HistoryState.cpp](../src/state/HistoryState.cpp), `addToHistory()` removes the last in-memory item when the size exceeds `MAX_HISTORY_ITEMS`, then tests that same size again before calling `removeOldestItems()`. The second condition is false after trimming. Consequently, normal additions do not enforce the database limit.
+History now retains at most 50 persisted entries globally across editions and legacy
+unknown-edition rows. Initialization prunes oversized storage. Visit insertion,
+retention, and snapshot loading share a transaction; state publishes only committed
+results. Failed additions and clears preserve visible entries and support retry.
+The History screen displays live and retained startup errors and an unavailable state.
 
-**Related issue:** Both adding and clearing history mutate memory before checking database success. A failed clear can make the UI appear empty while the records remain on disk and return after restart. Database initialization also runs inside the `HistoryDatabase` constructor, before `HistoryState` connects its forwarding signals, so those initial notifications cannot be forwarded through those connections.
-
-**Recommended change:** Make insertion and retention pruning one transaction. Publish the resulting in-memory state only after successful persistence, or explicitly expose an unsaved state. Connect initialization observers before initialization, or expose initialization status and error properties that callers can inspect afterward.
-
-**Validation:** Add more than 50 distinct items through `HistoryState`, inspect the stored row count, and reload. Inject insertion, clearing, and initialization failures and verify visible state and error reporting. Existing database-helper tests do not replace a state-level retention regression test.
+Validation: `HistoryStateTest`, `HistoryDatabaseTest`, and `QmlTests.tst_history`
+cover retention, recreation, deterministic ordering, trigger-injected rollback,
+retry, initialization failure, and UI feedback. The full offscreen CTest suite
+passes all 27 entries. See [the testing guide](full_testing.md) for coverage limits.
+SQLite file compaction and automatic initialization retries remain outside scope.
 
 ## 2. Bound requests and distinguish invalid responses from empty results
 
@@ -74,6 +77,6 @@ home behavior is documented in [the testing guide](full_testing.md).
 
 ## Suggested implementation sequence
 
-1. Fix persistent history trimming and add its state-level regression test.
+1. Completed: persistent history retention, write consistency, and regression coverage.
 2. Add deadlines and response validation, define metadata partial-result semantics, and extend deferred-response coverage across the asynchronous chains.
 3. Establish CI, consolidate setup/test documentation and runners, and profile caches before selecting budgets.

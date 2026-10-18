@@ -21,7 +21,7 @@ target_compile_definitions(wikipedia_test_network PRIVATE
     QML_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml/fixtures"
 )
 
-foreach(state_test ArticleStateTest SearchStateTest SettingsStateTest ImageSelectionStateTest)
+foreach(state_test HistoryStateTest ArticleStateTest SearchStateTest SettingsStateTest ImageSelectionStateTest)
     qt_add_executable(${state_test} ${state_test}.cpp)
     target_link_libraries(${state_test} PRIVATE wikipedia_qt_core Qt::Test wikipedia_test_network)
     add_test(NAME ${state_test} COMMAND ${state_test})

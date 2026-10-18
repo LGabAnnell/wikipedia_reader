@@ -33,6 +33,8 @@ private slots:
         m_initSpy = new QSignalSpy(m_db, &HistoryDatabase::databaseInitialized);
         m_errorSpy = new QSignalSpy(m_db, &HistoryDatabase::databaseError);
 
+        QVERIFY(m_db->initialize());
+
         // Each case gets an independent schema as well as independent data.
         QVERIFY(m_db->clearHistory());
     }
@@ -54,8 +56,8 @@ private slots:
     }
 
     void testInitialize() {
-        // The databaseInitialized signal should have been emitted in the constructor
-        // Wait a moment for the signal (it's emitted synchronously in initialize())
+        // Initialization is explicit and observable.
+        QCOMPARE(m_initSpy->count(), 1);
         QVERIFY(m_db != nullptr);
         QVERIFY(QSqlDatabase::contains("history_db"));
         QVERIFY(QSqlDatabase::database("history_db").isOpen());
@@ -156,6 +158,7 @@ private slots:
         QVERIFY(m_db->addToHistory("English updated", 42, "en", first.addSecs(2)));
         delete m_db;
         m_db = new HistoryDatabase;
+        QVERIFY(m_db->initialize());
         const auto items = m_db->loadHistory(50);
         QCOMPARE(items.size(), 2);
         QCOMPARE(items[0].language, QString("en"));
@@ -181,6 +184,7 @@ private slots:
         db = QSqlDatabase();
         delete m_db;
         m_db = new HistoryDatabase;
+        QVERIFY(m_db->initialize());
         auto items = m_db->loadHistory(50);
         QCOMPARE(items.size(), 1);
         QCOMPARE(items[0].pageId, 42);
@@ -201,6 +205,7 @@ private slots:
         }
         delete m_db;
         m_db = new HistoryDatabase;
+        QVERIFY(m_db->initialize());
         QCOMPARE(m_db->loadHistory(50).size(), 1);
         QVERIFY(m_db->addToHistory("Known English", 42, "en", QDateTime::currentDateTime()));
         QCOMPARE(m_db->loadHistory(50).size(), 2);
