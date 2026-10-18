@@ -200,21 +200,22 @@ Item {
             tryCompare(model, "didYouKnowStatus", HomeModel.Error)
             compare(model.featuredStatus, HomeModel.Ready)
         }
-        function test_featured_titles_are_preserved_and_encoded_once() {
+        function test_featured_titles_are_displayed_and_encoded_once() {
             installCompleteFixtures('{"tfa":{"title":"seed","pageid":9},"mostread":{"articles":[{"title":"Popular","pageid":1}]}}')
             model.fetchHomeData()
             tryCompare(model, "featuredStatus", HomeModel.Ready)
             const examples = [
                 ["A title", "A_title"], ["Café 東京", "Caf%C3%A9_%E6%9D%B1%E4%BA%AC"],
                 ["A&B", "A%26B"], ["A#B", "A%23B"], ["A/B", "A%2FB"],
-                ["A?B", "A%3FB"], ["A%B", "A%25B"]
+                ["A?B", "A%3FB"], ["A%B", "A%25B"],
+                ["The_Demi-Virgin", "The_Demi-Virgin", "The Demi-Virgin"]
             ]
             const feedUrl = "https://api.wikimedia.org/feed/v1/wikipedia/en/featured/" + Qt.formatDate(new Date(), "yyyy/MM/dd")
             for (let i = 0; i < examples.length; ++i) {
                 fixture(feedUrl, JSON.stringify({tfa:{title:examples[i][0],extract:"<literal>",pageid:10+i},mostread:{articles:[{title:"Popular",pageid:1}]}}))
                 model.retrySection(HomeModel.Featured)
                 tryCompare(model, "featuredStatus", HomeModel.Ready)
-                compare(model.featuredArticleTitle, examples[i][0])
+                compare(model.featuredArticleTitle, examples[i][2] || examples[i][0])
                 compare(model.featuredArticleUrl, "https://en.wikipedia.org/wiki/" + examples[i][1])
                 compare(model.featuredArticleExtract, "<literal>")
             }

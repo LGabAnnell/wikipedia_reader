@@ -25,7 +25,7 @@ HomeModel::HomeModel(QObject *parent) : QObject(parent) {
     }
     connect(m_featuredClient, &WikipediaFeaturedClient::featuredArticleReceived, this,
             [this](const QString &title, const QString &extract, int pageid, const QString &thumbnail) {
-                m_featuredArticleTitle = title;
+                m_featuredArticleTitle = QString(title).replace('_', ' ');
                 m_featuredArticleExtract = extract;
                 m_featuredArticlePageId = pageid;
                 m_featuredArticleImageUrl = thumbnail;

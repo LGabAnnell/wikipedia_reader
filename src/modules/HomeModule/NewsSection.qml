@@ -58,12 +58,16 @@ Column {
                         spacing: 5
 
                         Text {
+                            id: newsTitle
                             text: "<a href=\"page://" + modelData.pageid + "\">" + modelData.title + "</a>"
                             font.pixelSize: 14
                             font.bold: true
                             wrapMode: Text.WordWrap
                             textFormat: Text.RichText
                             color: newsItemsColumn.sysPalette.text
+                            HoverHandler {
+                                cursorShape: newsTitle.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            }
                             onLinkActivated: function(link) {
                                 if (link.startsWith("page://")) {
                                     var pageId = parseInt(link.substring(7));
@@ -85,6 +89,7 @@ Column {
                             wrapMode: Text.Wrap
                             Layout.fillWidth: true
                             color: rowLayout.sysPalette.text
+                            selectionColor: rowLayout.sysPalette.highlight
                         }
                     }
                 }

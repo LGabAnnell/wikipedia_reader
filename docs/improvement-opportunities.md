@@ -14,6 +14,7 @@ home behavior is documented in [the testing guide](full_testing.md).
 | Medium | Bound article and math-image caches | Control memory usage during long sessions |
 | Medium | Automate regression checks in CI | Catch failures before merging |
 | Low | Consolidate developer documentation and test tooling | Make setup reproducible and preserve build output |
+| Low | Let QML create independent singleton services | Reduce application startup wiring |
 
 ## 1. History retention and database failure semantics — completed
 
@@ -75,8 +76,17 @@ SQLite file compaction and automatic initialization retries remain outside scope
 
 **Validation:** Follow the documented steps from a fresh checkout. Exercise the incremental runner's configuration/build failure paths and confirm failure propagation; verify a unified root test command preserves existing build output by default.
 
+## 7. Let QML create independent singleton services
+
+**Observed:** [main.cpp](../src/main.cpp) constructs and registers every QML singleton instance. `ClipboardHelper` and `NavigationState` have no constructor dependencies and are used from QML; neither needs an application-owned instance. They are candidates for creation by the QML engine. The remaining states have constructor dependencies, provide dependencies to application-owned states, or are accessed by C++ models through static `instance()` pointers, so changing their ownership also requires a coordinated initialization and access redesign.
+
+**Recommended change:** Register `ClipboardHelper` and `NavigationState` as declarative `QML_SINGLETON` types in the `wikipedia_qt` module, with a `create(QQmlEngine *, QJSEngine *)` factory for each. Remove their `qmlRegisterSingletonInstance()` calls and stack instances from `main.cpp` and the corresponding explicit registrations in the QML test harness. Ensure the module's QML type registrar includes these types; adding `QML_SINGLETON` to a header alone is insufficient. Qt can use a default constructor for these classes, but explicit factories make engine ownership and future setup clear. Keep application-owned, dependency-injected states on explicit instance registration until their C++ consumers and initialization order are redesigned.
+
+**Validation:** Run the offscreen QML tests and verify that navigation, the mouse Back button, and copying article text still work. Check that each engine gets its own singleton instance and that teardown does not leave an event filter pointing at a destroyed object.
+
 ## Suggested implementation sequence
 
 1. Completed: persistent history retention, write consistency, and regression coverage.
 2. Add deadlines and response validation, define metadata partial-result semantics, and extend deferred-response coverage across the asynchronous chains.
 3. Establish CI, consolidate setup/test documentation and runners, and profile caches before selecting budgets.
+4. Migrate the independent QML singleton services when changing startup wiring.

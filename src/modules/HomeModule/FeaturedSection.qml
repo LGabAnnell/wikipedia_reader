@@ -17,6 +17,7 @@ ColumnLayout {
     signal retryRequested()
 
     spacing: 10
+    Layout.margins: 20
 
     Label {
         text: "Featured article"

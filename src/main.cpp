@@ -16,9 +16,9 @@
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
-    app.setWindowIcon(QIcon(":/icons/app_icon.svg"));
-    app.setApplicationDisplayName("Wikipedia Reader");
-    app.setDesktopFileName("io.github.lgabannell.wikipedia_reader");
+    QGuiApplication::setWindowIcon(QIcon(":/icons/app_icon.svg"));
+    QGuiApplication::setApplicationDisplayName("Wikipedia Reader");
+    QGuiApplication::setDesktopFileName("io.github.lgabannell.wikipedia_reader");
 
     // Dependencies outlive their consumers, and all states outlive the QML engine.
     HistoryState historyState;
