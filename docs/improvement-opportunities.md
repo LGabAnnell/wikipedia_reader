@@ -1,22 +1,36 @@
 # Improvement opportunities
 
-Reviewed: 2026-10-16. Source baseline: `e3a184e` (including language-transition implementation `c76d821`; previous review: `45c773a`).
+Reviewed: 2026-10-18. Source baseline: `af85b44` (previous status review: `03ad867`; includes language-transition implementation `c76d821`).
 
 This report is based on static inspection of the current application, build configuration, and tests. No application code was changed, and no build, runtime reproduction, or test suite was run for this review. Findings below distinguish directly observed implementation problems from proposed hardening work. File links are relative to this document; symbol names identify the relevant code.
+
+History implementation follow-up (2026-10-18): language-aware history is now implemented and validated with a Debug build and the full offscreen CTest suite (25/25 passing). The original review context above and unrelated findings remain unchanged.
 
 ## Implementation status and remaining priorities
 
 | Priority | Opportunity | Status | Main benefit |
 | --- | --- | --- | --- |
 | Completed | Isolate language changes and stale replies | Implemented; broader chain coverage remains | Prevent articles from the wrong Wikipedia edition |
-| High | Make history identities language-aware | Open | Open the correct article from history |
+| Completed | Replace nested image-metadata event loop | Asynchronous callback implemented; failure semantics remain below | Avoid reentrant blocking during gallery loads |
+| Completed | Identify requests to Wikimedia | Shared User-Agent for API requests and QML images | Identify the app, version, and contact URL |
+| Completed | Add basic setup and distribution documentation | README and local Flatpak packaging implemented; test docs still need consolidation | Document dependencies and support sandboxed distribution |
+| Completed | Make history identities language-aware | Implemented with schema migration and cross-edition regression coverage | Open the correct article from history |
 | High | Enforce persistent history limits and write consistency | Open | Bound storage and avoid misleading history state |
 | High | Add request deadlines and validate API responses | Open; explicit cancellation is implemented | Recover from stalled or invalid responses |
 | Low | Finish image metadata failure semantics and regression coverage | Nested event loop removed; follow-up remains | Make partial results predictable |
-| Medium | Complete home-screen feedback and featured handling | Partial: refresh and title/URL fixes implemented | Make failures visible and eliminate wasted requests |
+| Medium | Complete home-screen feedback and featured handling | Partial: refresh, title/URL fixes, news fallback, and rendered-news coverage implemented | Make failures visible and eliminate wasted requests |
 | Medium | Bound article and math-image caches | Open | Control memory usage during long sessions |
 | Medium | Automate regression checks in CI | Open | Catch failures before merging |
-| Low | Refresh developer documentation and test tooling | Partial: current coverage guide and incremental runner exist | Make setup reproducible and preserve build output |
+| Low | Consolidate developer documentation and test tooling | Partial: README, current coverage guide, and incremental runner exist | Make setup reproducible and preserve build output |
+
+### Implemented since the previous status review
+
+- **News fallback and feed completeness:** [WikipediaHomeClient](../src/wikipedia_home_client.cpp) prefers the full most-read list, looks back at most two days when today's list is unavailable, and retains today's linked news stories when no recent most-read list is found. Stories are parsed without requiring `mostread`; their HTML descriptions become plain text. Fixture tests cover fallback, failures, cancellation, and rendering a 43-item list; see section 6.
+- **Wikimedia request identification:** [The shared network manager](../src/wikipedia_network_access_manager.h) adds `WikipediaReader/<version>`, the project contact URL, and the Qt version to the User-Agent for both API clients and QML images (`fcd585f`). This does not add deadlines or response validation.
+- **Setup and packaging:** [README.md](../README.md) now lists dependencies and build/run commands. [The Flatpak manifest](../io.github.lgabannell.wikipedia_reader.yml), [installation rules](../packaging/Flatpak.cmake), desktop/AppStream metadata, license, [builder helper](../scripts/flatpak-builder.sh), and [packaging guide](../packaging/README.md) provide a local distribution workflow (`8e072a6`). Packaging is implemented in source; it was not built or runtime-validated in this review.
+- **Search entry and documentation cleanup:** [SearchScreen.qml](../src/SearchScreen.qml) focuses the search input when its stack item activates (`af85b44`). Obsolete `god-object-refactor.md` and `improvement-observations.md` planning documents were removed (`1a9f15d`).
+
+The shared core library, separated state classes, language isolation, asynchronous metadata lookup, featured-title fix, and incremental test runner were already implemented at the previous review. The sections below preserve their remaining follow-ups without treating the completed foundations as open work.
 
 ## 1. Treat language changes as complete state transitions — implemented
 
@@ -24,21 +38,19 @@ This report is based on static inspection of the current application, build conf
 
 All four Wikipedia clients use [WikipediaRequestTracker](../src/wikipedia_request_context.h) to capture language and generation, invalidate requests before aborting replies, and reject obsolete results/errors and chained work. Article selections invalidate previous work before cache lookup; gallery/section target changes and home refreshes also cancel prior requests. Chained article HTML, math-image, metadata, and random-summary requests carry the captured context.
 
-**Chosen view behavior:** The navigation stack stays in place. [ContentDisplay.qml](../src/modules/ContentDisplayModule/ContentDisplay.qml) clears visible and covered article snapshots on a language transition, so Back does not reveal old-edition content. Browsing history is explicitly outside this implementation and remains unsafe across editions; see section 2.
+**Chosen view behavior:** The navigation stack stays in place. [ContentDisplay.qml](../src/modules/ContentDisplayModule/ContentDisplay.qml) clears visible and covered article snapshots on a language transition, so Back does not reveal old-edition content. Browsing history now retains and restores its saved edition through the follow-up in section 2.
 
 **Existing regression coverage:** [WikipediaRequestIsolationTest.cpp](../tests/WikipediaRequestIsolationTest.cpp) checks obsolete search successes/errors, featured replies, and page/random-title follow-up suppression. [ArticleStateTest.cpp](../tests/ArticleStateTest.cpp) checks content/cache clearing, obsolete article/title replies, and cached selections superseding pending work. [SearchStateTest.cpp](../tests/SearchStateTest.cpp) covers search restart and rapid language changes. QML tests cover clearing covered article views without changing stack depth, clearing feature state and rejecting an obsolete gallery reply, and home refresh on language changes in [tst_article.qml](../tests/qml/tst_article.qml), [tst_feature_isolation.qml](../tests/qml/tst_feature_isolation.qml), and [tst_navigation.qml](../tests/qml/tst_navigation.qml).
 
 **Remaining validation:** Extend deferred-response coverage across each HTML/math-image/metadata stage and overlapping uncached article selections. Existing tests cover selected paths, not every chain. [The language isolation document](language-change-state-isolation-plan.md) now describes the implemented states and behavior; the old content-preservation test has been replaced by `languageChangeClearsCurrentArticleAndCache`.
 
-## 2. Include language in browsing-history identity
+## 2. Include language in browsing-history identity — implemented
 
-**Observed:** [HistoryDatabase.cpp](../src/state/db/HistoryDatabase.cpp) stores `page_id`, title, and timestamp, and deduplicates solely by page ID. [HistoryState.cpp](../src/state/HistoryState.cpp) uses the same identity. [History.qml](../src/modules/HistoryModule/History.qml) opens entries through `ArticleState.loadArticleByPageId()` using the active language.
+**Implemented:** [HistoryState.cpp](../src/state/HistoryState.cpp) and [HistoryDatabase.cpp](../src/state/db/HistoryDatabase.cpp) identify articles by `(language, page_id)`. New visits require a nonblank edition; revisits update only the matching edition. A transactional schema-version-1 migration adds a nullable language column and replaces the page-ID-only index with a unique composite index. Existing IDs, titles, and timestamps survive with SQL `NULL` for the unknown edition. Migration failures roll back the schema and version, report an error, and block database operations until initialization succeeds.
 
-**Impact:** Entries do not retain the edition they came from. Switching languages can open an unrelated article, and identical IDs from different editions overwrite one another.
+**Chosen behavior:** [History.qml](../src/modules/HistoryModule/History.qml) displays a combined list with edition labels. Opening a known entry restores its language before loading the saved page ID; the header language selector follows that change. Unknown legacy entries remain visible as “Unknown edition” with opening disabled. “Clear History” clears every edition and legacy entry. The existing combined 50-item in-memory limit remains; persistent retention and general write consistency are separate work in section 3.
 
-**Recommended change:** Store `(language, page_id)` as the article identity, with a unique database index and an explicit schema migration. Either filter history by active language or display the edition and restore it when opening an entry. Decide how legacy rows with unknown language should be handled; do not silently assign an unverified edition.
-
-**Validation:** Save identical IDs in two languages, restart, and verify independent entries and correct destinations. Cover migration, deduplication, and the chosen clear-history scope.
+**Validation:** [HistoryDatabaseTest.cpp](../tests/HistoryDatabaseTest.cpp) covers legacy migration, repeat initialization, rollback and blocked operations, cross-edition persistence/deduplication, composite uniqueness, and clearing known plus unknown editions. [ArticleStateTest.cpp](../tests/ArticleStateTest.cpp) covers edition recording, cache visits, state recreation, invalid history destinations, restored-edition failures, completion observers, and rejected obsolete replies. [tst_history.qml](../tests/qml/tst_history.qml) and [tst_navigation.qml](../tests/qml/tst_navigation.qml) cover disabled legacy entries, edition labels, cross-edition requests and rendered content, selector synchronization, cached list reordering, Back navigation, and clearing the combined list. Debug build and full offscreen CTest suite passed (25/25).
 
 ## 3. Fix history retention and database failure semantics
 
@@ -52,7 +64,7 @@ All four Wikipedia clients use [WikipediaRequestTracker](../src/wikipedia_reques
 
 ## 4. Bound requests and distinguish invalid responses from empty results
 
-**Observed:** [The shared network manager](../src/wikipedia_network_access_manager.h) applies an HTTP/2 compatibility policy but no request timeout. Clients now expose explicit cancellation and reject obsolete generations (section 1), but there is still no deadline for an active request. Article completion waits for all requested math images; completed math-image failures retain the original source as a fallback, but a stalled reply can still hold up the article.
+**Observed:** [The shared network manager](../src/wikipedia_network_access_manager.h) applies the app User-Agent and an HTTP/2 compatibility policy but no request timeout. Clients expose explicit cancellation and reject obsolete generations (section 1), but there is still no deadline for an active request. Article completion waits for all requested math images; completed math-image failures retain the original source as a fallback, but a stalled reply can still hold up the article. The news lookback is bounded by request count, not elapsed time.
 
 [WikipediaSearchClient.cpp](../src/wikipedia_search_client.cpp) emits `searchCompleted()` on transport success even when JSON is malformed or the expected response structure is missing. `parseSearchResults()` converts those cases into an empty vector. [WikipediaSearchClientTest.cpp](../tests/WikipediaSearchClientTest.cpp) explicitly expects zero results for malformed JSON and `{}`.
 
@@ -76,11 +88,15 @@ All four Wikipedia clients use [WikipediaRequestTracker](../src/wikipedia_reques
 
 **Observed:** [HomeScreen.qml](../src/modules/HomeModule/HomeScreen.qml) renders news, on-this-day, and did-you-know sections, while `HomeModel::fetchHomeData()` also fetches a featured article and its images. The featured properties have no consumer in that screen. `HomeModel` exposes no loading/error status; only the featured client's error is connected to `handleError()`, which logs a warning. Errors from its home and page clients are not connected there.
 
-**Implemented:** Language transitions now clear home data and refresh all feeds, and a refresh cancels the previous generation. `handleFeaturedArticleReceived()` preserves the display title, builds the slug from a separate local value, and percent-encodes it with `QUrl::toPercentEncoding()`. The previous title mutation/comparison defect is fixed.
+**Implemented:** Language transitions clear home data and refresh all feeds, and a refresh cancels the previous generation. `handleFeaturedArticleReceived()` preserves the display title, builds the slug from a separate local value, and percent-encodes it with `QUrl::toPercentEncoding()`. The previous title mutation/comparison defect is fixed.
+
+[WikipediaHomeClient.cpp](../src/wikipedia_home_client.cpp) now handles feeds with news stories but no most-read articles. `parseNewsItems()` prefers a nonempty `mostread.articles` array and otherwise uses each news story's first linked article, normalizes its title, and converts the story HTML to plain text. `getNewsItems()` looks back at most two days for a nonempty most-read list and preserves the full list without truncation. If historical feeds are empty or fail, it retains today's news; a failure of today's request still emits an error. These follow-up requests retain the captured language/generation and stop after cancellation or a language change. [NewsSection.qml](../src/modules/HomeModule/NewsSection.qml) exposes the rendered items for QML assertions, and [HomeScreen.qml](../src/modules/HomeModule/HomeScreen.qml) lets the content scroll.
 
 **Recommended change:** Decide whether featured content belongs on the home screen: render it or remove the unused fetch chain. Expose loading, empty, error, and retry state per section so one failed feed does not obscure successful sections. Connect all relevant errors.
 
-**Validation:** Add a dedicated `tst_home.qml` using fixtures for rendered feeds, partial failures, empty data, and retry. Add regression coverage for the fixed featured title/URL behavior using spaces and URL-sensitive characters. `tst_navigation.qml::test_language_change_keeps_home_and_refreshes_its_data` already covers clearing/refilling news on a language change while retaining the home root; there is still no dedicated home test file.
+**Existing regression coverage:** [WikipediaHomeClientTest.cpp](../tests/WikipediaHomeClientTest.cpp) now uses the fake transport to cover current most-read data, previous-day fallback, empty/404/503 historical feeds, the two-day bound, retaining today's news, current-feed errors, and obsolete lookback replies after cancellation or a language change. Parser cases cover most-read precedence, missing/empty most-read arrays, normalized titles, story text, and missing links. [tst_navigation.qml](../tests/qml/tst_navigation.qml) checks a 43-item rendered news list, nonzero final-item height, scrollable content, and switching between English most-read data and French news fallback while retaining the home root.
+
+**Remaining validation:** Add dedicated home integration coverage for pending/empty/error/retry feedback and partial failures across sections, plus featured title/URL regression cases with spaces and URL-sensitive characters. There is still no `tst_home.qml`, but news rendering and fallback are already covered in the navigation tests; a new filename is not itself the missing behavior.
 
 ## 7. Put budgets on caches and math-image work
 
@@ -96,26 +112,25 @@ All four Wikipedia clients use [WikipediaRequestTracker](../src/wikipedia_reques
 
 **Observed:** No tracked `.github/workflows` configuration is present. [tests/CMakeLists.txt](../tests/CMakeLists.txt) already registers backend and QML tests, and the fixture transport provides a foundation for deterministic network behavior. This observation does not rule out externally configured CI.
 
-**Recommended change:** Add a Linux job that provisions Qt, tinyxml2, and Lexbor, configures with `BUILD_TESTING=ON`, builds, and runs `ctest --test-dir build --output-on-failure` with an offscreen platform available. Account for GUI-backed C++ tests as well as QML tests. Keep live-network tests separate and opt-in. Upload failure logs; consider a relocated-install smoke test because the project now has deployment rules and a shared core library.
+**Recommended change:** Add a Linux job that provisions Qt, tinyxml2, and Lexbor, configures with `BUILD_TESTING=ON`, builds, and runs `ctest --test-dir build --output-on-failure` with an offscreen platform available. Account for GUI-backed C++ tests as well as QML tests. Keep live-network tests separate and opt-in. Upload failure logs; consider relocated-install and Flatpak smoke tests because deployment rules, a shared core library, and local Flatpak packaging are already present. Packaging support does not establish automated CI coverage.
 
 **Validation:** Demonstrate a clean checkout build and a failing-test run that fails the job and preserves useful diagnostics. Document the supported dependency baseline, then expand platform coverage as needed.
 
 ## 9. Refresh documentation and make test execution less disruptive
 
-**Implemented:** [full_testing.md](full_testing.md) now documents the current dependencies, separate state classes, shared backend, fixture controls, 25 registered CTest entries, and coverage limits. [scripts/run_tests.sh](../scripts/run_tests.sh) preserves existing build output by default, configures when needed, supports an explicit clean rebuild and test filter, sets the offscreen platform, and uses `set -euo pipefail` for immediate failure propagation.
+**Implemented:** [README.md](../README.md) now provides the application overview, actual dependency baseline (including Lexbor 3.0+), build/run commands, license, and links to testing and packaging. [packaging/README.md](../packaging/README.md) documents the local Flatpak workflow. [full_testing.md](full_testing.md) documents the separate state classes, shared backend, fixture controls, 25 registered CTest entries, and coverage limits. [scripts/run_tests.sh](../scripts/run_tests.sh) preserves existing build output by default, configures when needed, supports an explicit clean rebuild and test filter, sets the offscreen platform, and uses `set -euo pipefail` for immediate failure propagation. Obsolete refactor/observation planning documents have been removed.
 
-**Remaining issues:** No tracked README is present. `AGENTS.md`, [TESTING.md](../TESTING.md), and [improvement-observations.md](improvement-observations.md) still describe `GlobalState` and/or previously duplicated backend compilation. Testing guidance remains split across those files and `docs/`. The build requires Lexbor 3.0, absent from the agent guide's dependency overview. The legacy [test.sh](../test.sh) still deletes `build`, rebuilds with `-j14`, and lacks fail-fast behavior; the agent guide incorrectly describes it as only running CTest. The incremental runner also hardcodes `-j14`.
+**Remaining issues:** [AGENTS.md](../AGENTS.md) and [TESTING.md](../TESTING.md) still describe `GlobalState` and/or previously duplicated backend compilation. The README links to that outdated testing guide, and [full_testing.md](full_testing.md) has not yet incorporated the new news fallback/rendering coverage. Testing guidance remains split across those files and `docs/`. The build requires Lexbor 3.0, absent from the agent guide's dependency overview; the guide also incorrectly says no README exists. The legacy [test.sh](../test.sh) still deletes `build`, rebuilds with `-j14`, and lacks fail-fast behavior; the agent guide incorrectly describes it as only running CTest. The incremental runner also hardcodes `-j14`.
 
-**Recommended change:** Add a concise README with actual dependencies and build/run/test instructions. Consolidate authoritative testing guidance around the current coverage guide, update the agent guide, and label older proposals with implementation status. Replace or delegate the legacy `test.sh` to the incremental runner and make build parallelism configurable. CMake presets could provide shared debug/test configurations.
+**Recommended change:** Keep the existing README and packaging guide; consolidate authoritative testing guidance around the coverage guide, refresh its news coverage, update the agent guide, and label remaining older proposals with implementation status. Replace or delegate the legacy `test.sh` to the incremental runner and make build parallelism configurable. CMake presets could provide shared debug/test configurations.
 
 **Remaining validation:** Follow the documented steps from a fresh checkout. Exercise the incremental runner's configuration/build failure paths and confirm failure propagation; verify a unified root test command preserves existing build output by default.
 
 ## Suggested implementation sequence
 
 1. Fix persistent history trimming and add its state-level regression test.
-2. Implement language-aware history identity with a schema migration and cross-edition/restart tests, building on the completed language-transition isolation.
-3. Add deadlines and response validation, define metadata partial-result semantics, and extend deferred-response coverage across the asynchronous chains.
-4. Complete home-screen feedback and decide whether to render featured content; add dedicated coverage, including regression tests for the completed title/URL fix.
-5. Establish CI, consolidate setup/test documentation and runners, and profile caches before selecting budgets.
+2. Add deadlines and response validation, define metadata partial-result semantics, and extend deferred-response coverage across the asynchronous chains.
+3. Complete home-screen feedback and decide whether to render featured content; extend the existing news coverage to section failures/retry and featured title/URL behavior.
+4. Establish CI, consolidate the existing setup/test documentation and runners, and profile caches before selecting budgets.
 
-The shared backend, separated state classes, language-transition/request isolation, asynchronous metadata lookup, featured-title fix, and incremental test runner are implemented foundations. Preserve those improvements; they should no longer be treated as outstanding implementation work. Test coverage cited here was inspected in source, not executed during this review.
+The shared backend, separated state classes, language-transition/request isolation, language-aware history identity and migration, asynchronous metadata lookup, featured-title fix, bounded news lookback and fallback, request identification, README, local Flatpak packaging, search-entry focus, and incremental test runner are implemented foundations. Remaining priorities are persistent history retention/write consistency, request deadlines/response validation, metadata failure semantics, home feedback/featured handling, cache budgets, CI, and documentation/test-runner consolidation. Test coverage cited in the original review was inspected in source; the history implementation follow-up above was built and tested.

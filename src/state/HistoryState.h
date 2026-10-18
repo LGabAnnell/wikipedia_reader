@@ -24,7 +24,8 @@ class HistoryState : public QObject {
     QVector<history_item> history() const;
 
   public slots:
-    void addToHistory(const QString &title, int pageId);
+    /** @brief Record a visit identified by a nonblank Wikipedia language and page ID. */
+    void addToHistory(const QString &title, int pageId, const QString &language);
     void clearHistory();
 
   signals:
@@ -37,7 +38,7 @@ class HistoryState : public QObject {
     static const int MAX_HISTORY_ITEMS = 50;
     HistoryDatabase *m_database;
 
-    bool itemExistsInHistory(int pageId);
+    bool itemExistsInHistory(int pageId, const QString &language);
 };
 
 #endif // HISTORYSTATE_H

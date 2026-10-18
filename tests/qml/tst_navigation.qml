@@ -78,6 +78,11 @@ Item {
         }
 
         function cleanup() {
+            if (SettingsState.language !== "en") {
+                SettingsState.setLanguage("en")
+                tryCompare(child("homeModel").newsItems, "length", 43)
+            }
+            HistoryState.clearHistory()
             compare(testSupport.qmlWarningCount, 0, testSupport.qmlWarnings.join("\n"))
         }
 
@@ -85,6 +90,87 @@ Item {
             const item = findChild(appWindow, name)
             verify(item !== null, "Missing object named " + name)
             return item
+        }
+
+
+        function historyChild(name, index) {
+            const list = findChild(appStack.currentItem, "historyList")
+            verify(list !== null)
+            tryVerify(function() { return list.itemAtIndex(index) !== null })
+            const item = findChild(list.itemAtIndex(index), name)
+            verify(item !== null, "Missing history object " + name)
+            return item
+        }
+
+        function configureHistoryArticle(language, pageId, title) {
+            const prefix = "https://" + language + ".wikipedia.org/w/api.php"
+            const pages = {}
+            pages[pageId] = {pageid:pageId, title:title, extract:"", images:[]}
+            networkFixtures.addFixture("GET", prefix + "?action=query&format=json&prop=extracts%7Cimages&pageids=" + pageId + "&explaintext=1&imlimit=50",
+                                       JSON.stringify({query:{pages:pages}}))
+            networkFixtures.addFixture("GET", prefix + "?action=parse&format=json&prop=tocdata&page=" + encodeURIComponent(title),
+                                       '{"parse":{"tocdata":{"sections":[]}}}')
+            networkFixtures.addFixture("GET", prefix + "?action=parse&disableeditsection=true&format=json&formatversion=2&pageid=" + pageId + "&prop=text",
+                                       JSON.stringify({parse:{text:"<p>" + title + " body</p>"}}))
+        }
+
+        function test_history_restores_edition_renders_article_and_back_returns_to_history() {
+            configureHistoryArticle("fr", 701, "French history destination")
+            HistoryState.addToHistory("English identity", 701, "en")
+            HistoryState.addToHistory("French history destination", 701, "fr")
+            mouseClick(child("historyButton"))
+            tryCompare(appStack, "depth", 2)
+            tryVerify(function() { return !appStack.busy })
+            const historyView = appStack.currentItem
+            compare(historyChild("historyEdition-0", 0).text, "FR Wikipedia")
+            compare(historyChild("historyEdition-1", 1).text, "EN Wikipedia")
+            testSupport.clearRequests()
+            mouseClick(historyChild("historyEntry-0", 0))
+            tryCompare(appStack, "depth", 3)
+            tryVerify(function() { return !appStack.busy })
+            tryCompare(ArticleState, "isLoading", false)
+            compare(SettingsState.language, "fr")
+            compare(child("languageSelector").currentValue, "fr")
+            compare(child("articleTitle").text, "French history destination")
+            verify(child("articleBody").text.indexOf("French history destination body") >= 0)
+            verify(testSupport.requests.some(function(request) {
+                return request.host === "fr.wikipedia.org" && request.url.indexOf("pageids=701") >= 0
+            }))
+            verify(!testSupport.requests.some(function(request) {
+                return request.host === "en.wikipedia.org" && request.url.indexOf("701") >= 0
+            }))
+            compare(HistoryState.history.length, 2)
+            mouseClick(child("backButton"))
+            tryCompare(appStack, "depth", 2)
+            tryVerify(function() { return !appStack.busy })
+            compare(appStack.currentItem, historyView)
+            mouseClick(child("clearHistoryButton"))
+            compare(HistoryState.history.length, 0)
+            compare(child("historyList").count, 0)
+            compare(child("clearHistoryButton").enabled, false)
+        }
+
+        function test_history_cached_click_copies_identity_before_reordering() {
+            configureHistoryArticle("en", 702, "Cached first destination")
+            configureHistoryArticle("en", 703, "Cached second destination")
+            ArticleState.loadArticleByPageId(702)
+            tryCompare(ArticleState, "isLoading", false)
+            ArticleState.loadArticleByPageId(703)
+            tryCompare(ArticleState, "isLoading", false)
+            compare(HistoryState.history[1].pageId, 702)
+            mouseClick(child("historyButton"))
+            tryCompare(appStack, "depth", 2)
+            tryVerify(function() { return !appStack.busy })
+            testSupport.clearRequests()
+            mouseClick(historyChild("historyEntry-1", 1))
+            tryCompare(appStack, "depth", 3)
+            tryVerify(function() { return !appStack.busy })
+            compare(ArticleState.currentPageId, 702)
+            compare(child("articleTitle").text, "Cached first destination")
+            compare(HistoryState.history[0].pageId, 702)
+            // The content view requests sections; the article itself is cached.
+            compare(testSupport.requestCount, 1)
+            verify(testSupport.requests[0].query.indexOf("prop=tocdata") >= 0)
         }
 
         function test_header_search_and_history_push_and_back_pops_one_view() {
@@ -154,11 +240,12 @@ Item {
             compare(appStack.currentItem, homeRoot)
         }
 
-        function test_language_change_keeps_home_and_refreshes_its_data() {
+        function test_language_change_keeps_home_and_refreshes_its_content() {
             const homeModel = child("homeModel")
             tryCompare(homeModel.newsItems, "length", 43)
             testSupport.clearRequests()
             SettingsState.setLanguage("fr")
+            compare(child("languageSelector").currentValue, "fr")
             compare(appStack.depth, 1)
             compare(appStack.currentItem, homeRoot)
             compare(homeModel.newsItems.length, 0)
@@ -173,6 +260,7 @@ Item {
 
             testSupport.clearRequests()
             SettingsState.setLanguage("en")
+            compare(child("languageSelector").currentValue, "en")
             compare(homeModel.newsItems.length, 0)
             tryCompare(testSupport, "requestCount", 6)
             tryCompare(homeModel.newsItems, "length", 43)

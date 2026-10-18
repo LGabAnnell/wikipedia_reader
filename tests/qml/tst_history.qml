@@ -1,13 +1,21 @@
 import QtQuick
 import QtTest
 import wikipedia_qt
+import wikipedia_qt.History
 
 Item {
     id: root
     width: 800
     height: 600
 
+    Component {
+        id: legacyHistoryComponent
+        History { history: [historyTests.unknownEntry] }
+    }
+
     TestCase {
+        id: historyTests
+        property history_item unknownEntry
         name: "ArticleHistoryBehavior"
         when: windowShown
 
@@ -64,6 +72,23 @@ Item {
             ImageSelectionState.selectImage("", "")
             HistoryState.clearHistory()
             compare(testSupport.qmlWarningCount, 0, testSupport.qmlWarnings.join("\n"))
+        }
+
+        function test_unknown_edition_is_visible_but_cannot_open() {
+            HistoryState.addToHistory("Legacy title", 701, "en")
+            unknownEntry = HistoryState.history[0]
+            unknownEntry.language = ""
+            const view = createTemporaryObject(legacyHistoryComponent, root)
+            verify(view !== null)
+            tryVerify(function() { return findChild(view, "historyEntry-0") !== null })
+            const entry = findChild(view, "historyEntry-0")
+            compare(findChild(view, "historyEdition-0").text, "Unknown edition")
+            compare(entry.enabled, false)
+            const previousTitle = ArticleState.currentPageTitle
+            mouseClick(entry)
+            compare(ArticleState.currentPageTitle, previousTitle)
+            compare(testSupport.requestCount, 0)
+            compare(HistoryState.history[0].language, "en")
         }
 
         function test_article_visits_are_ordered_and_deduplicated() {

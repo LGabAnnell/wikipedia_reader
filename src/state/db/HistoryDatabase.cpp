@@ -21,6 +21,8 @@ HistoryDatabase::~HistoryDatabase() {
 }
 
 bool HistoryDatabase::initialize() {
+    if (m_initialized)
+        return true;
     // Get the application's data location
     QString dataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
 
@@ -34,7 +36,9 @@ bool HistoryDatabase::initialize() {
     // Set up the database connection
     QString dbPath = dataPath + "/history.db";
 
-    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", "history_db");
+    QSqlDatabase db = QSqlDatabase::contains("history_db")
+        ? QSqlDatabase::database("history_db", false)
+        : QSqlDatabase::addDatabase("QSQLITE", "history_db");
     db.setDatabaseName(dbPath);
 
     if (!db.open()) {
@@ -44,60 +48,76 @@ bool HistoryDatabase::initialize() {
     }
 
     // Ensure the table and index exist
-    if (!ensureTableExists() || !ensureIndexExists()) {
+    if (!migrateSchema()) {
         return false;
     }
 
+    m_initialized = true;
     emit databaseInitialized();
     return true;
 }
 
-bool HistoryDatabase::ensureTableExists() {
+bool HistoryDatabase::migrateSchema() {
     QSqlDatabase db = QSqlDatabase::database("history_db");
-    if (!db.isOpen()) {
-        qWarning() << "[HistoryDatabase] Database is not open";
-        emit databaseError(tr("Database is not open"));
+    QSqlQuery query(db);
+    const QString versionQuery = "PRAGMA user_version";
+    query.prepare(versionQuery);
+    if (!executeQuery(query, versionQuery, tr("read history schema version")) || !query.next())
+        return false;
+    const int version = query.value(0).toInt();
+    query.finish();
+    if (version == 1)
+        return true;
+    if (version != 0) {
+        emit databaseError(tr("Unsupported history schema version: %1").arg(version));
+        return false;
+    }
+    if (!db.transaction()) {
+        emit databaseError(tr("Failed to start history migration: %1").arg(db.lastError().text()));
         return false;
     }
 
-    QSqlQuery query(db);
-    QString createTableQuery = R"###(
-        CREATE TABLE IF NOT EXISTS history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            page_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            timestamp DATETIME NOT NULL
-        )
-    )###";
-
-    query.prepare(createTableQuery);
-    return executeQuery(query, createTableQuery, "create history table");
+    // All changes, including the version, roll back together on failure.
+    const QStringList statements = {
+        "CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "page_id INTEGER NOT NULL, title TEXT NOT NULL, timestamp DATETIME NOT NULL)",
+        "ALTER TABLE history ADD COLUMN language TEXT",
+        "DROP INDEX IF EXISTS idx_page_id",
+        "CREATE UNIQUE INDEX idx_history_language_page_id ON history(language, page_id)",
+        "PRAGMA user_version = 1"
+    };
+    for (const QString &statement : statements) {
+        query.prepare(statement);
+        if (!executeQuery(query, statement, tr("migrate history schema"))) {
+            db.rollback();
+            return false;
+        }
+        query.finish();
+    }
+    if (!db.commit()) {
+        emit databaseError(tr("Failed to commit history migration: %1").arg(db.lastError().text()));
+        db.rollback();
+        return false;
+    }
+    return true;
 }
 
-bool HistoryDatabase::ensureIndexExists() {
-    QSqlDatabase db = QSqlDatabase::database("history_db");
-    if (!db.isOpen()) {
-        emit databaseError(tr("Database is not open"));
-        return false;
-    }
-
-    QSqlQuery query(db);
-    QString createIndexQuery = "CREATE INDEX IF NOT EXISTS idx_page_id ON history(page_id)";
-    query.prepare(createIndexQuery);
-    return executeQuery(query, createIndexQuery, "create history index");
+bool HistoryDatabase::ensureReady() {
+    if (m_initialized && QSqlDatabase::database("history_db", false).isOpen())
+        return true;
+    emit databaseError(tr("History database is not initialized"));
+    return false;
 }
 
 QVector<history_item> HistoryDatabase::loadHistory(int limit) {
     QVector<history_item> history;
     QSqlDatabase db = QSqlDatabase::database("history_db");
-    if (!db.isOpen()) {
-        qWarning() << "[HistoryDatabase] Database is not open";
-        emit databaseError(tr("Database is not open"));
+    if (!ensureReady()) {
         return history;
     }
 
     QSqlQuery query(db);
-    QString selectQuery = "SELECT page_id, title, timestamp FROM history ORDER BY timestamp DESC LIMIT :limit";
+    QString selectQuery = "SELECT page_id, title, timestamp, language FROM history ORDER BY timestamp DESC, id DESC LIMIT :limit";
 
     query.prepare(selectQuery);
     query.bindValue(":limit", limit);
@@ -109,6 +129,7 @@ QVector<history_item> HistoryDatabase::loadHistory(int limit) {
         history_item item;
         item.pageId = query.value("page_id").toInt();
         item.title = query.value("title").toString();
+        item.language = query.value("language").toString();
         item.timestamp = query.value("timestamp").toDateTime();
         history.append(item);
     }
@@ -116,11 +137,14 @@ QVector<history_item> HistoryDatabase::loadHistory(int limit) {
     return history;
 }
 
-bool HistoryDatabase::addToHistory(const QString &title, int pageId, const QDateTime &timestamp) {
+bool HistoryDatabase::addToHistory(const QString &title, int pageId, const QString &language, const QDateTime &timestamp) {
     QSqlDatabase db = QSqlDatabase::database("history_db");
-    if (!db.isOpen()) {
-        qWarning() << "[HistoryDatabase] Database is not open";
-        emit databaseError(tr("Database is not open"));
+    if (!ensureReady()) {
+        return false;
+    }
+
+    if (language.trimmed().isEmpty()) {
+        emit databaseError(tr("History language must not be blank"));
         return false;
     }
 
@@ -133,8 +157,8 @@ bool HistoryDatabase::addToHistory(const QString &title, int pageId, const QDate
 
     QSqlQuery query(db);
 
-    // First remove any existing entry with the same pageId
-    QString deleteQuery = "DELETE FROM history WHERE page_id = :page_id";
+    // First remove any existing entry for this edition and page ID
+    QString deleteQuery = "DELETE FROM history WHERE language = :language AND page_id = :page_id";
     if (!query.prepare(deleteQuery)) {
         qWarning() << "[HistoryDatabase] Failed to prepare delete query:" << query.lastError().text();
         emit databaseError(tr("Failed to prepare delete query: %1").arg(query.lastError().text()));
@@ -143,13 +167,14 @@ bool HistoryDatabase::addToHistory(const QString &title, int pageId, const QDate
     }
 
     query.bindValue(":page_id", pageId);
+    query.bindValue(":language", language);
     if (!executeQuery(query, deleteQuery, "delete existing history item")) {
         db.rollback();
         return false;
     }
 
     // Insert the new item
-    QString insertQuery = "INSERT INTO history (page_id, title, timestamp) VALUES (:page_id, :title, :timestamp)";
+    QString insertQuery = "INSERT INTO history (page_id, title, timestamp, language) VALUES (:page_id, :title, :timestamp, :language)";
     if (!query.prepare(insertQuery)) {
         qWarning() << "[HistoryDatabase] Failed to prepare insert query:" << query.lastError().text();
         emit databaseError(tr("Failed to prepare insert query: %1").arg(query.lastError().text()));
@@ -158,6 +183,7 @@ bool HistoryDatabase::addToHistory(const QString &title, int pageId, const QDate
     }
 
     query.bindValue(":page_id", pageId);
+    query.bindValue(":language", language);
     query.bindValue(":title", title);
     query.bindValue(":timestamp", timestamp);
     if (!executeQuery(query, insertQuery, "insert new history item")) {
@@ -178,9 +204,7 @@ bool HistoryDatabase::addToHistory(const QString &title, int pageId, const QDate
 
 bool HistoryDatabase::clearHistory() {
     QSqlDatabase db = QSqlDatabase::database("history_db");
-    if (!db.isOpen()) {
-        qWarning() << "[HistoryDatabase] Database is not open";
-        emit databaseError(tr("Database is not open"));
+    if (!ensureReady()) {
         return false;
     }
 
@@ -192,9 +216,7 @@ bool HistoryDatabase::clearHistory() {
 
 bool HistoryDatabase::removeOldestItems(int limit) {
     QSqlDatabase db = QSqlDatabase::database("history_db");
-    if (!db.isOpen()) {
-        qWarning() << "[HistoryDatabase] Database is not open";
-        emit databaseError(tr("Database is not open"));
+    if (!ensureReady()) {
         return false;
     }
 

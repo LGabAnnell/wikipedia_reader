@@ -7,12 +7,15 @@ HistoryModel::HistoryModel(QObject *parent) : QObject(parent) {
 
 QVector<history_item> HistoryModel::history() const { return m_history; }
 
-void HistoryModel::addToHistory(const QString &title, int pageId) {
+void HistoryModel::addToHistory(const QString &title, int pageId, const QString &language) {
+    if (language.trimmed().isEmpty())
+        return;
+
     // Check if item already exists in history
-    if (itemExistsInHistory(pageId)) {
+    if (itemExistsInHistory(pageId, language)) {
         // Remove existing item to update its position (move to top)
         for (int i = 0; i < m_history.size(); ++i) {
-            if (m_history[i].pageId == pageId) {
+            if (m_history[i].pageId == pageId && m_history[i].language == language) {
                 m_history.remove(i);
                 break;
             }
@@ -22,6 +25,7 @@ void HistoryModel::addToHistory(const QString &title, int pageId) {
     // Add new item to the beginning of history
     history_item newItem;
     newItem.title = title;
+    newItem.language = language;
     newItem.pageId = pageId;
     newItem.timestamp = QDateTime::currentDateTime();
     m_history.prepend(newItem);
@@ -46,9 +50,9 @@ void HistoryModel::removeFromHistory(int index) {
     }
 }
 
-bool HistoryModel::itemExistsInHistory(int pageId) {
+bool HistoryModel::itemExistsInHistory(int pageId, const QString &language) {
     for (const auto &item : std::as_const(m_history)) {
-        if (item.pageId == pageId) {
+        if (item.pageId == pageId && item.language == language) {
             return true;
         }
     }

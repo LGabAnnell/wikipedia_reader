@@ -104,10 +104,12 @@ class history_item {
     Q_GADGET
     QML_ELEMENT
     Q_PROPERTY(QString title MEMBER title)
+    Q_PROPERTY(QString language MEMBER language)
     Q_PROPERTY(int pageId MEMBER pageId)
     Q_PROPERTY(QDateTime timestamp MEMBER timestamp)
   public:
     QString title;
+    QString language;
     int pageId = 0;
     QDateTime timestamp;
 };

@@ -6,6 +6,7 @@ import wikipedia_qt
 
 ComboBox {
     id: languageSelector
+    objectName: "languageSelector"
     
     // Available languages with their display names and codes
     model: [
@@ -37,14 +38,19 @@ ComboBox {
         SettingsState.setLanguage(currentValue)
     }
     
-    // Initialize from SettingsState language
-    Component.onCompleted: {
-        var lang = SettingsState.language
+    // Keep the header in sync when history restores another edition.
+    function syncLanguage() {
+        currentIndex = -1
         for (var i = 0; i < model.length; i++) {
-            if (model[i].code === lang) {
+            if (model[i].code === SettingsState.language) {
                 currentIndex = i
                 break
             }
         }
+    }
+    Component.onCompleted: syncLanguage()
+    Connections {
+        target: SettingsState
+        function onLanguageChanged() { languageSelector.syncLanguage() }
     }
 }

@@ -8,12 +8,7 @@
 #include <QString>
 #include <QVector>
 
-// History item structure
-struct history_item {
-    QString title;
-    int pageId;
-    QDateTime timestamp;
-};
+#include "wikipedia_models.h"
 
 class HistoryModel : public QObject {
     Q_OBJECT
@@ -28,7 +23,8 @@ class HistoryModel : public QObject {
     QVector<history_item> history() const;
 
   public slots:
-    void addToHistory(const QString &title, int pageId);
+    /** @brief Record a visit identified by a nonblank Wikipedia language and page ID. */
+    void addToHistory(const QString &title, int pageId, const QString &language);
     void clearHistory();
     void removeFromHistory(int index);
 
@@ -40,7 +36,7 @@ class HistoryModel : public QObject {
     static const int MAX_HISTORY_ITEMS = 50;
 
     // Helper method to check if item already exists in history
-    bool itemExistsInHistory(int pageId);
+    bool itemExistsInHistory(int pageId, const QString &language);
 };
 
 #endif // HISTORYMODEL_H

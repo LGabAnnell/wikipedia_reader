@@ -33,6 +33,12 @@ class ArticleState : public QObject {
 
     /** @brief Load by ID, reusing cached content and recording every visit. */
     Q_INVOKABLE void loadArticleByPageId(int pageId);
+    /**
+     * @brief Restore the saved edition and load its article; false leaves state unchanged.
+     * @param language Saved Wikipedia language code; blank legacy editions cannot open.
+     * @param pageId Positive page ID within that edition.
+     */
+    Q_INVOKABLE bool loadArticleFromHistory(const QString &language, int pageId);
     /** @brief Resolve the title, then load the full article. */
     Q_INVOKABLE void loadArticleByTitle(const QString &title);
 

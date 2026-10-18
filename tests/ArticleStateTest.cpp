@@ -113,6 +113,7 @@ class ArticleStateTest : public QObject {
         QVERIFY(article.currentPageExtract().contains("<p>Article HTML</p>"));
         QCOMPARE(historySpy.count(), 1);
         QCOMPARE(m_history->history().first().pageId, 42);
+        QCOMPARE(m_history->history().first().language, QString("en"));
         const QString html = article.currentPageExtract();
         article.setErrorMessage("old failure");
         article.loadArticleByPageId(42);
@@ -270,6 +271,93 @@ class ArticleStateTest : public QObject {
         m_network.completeNextReply();
         QTRY_VERIFY(!article.isLoading());
         QCOMPARE(article.currentPageId(), 42);
+    }
+
+
+    void historyIdentityAndBlankLanguageValidation() {
+        m_history->addToHistory("English", 42, "en");
+        m_history->addToHistory("French", 42, "fr");
+        m_history->addToHistory("Updated English", 42, "en");
+        m_history->addToHistory("Unknown", 99, "  ");
+        const auto items = m_history->history();
+        QCOMPARE(items.size(), 2);
+        QCOMPARE(items[0].language, QString("en"));
+        QCOMPARE(items[0].title, QString("Updated English"));
+        QCOMPARE(items[1].language, QString("fr"));
+        QCOMPARE(items[1].title, QString("French"));
+        delete m_history;
+        m_history = new HistoryState(this);
+        const auto restored = m_history->history();
+        QCOMPARE(restored.size(), 2);
+        QCOMPARE(restored[0].language, QString("en"));
+        QCOMPARE(restored[0].title, QString("Updated English"));
+        QCOMPARE(restored[1].language, QString("fr"));
+        QCOMPARE(restored[1].title, QString("French"));
+    }
+
+    void historyRestoresEditionBeforeLoadingAndRecordsCacheHits() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        article.setCurrentPage(cachedArticle());
+        addArticle("fr", "French article");
+        QVERIFY(article.loadArticleFromHistory("fr", 42));
+        QCOMPARE(settings.language(), QString("fr"));
+        QTRY_VERIFY(!article.isLoading());
+        QCOMPARE(article.currentPageTitle(), QString("French article"));
+        QCOMPARE(m_history->history().size(), 2);
+        QCOMPARE(m_history->history()[0].language, QString("fr"));
+        QCOMPARE(m_history->history()[1].language, QString("en"));
+        QCOMPARE(m_network.requests().first().toMap().value("host").toString(), QString("fr.wikipedia.org"));
+        QSignalSpy visits(m_history, &HistoryState::historyChanged);
+        QVERIFY(article.loadArticleFromHistory("fr", 42));
+        QCOMPARE(visits.count(), 1);
+        QCOMPARE(m_network.requestCount(), 2);
+        QCOMPARE(m_history->history().size(), 2);
+        QCOMPARE(m_history->history()[0].language, QString("fr"));
+    }
+
+    void invalidHistoryEntryDoesNotChangeState() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        article.setCurrentPage(cachedArticle());
+        article.setErrorMessage("Existing error");
+        QSignalSpy pageChanges(&article, &ArticleState::currentPageChanged);
+        QSignalSpy languageChanges(&settings, &SettingsState::languageChanged);
+        QVERIFY(!article.loadArticleFromHistory("", 42));
+        QVERIFY(!article.loadArticleFromHistory("  ", 42));
+        QVERIFY(!article.loadArticleFromHistory("fr", 0));
+        QVERIFY(!article.loadArticleFromHistory("fr", -42));
+        QCOMPARE(settings.language(), QString("en"));
+        QCOMPARE(article.currentPageTitle(), QString("Cached article"));
+        QCOMPARE(article.errorMessage(), QString("Existing error"));
+        QCOMPARE(pageChanges.count(), 0);
+        QCOMPARE(languageChanges.count(), 0);
+        QCOMPARE(m_network.requestCount(), 0);
+    }
+
+    void historyLoadFailureKeepsRestoredEdition() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        m_network.addFixture("GET", articleUrl("fr"), "failure", "text/plain", 500);
+        QVERIFY(article.loadArticleFromHistory("fr", 42));
+        QTRY_VERIFY(!article.isLoading());
+        QCOMPARE(settings.language(), QString("fr"));
+        QCOMPARE(article.errorMessage(), QString("HTTP 500"));
+        QVERIFY(m_history->history().isEmpty());
+    }
+
+    void completionRecordsEditionBeforeObserversChangeLanguage() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        addArticle();
+        connect(&article, &ArticleState::isLoadingChanged, &settings, [&]() {
+            if (!article.isLoading())
+                settings.setLanguage("fr");
+        });
+        article.loadArticleByPageId(42);
+        QTRY_COMPARE(settings.language(), QString("fr"));
+        QCOMPARE(m_history->history().size(), 1);
+        QCOMPARE(m_history->history()[0].language, QString("en"));
     }
 
     void teardownAndRecreation() {

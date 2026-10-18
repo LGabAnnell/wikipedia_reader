@@ -25,14 +25,23 @@ ArticleState::ArticleState(HistoryState &history, SettingsState &settings, QObje
 }
 
 void ArticleState::setCurrentPage(const page &article) {
+    const QString language = m_settings ? m_settings->language() : QString();
     m_currentPage = article;
-    setIsLoading(false);
     if (article.pageid > 0 && !article.title.isEmpty()) {
-        if (m_history)
-            m_history->addToHistory(article.title, article.pageid);
         m_articleCache[article.pageid] = article;
+        if (m_history)
+            m_history->addToHistory(article.title, article.pageid, language);
     }
+    setIsLoading(false);
     emit currentPageChanged();
+}
+
+bool ArticleState::loadArticleFromHistory(const QString &language, int pageId) {
+    if (language.trimmed().isEmpty() || pageId <= 0 || !m_settings)
+        return false;
+    m_settings->setLanguage(language);
+    loadArticleByPageId(pageId);
+    return true;
 }
 
 void ArticleState::setCurrentPageFromData(const QString &title, const QString &extract, const QString &url) {

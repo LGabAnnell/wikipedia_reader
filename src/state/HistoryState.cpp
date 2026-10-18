@@ -16,11 +16,14 @@ HistoryState::~HistoryState() {
 }
 QVector<history_item> HistoryState::history() const { return m_history; }
 
-void HistoryState::addToHistory(const QString &title, int pageId) {
+void HistoryState::addToHistory(const QString &title, int pageId, const QString &language) {
+    if (language.trimmed().isEmpty())
+        return;
+
     // First check if item exists in memory
-    if (itemExistsInHistory(pageId)) {
+    if (itemExistsInHistory(pageId, language)) {
         for (int i = 0; i < m_history.size(); ++i) {
-            if (m_history[i].pageId == pageId) {
+            if (m_history[i].pageId == pageId && m_history[i].language == language) {
                 m_history.remove(i);
                 break;
             }
@@ -30,6 +33,7 @@ void HistoryState::addToHistory(const QString &title, int pageId) {
     // Create new item
     history_item newItem;
     newItem.title = title;
+    newItem.language = language;
     newItem.pageId = pageId;
     newItem.timestamp = QDateTime::currentDateTime();
     m_history.prepend(newItem);
@@ -40,7 +44,7 @@ void HistoryState::addToHistory(const QString &title, int pageId) {
     }
 
     // Update database
-    if (!m_database->addToHistory(title, pageId, newItem.timestamp)) {
+    if (!m_database->addToHistory(title, pageId, language, newItem.timestamp)) {
         qWarning() << "[HistoryState] Failed to add item to history database.";
     }
 
@@ -61,9 +65,9 @@ void HistoryState::clearHistory() {
     emit historyChanged();
 }
 
-bool HistoryState::itemExistsInHistory(int pageId) {
+bool HistoryState::itemExistsInHistory(int pageId, const QString &language) {
     for (const auto &item : m_history) {
-        if (item.pageId == pageId) {
+        if (item.pageId == pageId && item.language == language) {
             return true;
         }
     }

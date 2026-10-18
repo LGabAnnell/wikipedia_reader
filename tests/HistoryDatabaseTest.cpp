@@ -33,8 +33,8 @@ private slots:
         m_initSpy = new QSignalSpy(m_db, &HistoryDatabase::databaseInitialized);
         m_errorSpy = new QSignalSpy(m_db, &HistoryDatabase::databaseError);
 
-        // Clear any leftover data from previous test
-        m_db->clearHistory();
+        // Each case gets an independent schema as well as independent data.
+        QVERIFY(m_db->clearHistory());
     }
 
     void cleanup() {
@@ -44,6 +44,7 @@ private slots:
         m_initSpy = nullptr;
         delete m_db;
         m_db = nullptr;
+        QFile::remove(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/history.db");
     }
 
     void cleanupTestCase() {
@@ -62,7 +63,7 @@ private slots:
 
     void testAddAndLoad() {
         QDateTime ts = QDateTime::currentDateTime();
-        QVERIFY(m_db->addToHistory("Test Article", 100, ts));
+        QVERIFY(m_db->addToHistory("Test Article", 100, "en", ts));
 
         QVector<history_item> history = m_db->loadHistory(50);
         QCOMPARE(history.size(), 1);
@@ -72,7 +73,7 @@ private slots:
 
     void testAddMultiple() {
         for (int i = 1; i <= 3; ++i) {
-            QVERIFY(m_db->addToHistory(QString("Article %1").arg(i), i * 100,
+            QVERIFY(m_db->addToHistory(QString("Article %1").arg(i), i * 100, "en",
                                        QDateTime::currentDateTime().addSecs(i)));
         }
 
@@ -81,8 +82,13 @@ private slots:
     }
 
     void testClearHistory() {
-        m_db->addToHistory("A", 1, QDateTime::currentDateTime());
-        m_db->addToHistory("B", 2, QDateTime::currentDateTime());
+        m_db->addToHistory("A", 1, "en", QDateTime::currentDateTime());
+        m_db->addToHistory("B", 2, "fr", QDateTime::currentDateTime());
+        {
+            QSqlQuery query(QSqlDatabase::database("history_db"));
+            QVERIFY(query.exec("INSERT INTO history(page_id,title,timestamp) VALUES(3,'Unknown edition','2024-01-01')"));
+        }
+        QCOMPARE(m_db->loadHistory(50).size(), 3);
 
         QVERIFY(m_db->clearHistory());
 
@@ -92,10 +98,10 @@ private slots:
 
     void testDuplicatePageId() {
         QDateTime ts1 = QDateTime::currentDateTime();
-        m_db->addToHistory("First Title", 500, ts1);
+        m_db->addToHistory("First Title", 500, "en", ts1);
 
         QDateTime ts2 = QDateTime::currentDateTime().addSecs(1);
-        m_db->addToHistory("Second Title", 500, ts2);
+        m_db->addToHistory("Second Title", 500, "en", ts2);
 
         QVector<history_item> history = m_db->loadHistory(50);
         // The delete-then-insert logic should ensure only 1 entry for pageId 500
@@ -106,7 +112,7 @@ private slots:
 
     void testRemoveOldest() {
         for (int i = 1; i <= 5; ++i) {
-            m_db->addToHistory(QString("Article %1").arg(i), i,
+            m_db->addToHistory(QString("Article %1").arg(i), i, "en",
                                QDateTime::currentDateTime().addSecs(i));
         }
 
@@ -119,7 +125,7 @@ private slots:
 
     void testLoadWithLimit() {
         for (int i = 1; i <= 5; ++i) {
-            m_db->addToHistory(QString("Article %1").arg(i), i,
+            m_db->addToHistory(QString("Article %1").arg(i), i, "en",
                                QDateTime::currentDateTime().addSecs(i));
         }
 
@@ -130,7 +136,7 @@ private slots:
     void testTimestampOrdering() {
         // Add items with increasing timestamps
         for (int i = 1; i <= 3; ++i) {
-            m_db->addToHistory(QString("Article %1").arg(i), i,
+            m_db->addToHistory(QString("Article %1").arg(i), i, "en",
                                QDateTime(QDate(2024, 1, i), QTime(10, 0, 0)));
         }
 
@@ -140,6 +146,98 @@ private slots:
         QCOMPARE(history[0].title, QString("Article 3"));
         QCOMPARE(history[1].title, QString("Article 2"));
         QCOMPARE(history[2].title, QString("Article 1"));
+    }
+
+
+    void testEditionIdentityPersistsAndIsUnique() {
+        const QDateTime first(QDate(2024, 1, 1), QTime(12, 0));
+        QVERIFY(m_db->addToHistory("English", 42, "en", first));
+        QVERIFY(m_db->addToHistory("Français", 42, "fr", first.addSecs(1)));
+        QVERIFY(m_db->addToHistory("English updated", 42, "en", first.addSecs(2)));
+        delete m_db;
+        m_db = new HistoryDatabase;
+        const auto items = m_db->loadHistory(50);
+        QCOMPARE(items.size(), 2);
+        QCOMPARE(items[0].language, QString("en"));
+        QCOMPARE(items[0].title, QString("English updated"));
+        QCOMPARE(items[0].timestamp, first.addSecs(2));
+        QCOMPARE(items[1].language, QString("fr"));
+        QCOMPARE(items[1].title, QString("Français"));
+        QSqlQuery query(QSqlDatabase::database("history_db"));
+        QVERIFY(!query.exec("INSERT INTO history(page_id,title,timestamp,language) VALUES(42,'duplicate','2024-01-01','en')"));
+        QVERIFY(!m_db->addToHistory("Invalid", 43, "  ", first));
+        QCOMPARE(m_db->loadHistory(50).size(), 2);
+    }
+
+    void testLegacyMigrationPreservesUnknownEditionAndRunsOnce() {
+        QSqlDatabase db = QSqlDatabase::database("history_db");
+        QSqlQuery query(db);
+        QVERIFY(query.exec("DROP TABLE history"));
+        QVERIFY(query.exec("CREATE TABLE history(id INTEGER PRIMARY KEY AUTOINCREMENT, page_id INTEGER NOT NULL, title TEXT NOT NULL, timestamp DATETIME NOT NULL)"));
+        QVERIFY(query.exec("CREATE INDEX idx_page_id ON history(page_id)"));
+        QVERIFY(query.exec("INSERT INTO history(id,page_id,title,timestamp) VALUES(17,42,'Legacy','2024-01-02T03:04:05.000')"));
+        QVERIFY(query.exec("PRAGMA user_version = 0"));
+        query = QSqlQuery();
+        db = QSqlDatabase();
+        delete m_db;
+        m_db = new HistoryDatabase;
+        auto items = m_db->loadHistory(50);
+        QCOMPARE(items.size(), 1);
+        QCOMPARE(items[0].pageId, 42);
+        QCOMPARE(items[0].title, QString("Legacy"));
+        QCOMPARE(items[0].timestamp, QDateTime(QDate(2024, 1, 2), QTime(3, 4, 5)));
+        QVERIFY(items[0].language.isEmpty());
+        {
+            QSqlQuery migrated(QSqlDatabase::database("history_db"));
+            QVERIFY(migrated.exec("SELECT id, language FROM history"));
+            QVERIFY(migrated.next());
+            QCOMPARE(migrated.value(0).toInt(), 17);
+            QVERIFY(migrated.value(1).isNull());
+            QVERIFY(migrated.exec("PRAGMA user_version"));
+            QVERIFY(migrated.next());
+            QCOMPARE(migrated.value(0).toInt(), 1);
+            QVERIFY(migrated.exec("SELECT name FROM sqlite_master WHERE name = 'idx_page_id'"));
+            QVERIFY(!migrated.next());
+        }
+        delete m_db;
+        m_db = new HistoryDatabase;
+        QCOMPARE(m_db->loadHistory(50).size(), 1);
+        QVERIFY(m_db->addToHistory("Known English", 42, "en", QDateTime::currentDateTime()));
+        QCOMPARE(m_db->loadHistory(50).size(), 2);
+    }
+
+    void testMigrationFailureRollsBackAndBlocksOperations() {
+        {
+            QSqlQuery query(QSqlDatabase::database("history_db"));
+            QVERIFY(query.exec("DROP TABLE history"));
+            QVERIFY(query.exec("CREATE TABLE history(id INTEGER PRIMARY KEY, page_id INTEGER, title TEXT, timestamp DATETIME)"));
+            QVERIFY(query.exec("CREATE INDEX idx_page_id ON history(page_id)"));
+            QVERIFY(query.exec("INSERT INTO history VALUES(17,42,'Legacy','2024-01-01')"));
+            // An unrelated table occupying the new index name fails migration
+            // after ALTER TABLE and DROP INDEX have already succeeded.
+            QVERIFY(query.exec("CREATE TABLE idx_history_language_page_id(value TEXT)"));
+            QVERIFY(query.exec("PRAGMA user_version = 0"));
+        }
+        delete m_db;
+        m_db = new HistoryDatabase;
+        QSignalSpy errors(m_db, &HistoryDatabase::databaseError);
+        QVERIFY(!m_db->initialize());
+        QVERIFY(!errors.isEmpty());
+        QVERIFY(m_db->loadHistory(50).isEmpty());
+        QVERIFY(!m_db->addToHistory("Blocked", 43, "en", QDateTime::currentDateTime()));
+        QVERIFY(!m_db->clearHistory());
+        QVERIFY(!m_db->removeOldestItems(0));
+        QSqlQuery query(QSqlDatabase::database("history_db"));
+        QVERIFY(query.exec("PRAGMA user_version"));
+        QVERIFY(query.next());
+        QCOMPARE(query.value(0).toInt(), 0);
+        QVERIFY(query.exec("SELECT id, title FROM history"));
+        QVERIFY(query.next());
+        QCOMPARE(query.value(0).toInt(), 17);
+        QCOMPARE(query.value(1).toString(), QString("Legacy"));
+        QVERIFY(!query.exec("SELECT language FROM history"));
+        QVERIFY(query.exec("SELECT name FROM sqlite_master WHERE name = 'idx_page_id'"));
+        QVERIFY(query.next());
     }
 
     void testDatabaseErrorSignal() {

@@ -20,7 +20,8 @@ class HistoryDatabase : public QObject {
     // Database operations
     bool initialize();
     QVector<history_item> loadHistory(int limit);
-    bool addToHistory(const QString &title, int pageId, const QDateTime &timestamp);
+    /** @brief Persist a visit identified by a nonblank Wikipedia language and page ID. */
+    bool addToHistory(const QString &title, int pageId, const QString &language, const QDateTime &timestamp);
     bool clearHistory();
     bool removeOldestItems(int limit);
 
@@ -30,8 +31,9 @@ class HistoryDatabase : public QObject {
 
   private:
     bool executeQuery(QSqlQuery &query, const QString &queryText, const QString &operationDescription);
-    bool ensureTableExists();
-    bool ensureIndexExists();
+    bool migrateSchema();
+    bool ensureReady();
+    bool m_initialized = false;
 };
 
 #endif // HISTORYDATABASE_H

@@ -26,12 +26,12 @@ Item {
         }
     }
 
-    Component.onCompleted: {
-        // Connect to database error signal
-        HistoryState.databaseError.connect(function (errorMessage) {
-            errorMessage.text = errorMessage;
-            errorDialog.visible = true;
-        });
+    Connections {
+        target: HistoryState
+        function onDatabaseError(message) {
+            errorMessage.text = message;
+            errorDialog.open();
+        }
     }
 
     ColumnLayout {
@@ -57,7 +57,8 @@ Item {
             }
 
             Button {
-                text: "Clear History"
+                objectName: "clearHistoryButton"
+                text: qsTr("Clear History")
                 onClicked: HistoryState.clearHistory()
                 enabled: container.history.length > 0
             }
@@ -77,76 +78,72 @@ Item {
         // History list
         GridView {
             id: historyList
+            objectName: "historyList"
             Layout.fillHeight: true
             Layout.fillWidth: true
             model: container.history
             clip: true
-            cellHeight: 60
-            cellWidth: 140
+            cellHeight: 100
+            cellWidth: 240
             visible: container.history.length > 0
 
             delegate: Item {
-                width: 140
-                height: 60
+                width: historyList.cellWidth
+                height: historyList.cellHeight
                 ItemDelegate {
                     id: delegate
-                    SystemPalette {
-                        id: sysPalette
-                    }
+                    objectName: "historyEntry-" + index
+                    enabled: modelData.language.length > 0 && modelData.pageId > 0
                     hoverEnabled: true
                     padding: 10
-                    width: 120
-                    height: 60
+                    width: parent.width - 10
+                    height: parent.height - 10
                     anchors.centerIn: parent
                     clip: true
+                    SystemPalette { id: sysPalette }
 
                     background: Rectangle {
-                        id: bgRect
                         color: sysPalette.button
                         radius: 5
+                        border.width: delegate.hovered && delegate.enabled ? 2 : 0
+                        border.color: sysPalette.highlight
                     }
 
-                    Column {
-                        Layout.alignment: Qt.AlignHCenter
-                        padding: 10
+                    contentItem: Column {
                         spacing: 5
-                        clip: true
-
                         Text {
+                            width: parent.width
                             text: modelData.title
                             color: sysPalette.text
                             font.pixelSize: 14
                             elide: Text.ElideRight
                         }
                         Text {
-                            text: modelData.timestamp.toString("hh:mm:ss - MMM d, yyyy")
+                            objectName: "historyEdition-" + index
+                            width: parent.width
+                            text: modelData.language.length > 0
+                                ? qsTr("%1 Wikipedia").arg(modelData.language.toUpperCase())
+                                : qsTr("Unknown edition")
+                            color: sysPalette.text
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: parent.width
+                            text: Qt.formatDateTime(modelData.timestamp, "hh:mm:ss - MMM d, yyyy")
                             color: sysPalette.text
                             font.pixelSize: 12
                             opacity: 0.7
                             elide: Text.ElideRight
                         }
                     }
-
-                    MouseArea {
-                        hoverEnabled: true
-                        anchors.fill: parent
-                        onEntered: function () {
-                            bgRect.color.a = .5;
-                            bgRect.border.color = sysPalette.highlight;
-                            bgRect.border.width = 2;
-                        }
-                        onExited: function () {
-                            bgRect.border.width = 0;
-                        }
-                        onClicked: function () {
-                            historyList.currentIndex = index;
-                            // Load the article when clicked
-                            if (modelData.pageId > 0) {
-                                ArticleState.loadArticleByPageId(modelData.pageId);
-                                // Get the StackView from NavigationState and push the article view
-                                NavigationState.navigateToContent();
-                            }
-                        }
+                    onClicked: {
+                        // Cache hits can reorder the list synchronously.
+                        const language = modelData.language;
+                        const pageId = modelData.pageId;
+                        historyList.currentIndex = index;
+                        if (ArticleState.loadArticleFromHistory(language, pageId))
+                            NavigationState.navigateToContent();
                     }
                 }
             }
