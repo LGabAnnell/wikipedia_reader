@@ -4,10 +4,7 @@
 #include <QDebug>
 #include <QCoreApplication>
 
-HistoryDatabase::HistoryDatabase(QObject *parent) : QObject(parent) {
-    // Initialize database in the constructor
-    initialize();
-}
+HistoryDatabase::HistoryDatabase(QObject *parent) : QObject(parent) {}
 
 HistoryDatabase::~HistoryDatabase() {
     if (!QCoreApplication::instanceExists()) {
@@ -52,6 +49,19 @@ bool HistoryDatabase::initialize() {
         return false;
     }
 
+    if (!db.transaction()) {
+        emit databaseError(tr("Failed to start history retention: %1").arg(db.lastError().text()));
+        return false;
+    }
+    if (!pruneHistory(MAX_HISTORY_ITEMS)) {
+        db.rollback();
+        return false;
+    }
+    if (!db.commit()) {
+        emit databaseError(tr("Failed to commit history retention: %1").arg(db.lastError().text()));
+        db.rollback();
+        return false;
+    }
     m_initialized = true;
     emit databaseInitialized();
     return true;
@@ -111,9 +121,15 @@ bool HistoryDatabase::ensureReady() {
 
 QVector<history_item> HistoryDatabase::loadHistory(int limit) {
     QVector<history_item> history;
+    loadHistory(limit, history);
+    return history;
+}
+
+bool HistoryDatabase::loadHistory(int limit, QVector<history_item> &output) {
+    QVector<history_item> history;
     QSqlDatabase db = QSqlDatabase::database("history_db");
     if (!ensureReady()) {
-        return history;
+        return false;
     }
 
     QSqlQuery query(db);
@@ -122,7 +138,7 @@ QVector<history_item> HistoryDatabase::loadHistory(int limit) {
     query.prepare(selectQuery);
     query.bindValue(":limit", limit);
     if (!executeQuery(query, selectQuery, "load history")) {
-        return history;
+        return false;
     }
 
     while (query.next()) {
@@ -134,10 +150,16 @@ QVector<history_item> HistoryDatabase::loadHistory(int limit) {
         history.append(item);
     }
 
-    return history;
+    if (query.lastError().isValid()) {
+        emit databaseError(tr("Failed to load history: %1. Query: %2").arg(query.lastError().text(), selectQuery));
+        return false;
+    }
+    output = history;
+    return true;
 }
 
-bool HistoryDatabase::addToHistory(const QString &title, int pageId, const QString &language, const QDateTime &timestamp) {
+bool HistoryDatabase::addToHistory(const QString &title, int pageId, const QString &language, const QDateTime &timestamp,
+                                   QVector<history_item> *snapshot) {
     QSqlDatabase db = QSqlDatabase::database("history_db");
     if (!ensureReady()) {
         return false;
@@ -161,7 +183,7 @@ bool HistoryDatabase::addToHistory(const QString &title, int pageId, const QStri
     QString deleteQuery = "DELETE FROM history WHERE language = :language AND page_id = :page_id";
     if (!query.prepare(deleteQuery)) {
         qWarning() << "[HistoryDatabase] Failed to prepare delete query:" << query.lastError().text();
-        emit databaseError(tr("Failed to prepare delete query: %1").arg(query.lastError().text()));
+        emit databaseError(tr("Failed to prepare delete query: %1. Query: %2").arg(query.lastError().text(), deleteQuery));
         db.rollback();
         return false;
     }
@@ -177,7 +199,7 @@ bool HistoryDatabase::addToHistory(const QString &title, int pageId, const QStri
     QString insertQuery = "INSERT INTO history (page_id, title, timestamp, language) VALUES (:page_id, :title, :timestamp, :language)";
     if (!query.prepare(insertQuery)) {
         qWarning() << "[HistoryDatabase] Failed to prepare insert query:" << query.lastError().text();
-        emit databaseError(tr("Failed to prepare insert query: %1").arg(query.lastError().text()));
+        emit databaseError(tr("Failed to prepare insert query: %1. Query: %2").arg(query.lastError().text(), insertQuery));
         db.rollback();
         return false;
     }
@@ -191,6 +213,12 @@ bool HistoryDatabase::addToHistory(const QString &title, int pageId, const QStri
         return false;
     }
 
+    QVector<history_item> retained;
+    if (!pruneHistory(MAX_HISTORY_ITEMS) || !loadHistory(MAX_HISTORY_ITEMS, retained)) {
+        db.rollback();
+        return false;
+    }
+
     // Commit the transaction
     if (!db.commit()) {
         qWarning() << "[HistoryDatabase] Failed to commit database transaction:" << db.lastError().text();
@@ -199,6 +227,8 @@ bool HistoryDatabase::addToHistory(const QString &title, int pageId, const QStri
         return false;
     }
 
+    if (snapshot)
+        *snapshot = retained;
     return true;
 }
 
@@ -208,10 +238,23 @@ bool HistoryDatabase::clearHistory() {
         return false;
     }
 
+    if (!db.transaction()) {
+        emit databaseError(tr("Failed to start history clearing: %1").arg(db.lastError().text()));
+        return false;
+    }
     QSqlQuery query(db);
     QString clearQuery = "DELETE FROM history";
     query.prepare(clearQuery);
-    return executeQuery(query, clearQuery, "clear history");
+    if (!executeQuery(query, clearQuery, tr("clear history"))) {
+        db.rollback();
+        return false;
+    }
+    if (!db.commit()) {
+        emit databaseError(tr("Failed to commit history clearing: %1").arg(db.lastError().text()));
+        db.rollback();
+        return false;
+    }
+    return true;
 }
 
 bool HistoryDatabase::removeOldestItems(int limit) {
@@ -220,9 +263,13 @@ bool HistoryDatabase::removeOldestItems(int limit) {
         return false;
     }
 
-    QSqlQuery query(db);
+    return pruneHistory(limit);
+}
+
+bool HistoryDatabase::pruneHistory(int limit) {
+    QSqlQuery query(QSqlDatabase::database("history_db"));
     QString deleteOldestQuery = R"##(DELETE FROM history WHERE id NOT IN (
-        SELECT id FROM history ORDER BY timestamp DESC LIMIT :limit
+        SELECT id FROM history ORDER BY timestamp DESC, id DESC LIMIT :limit
     ))##";
 
     query.prepare(deleteOldestQuery);

@@ -54,5 +54,5 @@ private slots:
     }
 };
 
-QTEST_MAIN(WikipediaSearchClientTest)
+QTEST_GUILESS_MAIN(WikipediaSearchClientTest)
 #include "WikipediaSearchClientTest.moc"

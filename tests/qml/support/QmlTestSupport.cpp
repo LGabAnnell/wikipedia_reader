@@ -2,6 +2,8 @@
 
 #include <QCoreApplication>
 #include <QMouseEvent>
+#include <QSqlQuery>
+#include <QSqlDatabase>
 
 QmlTestSupport::QmlTestSupport(NetworkFixtureController *networkController, QObject *parent)
     : QObject(parent), m_networkController(networkController) {
@@ -44,4 +46,11 @@ void QmlTestSupport::recordQmlWarnings(const QList<QQmlError> &warnings) {
     if (!warnings.isEmpty()) {
         emit qmlWarningsChanged();
     }
+}
+
+bool QmlTestSupport::setHistoryClearFailure(bool enabled) {
+    QSqlQuery query(QSqlDatabase::database("history_db"));
+    return query.exec(enabled
+        ? "CREATE TRIGGER fail_clear BEFORE DELETE ON history BEGIN SELECT RAISE(ABORT,'History clear failed'); END"
+        : "DROP TRIGGER IF EXISTS fail_clear");
 }

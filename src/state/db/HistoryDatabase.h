@@ -17,11 +17,16 @@ class HistoryDatabase : public QObject {
     explicit HistoryDatabase(QObject *parent = nullptr);
     ~HistoryDatabase();
 
+    static constexpr int MAX_HISTORY_ITEMS = 50;
+
     // Database operations
     bool initialize();
     QVector<history_item> loadHistory(int limit);
+    /** @brief Load history without changing output on failure. */
+    bool loadHistory(int limit, QVector<history_item> &history);
     /** @brief Persist a visit identified by a nonblank Wikipedia language and page ID. */
-    bool addToHistory(const QString &title, int pageId, const QString &language, const QDateTime &timestamp);
+    bool addToHistory(const QString &title, int pageId, const QString &language, const QDateTime &timestamp,
+                      QVector<history_item> *snapshot = nullptr);
     bool clearHistory();
     bool removeOldestItems(int limit);
 
@@ -33,6 +38,7 @@ class HistoryDatabase : public QObject {
     bool executeQuery(QSqlQuery &query, const QString &queryText, const QString &operationDescription);
     bool migrateSchema();
     bool ensureReady();
+    bool pruneHistory(int limit);
     bool m_initialized = false;
 };
 

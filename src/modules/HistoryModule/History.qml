@@ -13,15 +13,28 @@ Item {
     clip: true
     property list<history_item> history: HistoryState.history
 
+    property bool databaseReady: HistoryState.databaseReady
+    Component.onCompleted: {
+        if (HistoryState.lastDatabaseError.length > 0) {
+            errorMessage.text = HistoryState.lastDatabaseError;
+            errorDialog.open();
+        }
+    }
+
     // Error message dialog
     Dialog {
         id: errorDialog
+        objectName: "historyErrorDialog"
+        width: Math.min(560, container.width - 40)
         standardButtons: Dialog.Ok
-        title: "Database Error"
+        title: qsTr("Database Error")
         modal: true
         visible: false
         Label {
             id: errorMessage
+            objectName: "historyErrorText"
+            width: errorDialog.availableWidth
+            wrapMode: Text.Wrap
             text: ""
         }
     }
@@ -47,7 +60,7 @@ Item {
             Layout.leftMargin: 10
             spacing: 10
             Label {
-                text: "Browsing History"
+                text: qsTr("Browsing History")
                 font.pixelSize: 18
                 font.bold: true
                 Layout.alignment: Qt.AlignLeft
@@ -66,11 +79,13 @@ Item {
         // Empty state message
         Label {
             id: emptyStateLabel
-            text: "No browsing history yet"
+            objectName: "historyUnavailableLabel"
+            text: container.databaseReady ? qsTr("No browsing history yet")
+                                          : qsTr("Browsing history is unavailable")
             color: "gray"
             font.pixelSize: 14
             horizontalAlignment: Text.AlignHCenter
-            visible: container.history.length === 0
+            visible: !container.databaseReady || container.history.length === 0
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: 20
         }

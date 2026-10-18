@@ -13,6 +13,9 @@ Item {
         History { history: [historyTests.unknownEntry] }
     }
 
+    Component { id: historyComponent; History {} }
+    Component { id: unavailableComponent; History { databaseReady: false } }
+
     TestCase {
         id: historyTests
         property history_item unknownEntry
@@ -67,11 +70,40 @@ Item {
         }
 
         function cleanup() {
+            verify(testSupport.setHistoryClearFailure(false))
             while (networkFixtures.pendingReplyCount > 0)
                 networkFixtures.completeNextReply()
             ImageSelectionState.selectImage("", "")
             HistoryState.clearHistory()
             compare(testSupport.qmlWarningCount, 0, testSupport.qmlWarnings.join("\n"))
+        }
+
+        function test_failed_clear_feedback() {
+            HistoryState.addToHistory("Retained", 1, "en")
+            const view = createTemporaryObject(historyComponent, root)
+            verify(testSupport.setHistoryClearFailure(true))
+            mouseClick(findChild(view, "clearHistoryButton"))
+            tryCompare(findChild(view, "historyErrorDialog"), "visible", true)
+            verify(findChild(view, "historyErrorText").text.indexOf("History clear failed") >= 0)
+            compare(HistoryState.history.length, 1)
+            compare(findChild(view, "clearHistoryButton").enabled, true)
+            verify(testSupport.setHistoryClearFailure(false))
+        }
+
+        function test_error_before_creation() {
+            HistoryState.addToHistory("Retained", 1, "en")
+            verify(testSupport.setHistoryClearFailure(true))
+            HistoryState.clearHistory()
+            const view = createTemporaryObject(historyComponent, root)
+            tryCompare(findChild(view, "historyErrorDialog"), "visible", true)
+            verify(findChild(view, "historyErrorText").text.indexOf("History clear failed") >= 0)
+            verify(testSupport.setHistoryClearFailure(false))
+        }
+
+        function test_unavailable() {
+            const view = createTemporaryObject(unavailableComponent, root)
+            compare(findChild(view, "historyUnavailableLabel").text, "Browsing history is unavailable")
+            compare(findChild(view, "historyUnavailableLabel").visible, true)
         }
 
         function test_unknown_edition_is_visible_but_cannot_open() {

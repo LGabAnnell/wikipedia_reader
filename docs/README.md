@@ -5,7 +5,6 @@
 - [Testing](full_testing.md): dependencies, commands, coverage, fixtures, and adding tests.
 - [Language change state isolation](language-change-state-isolation-plan.md): implemented transitions, request isolation, and edition-aware history.
 - [Improvement opportunities](improvement-opportunities.md): remaining engineering work.
-- [GUI-less backend test proposal](p2-guiless-backend-tests-fix-proposal.md): open proposal for four test entry points.
 
 ## Historical designs
 

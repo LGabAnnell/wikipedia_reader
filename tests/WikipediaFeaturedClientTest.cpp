@@ -125,5 +125,5 @@ class WikipediaFeaturedClientTest : public QObject {
     }
 };
 
-QTEST_MAIN(WikipediaFeaturedClientTest)
+QTEST_GUILESS_MAIN(WikipediaFeaturedClientTest)
 #include "WikipediaFeaturedClientTest.moc"
