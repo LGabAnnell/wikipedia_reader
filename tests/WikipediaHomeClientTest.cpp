@@ -396,5 +396,5 @@ class WikipediaHomeClientTest : public QObject {
     }
 };
 
-QTEST_MAIN(WikipediaHomeClientTest)
+QTEST_GUILESS_MAIN(WikipediaHomeClientTest)
 #include "WikipediaHomeClientTest.moc"

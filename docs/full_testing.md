@@ -35,11 +35,13 @@ cmake --build build -j14
 QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
 ```
 
-Use the prefix option above when Lexbor is installed locally. Several C++
-tests still use `QTEST_MAIN` and require a GUI platform even though they test
-backend behavior. Setting `QT_QPA_PLATFORM=offscreen` for the full run supports
-headless execution. CTest already sets it individually for QML tests,
-`ContentDisplayModelTest`, and `test_sidebar_layout`.
+Use the prefix option above when Lexbor is installed locally.
+`HistoryDatabaseTest`, `WikipediaSearchClientTest`,
+`WikipediaFeaturedClientTest`, and `WikipediaHomeClientTest` use
+`QTEST_GUILESS_MAIN` and run without a display or GUI platform plugin.
+Other C++ tests still use `QTEST_MAIN`; setting `QT_QPA_PLATFORM=offscreen`
+for the full run supports headless execution. CTest already sets it individually
+for QML tests, `ContentDisplayModelTest`, and `test_sidebar_layout`.
 
 Database-using state tests, `HistoryDatabaseTest`, and the QML harness redirect
 `XDG_DATA_HOME` to their own temporary directories. To also supply a writable

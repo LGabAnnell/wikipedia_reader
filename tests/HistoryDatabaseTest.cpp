@@ -249,5 +249,5 @@ private slots:
     }
 };
 
-QTEST_MAIN(HistoryDatabaseTest)
+QTEST_GUILESS_MAIN(HistoryDatabaseTest)
 #include "HistoryDatabaseTest.moc"
