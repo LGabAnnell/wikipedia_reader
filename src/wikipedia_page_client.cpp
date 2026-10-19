@@ -309,8 +309,10 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
     urlQuery.addQueryItem("action", "query");
     urlQuery.addQueryItem("format", "json");
     urlQuery.addQueryItem("prop", "imageinfo");
-    urlQuery.addQueryItem("iiprop", "url|extmetadata");
+    urlQuery.addQueryItem("iiprop", "url|extmetadata|mime");
     urlQuery.addQueryItem("iiextmetadata", "ImageDescription");
+    urlQuery.addQueryItem("iiurlwidth", "2048");
+    urlQuery.addQueryItem("iiurlheight", "2048");
     urlQuery.addQueryItem("titles", imageTitles.join("|"));
     url.setQuery(urlQuery);
 
@@ -332,6 +334,15 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
                 if (!imageInfo.isEmpty()) {
                     QJsonObject info = imageInfo[0].toObject();
                     QString imageUrl = info["url"].toString();
+                    // Qt SVG can reject intermediate mask buffers even for
+                    // empty groups (Qt 6.11.2). Prefer MediaWiki's rasterized
+                    // preview for SVGs; retain the original if none is available.
+                    const bool isSvg = info["mime"].toString() == QStringLiteral("image/svg+xml")
+                                       || QUrl(imageUrl).path().endsWith(QStringLiteral(".svg"), Qt::CaseInsensitive);
+                    const QString previewUrl = info["thumburl"].toString();
+                    if (isSvg && !previewUrl.isEmpty()) {
+                        imageUrl = previewUrl;
+                    }
                     if (!imageUrl.isEmpty()) {
                         pageData.imageUrls.append(imageUrl);
 

@@ -1,13 +1,16 @@
-// ImageView.qml - Fullscreen image view pushed onto the navigation stack
+// Image content shared by the navigation view and fullscreen window.
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import wikipedia_qt // For ImageSelectionState, NavigationState
+import wikipedia_qt // For ImageSelectionState
 
 Item {
     id: root
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
+
+    property string backButtonText: qsTr("Back")
+    signal backRequested()
 
     Rectangle {
         anchors.fill: parent
@@ -17,8 +20,12 @@ Item {
             id: fullImage
             objectName: "fullScreenImage"
             anchors.fill: parent
-            source: ImageSelectionState.currentImageUrl
+            source: width > 0 && height > 0 ? ImageSelectionState.currentImageUrl : ""
             fillMode: Image.PreserveAspectFit
+            // Bound decoding and SVG rasterization to the viewer size instead
+            // of allocating buffers at the source's intrinsic dimensions.
+            sourceSize: Qt.size(Math.max(1, Math.ceil(width)),
+                                Math.max(1, Math.ceil(height)))
             asynchronous: true
             cache: true
 
@@ -90,19 +97,14 @@ Item {
         }
     }
 
-    // Back button (top-left); pops the stack via NavigationState
+    // The owner decides whether Back closes a window or pops a view.
     Button {
         id: backButton
         objectName: "imageBackButton"
-        text: "Back"
+        text: root.backButtonText
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.margins: 10
-        onClicked: {
-            var sv = NavigationState.stackView;
-            if (sv && sv.depth > 1) {
-                sv.pop();
-            }
-        }
+        onClicked: root.backRequested()
     }
 }

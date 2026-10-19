@@ -20,6 +20,7 @@ qt_add_qml_module(ImageDisplayModule
         ImageHome.qml
         ImageGallery.qml
         ImageView.qml
+        ImageFullscreenWindow.qml
     SOURCES
         ImageHomeModel.cpp
         ImageHomeModel.h

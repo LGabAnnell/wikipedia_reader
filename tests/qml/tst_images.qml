@@ -10,18 +10,14 @@ Item {
     height: 600
 
     Component {
-        id: galleryComponent
-
-        ImageGallery {
-            width: root.width
-            height: root.height
-        }
+        id: galleryModelComponent
+        ImageHomeModel {}
     }
 
     Component {
-        id: imageViewComponent
+        id: galleryComponent
 
-        ImageView {
+        ImageGallery {
             width: root.width
             height: root.height
         }
@@ -34,16 +30,13 @@ Item {
         z: 1
     }
 
-    Component.onCompleted: {
-        NavigationState.addView(Constants.imageView, imageViewComponent)
+    // The article underneath the viewer also registers Escape (to hide Find).
+    Shortcut {
+        sequence: "Escape"
+        onActivated: root.underlyingEscapeCount++
     }
 
-    Connections {
-        target: NavigationState
-        function onPushView(view) {
-            stackView.push(view)
-        }
-    }
+    property int underlyingEscapeCount: 0
 
     TestCase {
         name: "ImageGalleryBehavior"
@@ -67,10 +60,11 @@ Item {
                     + "&format=json&formatversion=2&pageid=" + pageId + "&prop=text"
         }
 
-        function imageInfoUrl() {
+        function imageInfoUrl(title) {
             return "https://en.wikipedia.org/w/api.php?action=query&format=json&prop=imageinfo"
-                    + "&iiextmetadata=ImageDescription&iiprop=url%7Cextmetadata"
-                    + "&titles=File%3AFixture.png"
+                    + "&iiextmetadata=ImageDescription&iiprop=url%7Cextmetadata%7Cmime"
+                    + "&iiurlwidth=2048&iiurlheight=2048"
+                    + "&titles=" + encodeURIComponent(title || "File:Fixture.svg")
         }
 
         function configureArticleFixture() {
@@ -79,7 +73,7 @@ Item {
                 "pageid": articleId,
                 "title": articleTitle,
                 "extract": "Gallery fixture extract",
-                "images": [{"title": "File:Fixture.png"}]
+                "images": [{"title": "File:Fixture.svg"}]
             }
             networkFixtures.addFixture("GET", pageQueryUrl(articleId),
                                        JSON.stringify({"query": {"pages": pages}}))
@@ -93,7 +87,11 @@ Item {
             var imagePages = {}
             imagePages["42"] = {
                 "imageinfo": [{
-                    "url": imageUrl,
+                    // This original has no transport fixture: loading it is a
+                    // failure. The gallery and viewer must request the PNG.
+                    "url": "https://upload.wikimedia.org/wikipedia/commons/empty-masked.svg",
+                    "mime": "image/svg+xml",
+                    "thumburl": imageUrl,
                     "extmetadata": {"ImageDescription": {"value": imageDescription}}
                 }]
             }
@@ -132,6 +130,36 @@ Item {
             return item
         }
 
+        function test_gallery_image_format_data() {
+            return [
+                { tag: "svg-preview", url: "https://example.org/logo.svg?tracking=1", mime: "image/svg+xml", preview: imageUrl, expected: imageUrl },
+                { tag: "svg-suffix-without-mime", url: "https://example.org/logo.SVG?tracking=1", mime: "", preview: imageUrl, expected: imageUrl },
+                { tag: "raster-original", url: imageUrl, mime: "image/png", preview: "https://example.org/small.png", expected: imageUrl },
+                { tag: "svg-without-preview", url: "https://example.org/logo.svg", mime: "image/svg+xml", preview: "", expected: "https://example.org/logo.svg" }
+            ]
+        }
+
+        function test_gallery_image_format(data) {
+            const pageId = 302
+            const title = "File:Logo.svg"
+            var pages = {}
+            pages[pageId] = { pageid: pageId, title: "Logo article", images: [{ title: title }] }
+            networkFixtures.addFixture("GET", pageQueryUrl(pageId),
+                                       JSON.stringify({ query: { pages: pages } }))
+            networkFixtures.addFixture("GET", imageInfoUrl(title),
+                                       JSON.stringify({ query: { pages: { "42": { imageinfo: [{
+                                           url: data.url, mime: data.mime, thumburl: data.preview,
+                                           extmetadata: { ImageDescription: { value: imageDescription } }
+                                       }] } } } }))
+            gallery = galleryModelComponent.createObject(root)
+            gallery.loadImagesForPage(pageId)
+            tryCompare(gallery, "isLoading", false)
+            compare(gallery.imageUrls.length, 1)
+            compare(gallery.imageUrls[0], data.expected)
+            compare(gallery.imageDescriptions[0], imageDescription)
+            compare(networkFixtures.requestCount, 2)
+        }
+
         function test_selecting_gallery_image_shows_caption() {
             ArticleState.loadArticleByPageId(articleId)
             tryCompare(ArticleState, "isLoading", true)
@@ -153,10 +181,17 @@ Item {
             compare(HistoryState.history.length, 1)
             compare(HistoryState.history[0].timestamp, originalHistory)
             const cell = child("imageGalleryCell-0")
+            verify(waitForRendering(cell))
+            const mainWindow = root.Window.window
+            const originalVisibility = mainWindow.visibility
             mouseClick(cell)
             tryCompare(ImageSelectionState, "currentImageUrl", imageUrl)
             compare(ImageSelectionState.currentImageDescription, imageDescription)
-            tryCompare(stackView, "depth", 1)
+            const viewer = child("imageFullscreenWindow")
+            tryCompare(viewer, "visibility", Window.FullScreen)
+            compare(viewer.transientParent, mainWindow)
+            compare(mainWindow.visibility, originalVisibility)
+            compare(stackView.depth, 0)
 
             const fullImage = child("fullScreenImage")
             tryCompare(fullImage, "status", Image.Ready)
@@ -167,12 +202,39 @@ Item {
             const caption = child("imageCaptionText")
             compare(caption.text, imageDescription)
             compare(testSupport.requestCount, 6)
+
+            // The offscreen platform does not expose the secondary native
+            // window for mouse synthesis; exercise the Close button's signal.
+            child("imageBackButton").clicked()
+            tryCompare(viewer, "visible", false)
+            compare(gallery.visible, true)
+            compare(mainWindow.visibility, originalVisibility)
+            compare(stackView.depth, 0)
+
+            // Escape must work in the viewer's native window, including when
+            // a control within it owns keyboard focus.
+            const refreshedCell = child("imageGalleryCell-0")
+            verify(waitForRendering(refreshedCell))
+            mouseClick(refreshedCell)
+            tryCompare(viewer, "visibility", Window.FullScreen)
+            tryCompare(viewer, "active", true)
+            child("imageBackButton").forceActiveFocus()
+            const escapeCount = root.underlyingEscapeCount
+            verify(testSupport.sendKeyClick(viewer, Qt.Key_Escape))
+            tryCompare(viewer, "visible", false)
+            compare(root.underlyingEscapeCount, escapeCount)
+            compare(mainWindow.visibility, originalVisibility)
+            compare(stackView.depth, 0)
+
+            mouseClick(refreshedCell)
+            tryCompare(viewer, "visibility", Window.FullScreen)
+            ImageSelectionState.selectImage("", "")
+            tryCompare(viewer, "visible", false)
+
             const requestCount = testSupport.requestCount
             ArticleState.loadArticleByPageId(articleId)
             compare(testSupport.requestCount, requestCount, "Gallery must preserve the cached HTML article")
             compare(ArticleState.currentPageExtract, originalHtml)
-
-
         }
     }
 }
