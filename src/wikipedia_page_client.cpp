@@ -151,10 +151,7 @@ void WikipediaPageClient::getPageById(int pageid) {
     QUrlQuery urlQuery;
     urlQuery.addQueryItem("action", "query");
     urlQuery.addQueryItem("format", "json");
-    urlQuery.addQueryItem("prop", "extracts|images");
     urlQuery.addQueryItem("pageids", QString::number(pageid));
-    urlQuery.addQueryItem("explaintext", "1");
-    urlQuery.addQueryItem("imlimit", "50");
     url.setQuery(urlQuery);
 
     const auto context = m_requests.context();
@@ -169,7 +166,6 @@ void WikipediaPageClient::getPageById(int pageid) {
             QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
 
             page page;
-            QStringList imageTitles;
 
             for (auto it = pages.begin(); it != pages.end(); ++it) {
                 if (it.key() == QString::number(pageid)) {
@@ -178,16 +174,7 @@ void WikipediaPageClient::getPageById(int pageid) {
                         break;
                     }
                     page.title = pageObj["title"].toString();
-                    page.extract = pageObj["extract"].toString();
                     page.pageid = pageid;
-                    page.imageUrls = QStringList();
-
-                    if (pageObj.contains("images")) {
-                        QJsonArray images = pageObj["images"].toArray();
-                        for (const QJsonValueConstRef &image : std::as_const(images)) {
-                            imageTitles.append(image.toObject().value("title").toString());
-                        }
-                    }
                     break;
                 }
             }

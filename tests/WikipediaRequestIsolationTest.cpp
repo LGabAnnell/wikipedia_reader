@@ -64,7 +64,7 @@ class WikipediaRequestIsolationTest : public QObject {
 
     void pageReplyCannotStartOldEditionHtmlRequest() {
         WikipediaPageClient client;
-        const QUrl en("https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts%7Cimages&pageids=41&explaintext=1&imlimit=50");
+        const QUrl en("https://en.wikipedia.org/w/api.php?action=query&format=json&pageids=41");
         m_network.addFixture("GET", en,
             R"({"query":{"pages":{"41":{"pageid":41,"title":"Old","extract":"","images":[]}}}})");
         QSignalSpy pages(&client, &WikipediaPageClient::pageReceived);

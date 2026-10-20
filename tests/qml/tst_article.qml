@@ -67,8 +67,7 @@ Item {
 
         function pageQueryUrl(pageId) {
             return "https://en.wikipedia.org/w/api.php?action=query&format=json"
-                    + "&prop=extracts%7Cimages&pageids=" + pageId
-                    + "&explaintext=1&imlimit=50"
+                    + "&pageids=" + pageId
         }
 
         function parseUrl(pageId) {

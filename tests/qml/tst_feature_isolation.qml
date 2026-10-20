@@ -15,7 +15,7 @@ Item {
     TestCase {
         name: "FeatureIsolation"
         property var model: null
-        readonly property string articleUrl: "https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts%7Cimages&pageids=901&explaintext=1&imlimit=50"
+        readonly property string articleUrl: "https://en.wikipedia.org/w/api.php?action=query&format=json&pageids=901"
         readonly property string searchUrl: "https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=isolation&srlimit=10"
         readonly property string sectionUrl: "https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=tocdata&page=Isolation"
         readonly property string galleryUrl: "https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts%7Cimages&pageids=901&explaintext=1&imlimit=50"

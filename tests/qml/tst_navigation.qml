@@ -104,7 +104,7 @@ Item {
             const prefix = "https://" + language + ".wikipedia.org/w/api.php"
             const pages = {}
             pages[pageId] = {pageid:pageId, title:title, extract:"", images:[]}
-            networkFixtures.addFixture("GET", prefix + "?action=query&format=json&prop=extracts%7Cimages&pageids=" + pageId + "&explaintext=1&imlimit=50",
+            networkFixtures.addFixture("GET", prefix + "?action=query&format=json&pageids=" + pageId,
                                        JSON.stringify({query:{pages:pages}}))
             networkFixtures.addFixture("GET", prefix + "?action=parse&format=json&prop=tocdata&page=" + encodeURIComponent(title),
                                        '{"parse":{"tocdata":{"sections":[]}}}')

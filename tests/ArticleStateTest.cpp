@@ -15,7 +15,7 @@ class ArticleStateTest : public QObject {
 
     QUrl articleUrl(const QString &language = "en") const {
         return QUrl("https://" + language + ".wikipedia.org/w/api.php?action=query&format=json"
-                    "&prop=extracts%7Cimages&pageids=42&explaintext=1&imlimit=50");
+                    "&pageids=42");
     }
 
     void addArticle(const QString &language = "en", const QString &title = "Article") {
@@ -227,7 +227,7 @@ class ArticleStateTest : public QObject {
         SettingsState settings;
         ArticleState article(*m_history, settings);
         article.setCurrentPage(cachedArticle());
-        const QUrl obsoleteUrl("https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts%7Cimages&pageids=43&explaintext=1&imlimit=50");
+        const QUrl obsoleteUrl("https://en.wikipedia.org/w/api.php?action=query&format=json&pageids=43");
         m_network.addFixture("GET", obsoleteUrl,
             R"({"query":{"pages":{"43":{"pageid":43,"title":"Obsolete","extract":"","images":[]}}}})");
         m_network.deferNextReply(true);

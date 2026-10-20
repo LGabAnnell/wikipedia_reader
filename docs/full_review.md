@@ -29,17 +29,6 @@ including `<map>`. It compiles only via transitive includes — not portable.
 
 ## Medium
 
-### `src/wikipedia_page_client.cpp:172` — Dead `imageTitles` local in `getPageById()`
-
-The method fetches `prop=extracts|images` with `imlimit=50`, populates a local
-`QStringList imageTitles` from the response, then calls
-`fetchPageContentWithImages()` without passing it. The `extract` from this
-response is also overwritten later by `fetchPageContentWithImages`. The gallery
-loads images separately via `getPageWithImages()`, so the `images` prop and
-`imageTitles` extraction are purely wasted API bandwidth on every article load —
-remove `prop=extracts|images` and `imlimit=50` from the query and delete the
-dead code.
-
 ### `src/wikipedia_page_client.cpp:356` — Gallery image order follows JSON key order, not article order
 
 `fetchImageUrlsFromTitles()` appends results while iterating the response's
@@ -208,6 +197,19 @@ files" — worth normalizing.
 These findings were fixed and are retained with their recorded validation,
 including fixes made after the audit.
 
+### `src/wikipedia_page_client.cpp` — `getPageById()` fetched unused extracts and image titles
+
+The initial query now requests only page identity, omitting `prop`,
+`explaintext`, and `imlimit`. Removed the overwritten extract assignment and
+unused image-title parsing; article HTML still comes from the subsequent parse
+request, and galleries retain their separate image queries. Fixture regression
+tests require the smaller query and verify successful metadata-to-HTML loading
+from identity-only responses in English and French. The success regression
+rejected the oversized request before the fix. Existing missing-page,
+request-isolation, article-state, and QML fixtures now use the smaller query.
+Validation: `./scripts/run_tests.sh -R '^(WikipediaPageClientTest|WikipediaRequestIsolationTest|ArticleStateTest|QmlTests\.tst_(article|history|navigation|images|feature_isolation))$'`
+passed (all eight CTest entries).
+
 ### `src/wikipedia_page_client.cpp` — `getPageById()` silently emitted an empty page when the ID was missing
 
 The metadata response must now contain the requested page with a nonempty title
@@ -307,11 +309,10 @@ memory handling for a C API. No `console.log` calls exist in QML files.
 |----------|-------------------|
 | Critical | 0 |
 | High     | 2 |
-| Medium   | 13 |
+| Medium   | 12 |
 | Low      | 14 |
 
-The highest-value remaining fixes are the undefined `NavigationState::currentView()`
-method (a linker failure for callers), and the dead `images` prop in
-`getPageById()` (wasted API bandwidth on every article load).
+The highest-value remaining fix is the undefined `NavigationState::currentView()`
+method (a linker failure for callers).
 The original audit was static; the resolved entries above record validation
 performed for individual fixes.

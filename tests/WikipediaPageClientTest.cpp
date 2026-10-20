@@ -11,7 +11,7 @@ class WikipediaPageClientTest : public QObject {
   private:
     NetworkFixtureController m_network;
 
-    const QUrl m_pageUrl{"https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts%7Cimages&pageids=736&explaintext=1&imlimit=50"};
+    const QUrl m_pageUrl{"https://en.wikipedia.org/w/api.php?action=query&format=json&pageids=736"};
 
   private slots:
     void initTestCase() {
@@ -54,12 +54,22 @@ class WikipediaPageClientTest : public QObject {
         QCOMPARE(m_network.requestCount(), 1);
     }
 
+    void testGetPageByIdSuccess_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("English") << QString("en");
+        QTest::newRow("French") << QString("fr");
+    }
+
     void testGetPageByIdSuccess() {
-        m_network.addFixture("GET", m_pageUrl,
-            R"({"query":{"pages":{"736":{"pageid":736,"title":"Albert Einstein","extract":"Summary"}}}})");
-        const QUrl htmlUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&disableeditsection=true&formatversion=2&pageid=736");
+        QFETCH(QString, language);
+        const QString apiUrl = "https://" + language + ".wikipedia.org/w/api.php";
+        // Article loading only needs page identity here; HTML is fetched separately.
+        m_network.addFixture("GET", QUrl(apiUrl + "?action=query&format=json&pageids=736"),
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Albert Einstein"}}}})");
+        const QUrl htmlUrl(apiUrl + "?action=parse&format=json&prop=text&disableeditsection=true&formatversion=2&pageid=736");
         m_network.addFixture("GET", htmlUrl, R"({"parse":{"text":"<p>A theoretical physicist.</p>"}})");
         WikipediaPageClient client;
+        client.setLanguage(language);
         QSignalSpy pages(&client, &WikipediaPageClient::pageReceived);
         QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
 
@@ -70,6 +80,8 @@ class WikipediaPageClientTest : public QObject {
         QCOMPARE(result.pageid, 736);
         QCOMPARE(result.title, QString("Albert Einstein"));
         QVERIFY(result.extract.contains("A theoretical physicist."));
+        QVERIFY(result.imageUrls.isEmpty());
+        QVERIFY(result.imageTitles.isEmpty());
         QCOMPARE(errors.count(), 0);
         QCOMPARE(m_network.requestCount(), 2);
     }

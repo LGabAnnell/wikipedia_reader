@@ -84,6 +84,10 @@ Item {
                     + "&explaintext=1&imlimit=50"
         }
 
+        function articleQueryUrl(pageId) {
+            return "https://en.wikipedia.org/w/api.php?action=query&format=json&pageids=" + pageId
+        }
+
         function parseUrl(pageId) {
             return "https://en.wikipedia.org/w/api.php?action=parse&disableeditsection=true"
                     + "&format=json&formatversion=2&pageid=" + pageId + "&prop=text"
@@ -107,6 +111,8 @@ Item {
                 "images": [{"title": "File:Fixture.svg"}]
             }
             networkFixtures.addFixture("GET", pageQueryUrl(articleId),
+                                       JSON.stringify({"query": {"pages": pages}}))
+            networkFixtures.addFixture("GET", articleQueryUrl(articleId),
                                        JSON.stringify({"query": {"pages": pages}}))
             networkFixtures.addFixture("GET", parseUrl(articleId),
                                        JSON.stringify({"parse": {
@@ -145,6 +151,7 @@ Item {
                 images: [{title: titleA}, {title: titleB}]
             }
             networkFixtures.addFixture("GET", pageQueryUrl(pageId), JSON.stringify({query: {pages: pages}}))
+            networkFixtures.addFixture("GET", articleQueryUrl(pageId), JSON.stringify({query: {pages: pages}}))
             networkFixtures.addFixture("GET", parseUrl(pageId), JSON.stringify({parse: {
                 title: "Two image gallery fixture",
                 pageid: pageId,
