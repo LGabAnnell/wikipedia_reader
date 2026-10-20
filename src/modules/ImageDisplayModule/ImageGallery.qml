@@ -35,11 +35,12 @@ Item {
 
             Button {
                 id: backButton
+                objectName: "imageGalleryBackButton"
                 text: "Back"
                 Layout.alignment: Qt.AlignLeft
                 onClicked: {
-                    if (stackView.depth > 1) {
-                        stackView.pop();
+                    if (root.StackView.view && root.StackView.view.depth > 1) {
+                        root.StackView.view.pop();
                     }
                 }
             }

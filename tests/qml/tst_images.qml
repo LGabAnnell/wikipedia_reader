@@ -15,6 +15,16 @@ Item {
     }
 
     Component {
+        id: galleryStackComponent
+        StackView { anchors.fill: parent; z: 2 }
+    }
+
+    Component {
+        id: emptyItemComponent
+        Item {}
+    }
+
+    Component {
         id: fullscreenComponent
         ImageFullscreenWindow {}
     }
@@ -196,6 +206,39 @@ Item {
             return testSupport.requests.filter(function(request) {
                 return request.url.indexOf("https://en.wikipedia.org/w/api.php") === 0
             }).length
+        }
+
+        function test_gallery_back_data() {
+            return [
+                { tag: "previous-item", initialDepth: 1 },
+                { tag: "root-gallery", initialDepth: 0 },
+                { tag: "standalone-gallery", initialDepth: -1 }
+            ]
+        }
+
+        function test_gallery_back(data) {
+            // A different stack ID ensures the gallery uses its attached view.
+            const ownerStack = createTemporaryObject(galleryStackComponent, root)
+            verify(ownerStack !== null)
+            let previousItem = null
+            if (data.initialDepth > 0)
+                previousItem = ownerStack.push(emptyItemComponent, StackView.Immediate)
+            gallery = galleryComponent.createObject(root)
+            verify(gallery !== null)
+            if (data.initialDepth >= 0)
+                ownerStack.push(gallery, StackView.Immediate)
+
+            mouseClick(child("imageGalleryBackButton"))
+            tryCompare(ownerStack, "busy", false)
+            compare(ownerStack.depth, data.initialDepth < 0 ? 0 : 1)
+            if (previousItem)
+                compare(ownerStack.currentItem, previousItem)
+            else if (data.initialDepth === 0)
+                compare(ownerStack.currentItem, gallery)
+            else
+                compare(gallery.visible, true)
+            compare(stackView.depth, 0)
+            ownerStack.clear(StackView.Immediate)
         }
 
         function test_queued_back_does_not_close_reopened_viewer() {
