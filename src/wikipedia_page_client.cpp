@@ -322,7 +322,7 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
     m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this,
-            [this, reply, pageData = std::move(pageData), context, completion = std::move(completion)]() mutable {
+            [this, reply, imageTitles, pageData = std::move(pageData), context, completion = std::move(completion)]() mutable {
     if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
     if (reply->error() == QNetworkReply::NoError) {
         QByteArray response = reply->readAll();
@@ -336,9 +336,15 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
             return;
         }
         QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
+        QHash<QString, QJsonObject> pagesByTitle;
+        for (auto it = pages.constBegin(); it != pages.constEnd(); ++it) {
+            const QJsonObject pageObj = it.value().toObject();
+            pagesByTitle.insert(pageObj["title"].toString(), pageObj);
+        }
 
-        for (auto it = pages.begin(); it != pages.end(); ++it) {
-            QJsonObject pageObj = it.value().toObject();
+        // Response page IDs do not preserve the requested gallery sequence.
+        for (const QString &title : imageTitles) {
+            const QJsonObject pageObj = pagesByTitle.value(title);
             if (pageObj.contains("imageinfo")) {
                 QJsonArray imageInfo = pageObj["imageinfo"].toArray();
                 if (!imageInfo.isEmpty()) {

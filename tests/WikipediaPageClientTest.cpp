@@ -139,6 +139,60 @@ class WikipediaPageClientTest : public QObject {
         QCOMPARE(p.imageUrls[1], QString("File:Einstein2.jpg"));
     }
 
+    void testGalleryPreservesRequestedImageOrder() {
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=extracts|images&pageids=736&explaintext=1&imlimit=50"),
+            "{\"query\":{\"pages\":{\"736\":{"
+            "\"pageid\":736,\"title\":\"Gallery article\",\"images\":["
+            "{\"title\":\"File:Zebra.jpg\"},"
+            "{\"title\":\"File:Missing.jpg\"},"
+            "{\"title\":\"File:Alpha.jpg\"},"
+            "{\"title\":\"File:NoInfo.jpg\"},"
+            "{\"title\":\"File:EmptyInfo.jpg\"},"
+            "{\"title\":\"File:NoUrl.jpg\"},"
+            "{\"title\":\"File:Original.jpg\"}"
+            "]"
+            "}}}}");
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=imageinfo&iiprop=url|extmetadata|mime&iiurlheight=330&iiurlwidth=330"
+            "&titles=File:Zebra.jpg|File:Missing.jpg|File:Alpha.jpg|File:NoInfo.jpg"
+            "|File:EmptyInfo.jpg|File:NoUrl.jpg|File:Original.jpg"),
+            "{\"query\":{\"pages\":{"
+            "\"1\":{\"title\":\"File:Alpha.jpg\",\"imageinfo\":[{\"thumburl\":\"https://example.org/alpha-thumb.jpg\"}]},"
+            "\"10\":{\"title\":\"File:EmptyInfo.jpg\",\"imageinfo\":[]},"
+            "\"2\":{\"title\":\"File:Zebra.jpg\",\"imageinfo\":[{"
+            "\"thumburl\":\"https://example.org/zebra-thumb.jpg\",\"url\":\"https://example.org/zebra.jpg\","
+            "\"extmetadata\":{\"ImageDescription\":{\"value\":\"<p>Zebra &amp; stripes</p>\"}}"
+            "}]},"
+            "\"3\":{\"title\":\"File:NoInfo.jpg\",\"missing\":\"\"},"
+            "\"4\":{\"title\":\"File:NoUrl.jpg\",\"imageinfo\":[{}]},"
+            "\"5\":{\"title\":\"File:Original.jpg\",\"imageinfo\":[{"
+            "\"url\":\"https://example.org/original.jpg\","
+            "\"extmetadata\":{\"ImageDescription\":{\"value\":\"Original caption\"}}"
+            "}]}"
+            "}}}");
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageWithImagesReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+        m_network.deferNextReply();
+
+        client.getPageWithImages(736);
+        QCOMPARE(pages.count(), 0);
+        m_network.completeNextReply();
+
+        QTRY_COMPARE(pages.count(), 1);
+        const page result = pages.first().first().value<page>();
+        QCOMPARE(result.pageid, 736);
+        QCOMPARE(result.title, QString("Gallery article"));
+        QCOMPARE(result.imageTitles, QStringList({"File:Zebra.jpg", "File:Alpha.jpg", "File:Original.jpg"}));
+        QCOMPARE(result.imageUrls, QStringList({"https://example.org/zebra-thumb.jpg",
+                                              "https://example.org/alpha-thumb.jpg",
+                                              "https://example.org/original.jpg"}));
+        QCOMPARE(result.imageDescriptions, QStringList({"Zebra & stripes", "", "Original caption"}));
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(m_network.requestCount(), 2);
+    }
+
     void testParsePageWithImagesNoImages() {
         QByteArray json = R"({"query":{"pages":{"736":{
             "title":"Albert Einstein",

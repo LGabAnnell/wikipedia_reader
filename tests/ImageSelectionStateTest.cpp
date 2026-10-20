@@ -104,7 +104,7 @@ class ImageSelectionStateTest : public QObject {
         query.addQueryItem("titles", title);
         requestUrl.setQuery(query);
         network.addFixture("GET", requestUrl,
-            "{\"query\":{\"pages\":{\"1\":{\"imageinfo\":[{\"thumburl\":\"https://upload.wikimedia.org/full.jpg\","
+            "{\"query\":{\"pages\":{\"1\":{\"title\":\"File:One.jpg\",\"imageinfo\":[{\"thumburl\":\"https://upload.wikimedia.org/full.jpg\","
             "\"extmetadata\":{\"ImageDescription\":{\"value\":\"Full caption\"}}}]}}}}");
         SettingsState settings;
         ImageSelectionState selection(settings);

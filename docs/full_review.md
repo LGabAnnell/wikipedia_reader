@@ -29,14 +29,6 @@ including `<map>`. It compiles only via transitive includes — not portable.
 
 ## Medium
 
-### `src/wikipedia_page_client.cpp:356` — Gallery image order follows JSON key order, not article order
-
-`fetchImageUrlsFromTitles()` appends results while iterating the response's
-`pages` object, whose keys `QJsonObject` sorts alphabetically — not the order of
-the requested `imageTitles`. Gallery images therefore appear in file-title
-order rather than article order. Iterate `imageTitles` and look up each result
-instead.
-
 ### `src/wikipedia_featured_client.cpp:27` — Double `reply->deleteLater()`
 
 `getFeaturedArticleOfTheDay()` calls `reply->deleteLater()` in its lambda, and
@@ -197,6 +189,20 @@ files" — worth normalizing.
 These findings were fixed and are retained with their recorded validation,
 including fixes made after the audit.
 
+### `src/wikipedia_page_client.cpp` — Gallery image order followed JSON key order instead of requested title order
+
+`fetchImageUrlsFromTitles()` now indexes response pages by file title and
+appends metadata in the requested `imageTitles` sequence. URLs, titles, and
+descriptions remain aligned while missing pages, empty image info, and files
+without a usable URL are skipped. Thumbnail preference and original-URL
+fallback are preserved. A fixture regression requests Zebra before Alpha with
+response page IDs that sort Alpha first; it failed on the first title before
+the fix. It also verifies caption decoding, missing-caption alignment, skipped
+files, and the original-URL fallback. Two existing image fixtures now include
+the API's file-title field so metadata can be matched by title.
+Validation: `./scripts/run_tests.sh -R '^(WikipediaPageClientTest|WikipediaRequestIsolationTest|ImageSelectionStateTest|QmlTests\.tst_(images|feature_isolation))$'`
+passed (all five CTest entries).
+
 ### `src/wikipedia_page_client.cpp` — `getPageById()` fetched unused extracts and image titles
 
 The initial query now requests only page identity, omitting `prop`,
@@ -309,7 +315,7 @@ memory handling for a C API. No `console.log` calls exist in QML files.
 |----------|-------------------|
 | Critical | 0 |
 | High     | 2 |
-| Medium   | 12 |
+| Medium   | 11 |
 | Low      | 14 |
 
 The highest-value remaining fix is the undefined `NavigationState::currentView()`

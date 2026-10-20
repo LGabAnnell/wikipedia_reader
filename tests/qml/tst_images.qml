@@ -436,7 +436,7 @@ Item {
             networkFixtures.addFixture("GET", pageQueryUrl(pageId),
                                        JSON.stringify({ query: { pages: pages } }))
             networkFixtures.addFixture("GET", imageInfoUrl(title),
-                                       JSON.stringify({ query: { pages: { "42": { imageinfo: [{
+                                       JSON.stringify({ query: { pages: { "42": { title: title, imageinfo: [{
                                            url: data.url, mime: data.mime, thumburl: data.preview,
                                            extmetadata: { ImageDescription: { value: imageDescription } }
                                        }] } } } }))
