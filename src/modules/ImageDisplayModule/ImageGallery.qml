@@ -157,9 +157,12 @@ Item {
 
                     MouseArea {
                         id: mouseArea
+                        objectName: "imageGalleryMouseArea-" + index
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
+                            if (index < 0 || index >= imageModel.imageUrls.length)
+                                return;
                             imageModel.selectImage(index);
                             imageWindow.showFullScreen();
                         }

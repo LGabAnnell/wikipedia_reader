@@ -15,6 +15,11 @@ Item {
     }
 
     Component {
+        id: fullscreenComponent
+        ImageFullscreenWindow {}
+    }
+
+    Component {
         id: galleryComponent
 
         ImageGallery {
@@ -136,6 +141,31 @@ Item {
             return item
         }
 
+        function apiRequestCount() {
+            return testSupport.requests.filter(function(request) {
+                return request.url.indexOf("https://en.wikipedia.org/w/api.php") === 0
+            }).length
+        }
+
+        function test_queued_back_does_not_close_reopened_viewer() {
+            const viewer = createTemporaryObject(fullscreenComponent, root)
+            verify(viewer !== null)
+            viewer.showFullScreen()
+            tryCompare(viewer, "active", true)
+            verify(testSupport.sendBackButtonPress(viewer))
+            verify(testSupport.sendBackButtonRelease(viewer))
+            compare(viewer.visible, true, "Closing must wait for mouse release dispatch to finish")
+
+            // Reopen synchronously, before the queued Back callback can run.
+            viewer.close()
+            viewer.showFullScreen()
+            let callbackProcessed = false
+            Qt.callLater(function() { callbackProcessed = true })
+            tryVerify(function() { return callbackProcessed })
+            compare(viewer.visible, true, "An old click must not close the reopened viewer")
+            viewer.close()
+        }
+
         function test_gallery_image_format_data() {
             return [
                 { tag: "svg-preview", url: "https://example.org/logo.svg?tracking=1", mime: "image/svg+xml", preview: imageUrl, expected: imageUrl },
@@ -180,7 +210,8 @@ Item {
             verify(gallery !== null, "ImageGallery must be created")
             // The gallery's metadata and thumbnail each load through the fake
             // transport; the fullscreen view requests the selected PNG too.
-            tryCompare(networkFixtures, "requestCount", 5)
+            tryVerify(function() { return networkFixtures.requestCount >= 5 })
+            compare(apiRequestCount(), 4)
 
             compare(ArticleState.currentPageExtract, originalHtml)
             compare(ArticleState.errorMessage, "")
@@ -207,7 +238,10 @@ Item {
             tryCompare(captionOverlay, "visible", true)
             const caption = child("imageCaptionText")
             compare(caption.text, imageDescription)
-            compare(testSupport.requestCount, 7)
+            // Native fullscreen resize/configure events can reload the image
+            // at a different sourceSize. API requests must still occur once.
+            compare(apiRequestCount(), 5)
+            verify(testSupport.requestCount >= 7)
 
             // The offscreen platform does not expose the secondary native
             // window for mouse synthesis; exercise the Close button's signal.
@@ -232,14 +266,32 @@ Item {
             compare(mainWindow.visibility, originalVisibility)
             compare(stackView.depth, 0)
 
+            // Mouse Back closes only the fullscreen window.
+            mouseClick(refreshedCell)
+            tryCompare(viewer, "visibility", Window.FullScreen)
+            tryCompare(viewer, "active", true)
+            verify(testSupport.sendBackButtonPress(viewer))
+            let pressProcessed = false
+            Qt.callLater(function() { pressProcessed = true })
+            tryVerify(function() { return pressProcessed })
+            compare(viewer.visible, true, "Keep the viewer open until the mouse grab is released")
+            verify(testSupport.sendBackButtonRelease(viewer))
+            tryCompare(viewer, "visible", false)
+            compare(gallery.visible, true)
+            compare(mainWindow.visibility, originalVisibility)
+            compare(stackView.depth, 0)
+            mouseMove(root, root.width - 1, root.height - 1)
+            mouseMove(refreshedCell, refreshedCell.width / 2, refreshedCell.height / 2)
+            tryCompare(child("imageGalleryMouseArea-0"), "containsMouse", true)
+
             mouseClick(refreshedCell)
             tryCompare(viewer, "visibility", Window.FullScreen)
             ImageSelectionState.selectImage("", "")
             tryCompare(viewer, "visible", false)
 
-            const requestCount = testSupport.requestCount
+            const requestCount = apiRequestCount()
             ArticleState.loadArticleByPageId(articleId)
-            compare(testSupport.requestCount, requestCount, "Gallery must preserve the cached HTML article")
+            compare(apiRequestCount(), requestCount, "Gallery must preserve the cached HTML article")
             compare(ArticleState.currentPageExtract, originalHtml)
         }
     }

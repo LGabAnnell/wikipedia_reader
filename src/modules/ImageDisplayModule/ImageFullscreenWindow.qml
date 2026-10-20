@@ -11,6 +11,14 @@ Window {
     color: "black"
     modality: Qt.WindowModal
 
+    property int visibilityGeneration: 0
+
+    function closeAfterMouseRelease(generation: int) {
+        // A queued click must not close a viewer that has since been reopened.
+        if (visible && generation === visibilityGeneration)
+            close();
+    }
+
     // Load the image only while the viewer is open.
     Loader {
         anchors.fill: parent
@@ -34,7 +42,16 @@ Window {
         }
     }
 
+    // Handle mouse Back locally so closing the viewer preserves navigation.
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.BackButton
+        // Finish releasing the mouse grab before hiding the modal window.
+        onClicked: Qt.callLater(root.closeAfterMouseRelease, root.visibilityGeneration)
+    }
+
     onVisibleChanged: {
+        ++visibilityGeneration;
         if (visible)
             requestActivate();
     }

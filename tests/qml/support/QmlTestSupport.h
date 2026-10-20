@@ -25,6 +25,7 @@ class QmlTestSupport final : public QObject {
     Q_INVOKABLE void clearRequests();
     Q_INVOKABLE bool setHistoryClearFailure(bool enabled);
     Q_INVOKABLE bool sendBackButtonPress(QObject *target) const;
+    Q_INVOKABLE bool sendBackButtonRelease(QObject *target) const;
     Q_INVOKABLE bool sendKeyClick(QObject *target, int key) const;
 
   public slots:

@@ -7,6 +7,17 @@
 #include <QTest>
 #include <QWindow>
 
+namespace {
+bool sendBackButtonEvent(QObject *target, QEvent::Type type, Qt::MouseButtons buttons) {
+    if (!target) {
+        return false;
+    }
+
+    QMouseEvent event(type, QPointF(), QPointF(), Qt::BackButton, buttons, Qt::NoModifier);
+    return QCoreApplication::sendEvent(target, &event);
+}
+} // namespace
+
 QmlTestSupport::QmlTestSupport(NetworkFixtureController *networkController, QObject *parent)
     : QObject(parent), m_networkController(networkController) {
     connect(m_networkController, &NetworkFixtureController::requestsChanged, this,
@@ -32,13 +43,11 @@ void QmlTestSupport::clearQmlWarnings() {
 void QmlTestSupport::clearRequests() { m_networkController->clearRequests(); }
 
 bool QmlTestSupport::sendBackButtonPress(QObject *target) const {
-    if (!target) {
-        return false;
-    }
+    return sendBackButtonEvent(target, QEvent::MouseButtonPress, Qt::BackButton);
+}
 
-    QMouseEvent event(QEvent::MouseButtonPress, QPointF(), QPointF(), Qt::BackButton, Qt::BackButton,
-                      Qt::NoModifier);
-    return QCoreApplication::sendEvent(target, &event);
+bool QmlTestSupport::sendBackButtonRelease(QObject *target) const {
+    return sendBackButtonEvent(target, QEvent::MouseButtonRelease, Qt::NoButton);
 }
 
 bool QmlTestSupport::sendKeyClick(QObject *target, int key) const {

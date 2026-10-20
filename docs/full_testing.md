@@ -132,13 +132,20 @@ Each file under `tests/qml/` is registered as `QmlTests.<filename without .qml>`
 | `tst_search.qml` | Blank input, mouse and Enter submission, pending controls, populated/empty responses, and error recovery/retry. |
 | `tst_article.qml` | Search-result selection, deferred loading and rendered HTML, inline image captions/fullscreen selection and Back, load errors without failed history visits, clearing visible and covered article views on language changes without changing stack depth, and article-link navigation preserving the previous view's content on Back. |
 | `tst_inline_images.qml` | Thumbnail-to-original conversion, SVG/lossy thumbnail handling, unchanged non-thumbnail URLs, full-resolution image links, and captions carried into image links. |
-| `tst_images.qml` | Fixture article/gallery loading, SVG preview selection with original fallback, unchanged raster URLs, URL/caption in `ImageSelectionState`, and opening/closing the separate fullscreen window (Close and Escape) without changing the main window or navigation stack. |
+| `tst_images.qml` | Fixture article/gallery loading, SVG preview selection with original fallback, unchanged raster URLs, URL/caption in `ImageSelectionState`, and opening/closing the separate fullscreen window (Close, Escape, and mouse Back) without changing the main window or navigation stack. See the regression notes below for mouse Back and image request counts. |
 | `tst_history.qml` | Article visits through `ArticleState`, newest-first order, revisiting an article without duplicating its history entry, visible but disabled unknown-edition entries, failed-clear feedback with retained entries and enabled Clear, errors predating view creation, and unavailable-state text. |
 | `tst_navigation.qml` | Real Main window: Search/History push, toolbar and mouse Back pop, Home returns to the original root and is idempotent. Language changes retain that root, clear home news, and request/refill data for the selected edition. Featured article navigation and Back, edition-restoring history navigation, cached history selection, duplicate-history-view prevention, and rendering recent most-read fallback content are covered. |
 | `tst_home.qml` | Featured/news/on-this-day/did-you-know pending, ready, empty, error, and retry states; partial failures; duplicate-retry suppression; delayed refresh and language-transition rejection across the Did-you-know summary stage; featured thumbnails, image failure independence, article navigation, URL encoding, narrow/normal viewport width, and article/history isolation. |
 | `tst_sections.qml` | Deferred sections, click-to-heading scrolling, viewport tracking/highlight, discarding pending success/error feedback when the article clears, preserving reading position on panel resize, empty results, and request errors. |
 | `tst_feature_isolation.qml` | Search success/empty/error responses do not complete a pending article or clear its errors; section/gallery failures do not affect article feedback. Language transitions clear search, sections, gallery, and image selection and reject an obsolete gallery reply. |
 | `tst_scrollbars.qml` | Article scrollbar placement and interactivity across widths, drag scrolling, and mirrored left-to-right/right-to-left layouts. |
+
+**`tst_images.qml` regression notes:** Mouse Back closes the fullscreen viewer
+after mouse release handling finishes so the window does not retain the mouse
+grab and disrupt gallery hover. The tests verify that hover still works after
+closing and that a pending close callback cannot close a viewer that has since
+been reopened. Image request counts allow reloads caused by native fullscreen
+resizing; API request counts remain exact to catch duplicate data requests.
 
 ## QML test harness and fixtures
 
