@@ -106,6 +106,10 @@ ApplicationWindow {
                 ImageView {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
+                    onBackRequested: {
+                        if (stackView.depth > 1)
+                            stackView.pop();
+                    }
                 }
             }
         }

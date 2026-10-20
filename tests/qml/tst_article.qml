@@ -26,7 +26,9 @@ Item {
 
     Component {
         id: imageViewComponent
-        ImageView {}
+        ImageView {
+            onBackRequested: stackView.pop()
+        }
     }
 
     StackView {

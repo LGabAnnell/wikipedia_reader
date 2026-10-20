@@ -25,8 +25,10 @@ ImageHomeModel::ImageHomeModel(QObject *parent)
             m_pageClient->setLanguage(m_settings->language());
         });
     }
-    if (m_article)
+    if (m_article) {
         connect(m_article, &ArticleState::currentPageChanged, this, &ImageHomeModel::handlePageWithImagesReceived);
+    }
+
     connect(m_pageClient, &WikipediaPageClient::pageWithImagesReceived, this, [this](const page &article) {
         m_imageUrls = article.imageUrls;
         m_imageDescriptions = article.imageDescriptions;
@@ -53,14 +55,16 @@ QString ImageHomeModel::articleTitle() const { return m_articleTitle; }
 int ImageHomeModel::currentPageId() const { return m_currentPageId; }
 
 void ImageHomeModel::loadImagesForCurrentPage() {
-    if (m_article)
+    if (m_article) {
         loadImagesForPage(m_article->currentPageId());
+    }
 }
 
 void ImageHomeModel::loadImagesForPage(int pageId) {
     m_pageClient->cancelPendingRequests();
-    if (pageId <= 0)
+    if (pageId <= 0) {
         return;
+    }
     m_currentPageId = pageId;
     m_imageUrls.clear();
     m_imageDescriptions.clear();

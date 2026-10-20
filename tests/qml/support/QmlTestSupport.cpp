@@ -4,6 +4,8 @@
 #include <QMouseEvent>
 #include <QSqlQuery>
 #include <QSqlDatabase>
+#include <QTest>
+#include <QWindow>
 
 QmlTestSupport::QmlTestSupport(NetworkFixtureController *networkController, QObject *parent)
     : QObject(parent), m_networkController(networkController) {
@@ -37,6 +39,15 @@ bool QmlTestSupport::sendBackButtonPress(QObject *target) const {
     QMouseEvent event(QEvent::MouseButtonPress, QPointF(), QPointF(), Qt::BackButton, Qt::BackButton,
                       Qt::NoModifier);
     return QCoreApplication::sendEvent(target, &event);
+}
+
+bool QmlTestSupport::sendKeyClick(QObject *target, int key) const {
+    auto *window = qobject_cast<QWindow *>(target);
+    if (!window)
+        return false;
+
+    QTest::keyClick(window, static_cast<Qt::Key>(key));
+    return true;
 }
 
 void QmlTestSupport::recordQmlWarnings(const QList<QQmlError> &warnings) {

@@ -164,7 +164,7 @@ Item {
                                 ? imageModel.imageDescriptions[index]
                                 : "";
                             ImageSelectionState.selectImage(modelData, desc);
-                            NavigationState.navigateToView(Constants.imageView);
+                            imageWindow.showFullScreen();
                         }
                     }
                 }
@@ -174,6 +174,16 @@ Item {
 
     ImageHomeModel {
         id: imageModel
+    }
+
+    ImageFullscreenWindow {
+        id: imageWindow
+        transientParent: root.Window.window
+    }
+
+    onVisibleChanged: {
+        if (!visible)
+            imageWindow.close();
     }
 
     Component.onCompleted: {
