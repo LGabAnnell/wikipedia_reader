@@ -40,13 +40,6 @@ loads images separately via `getPageWithImages()`, so the `images` prop and
 remove `prop=extracts|images` and `imlimit=50` from the query and delete the
 dead code.
 
-### `src/wikipedia_page_client.cpp:192` — `getPageById()` silently emits an empty page when the ID is missing
-
-When the requested `pageid` is absent from the response (deleted page, bad ID),
-the pages loop falls through with a default-constructed `page` and still calls
-`fetchPageContentWithImages()`, ending in `pageReceived` with an empty title
-instead of `errorOccurred`. Emit a parse error when no page matched.
-
 ### `src/wikipedia_page_client.cpp:356` — Gallery image order follows JSON key order, not article order
 
 `fetchImageUrlsFromTitles()` appends results while iterating the response's
@@ -215,6 +208,18 @@ files" — worth normalizing.
 These findings were fixed and are retained with their recorded validation,
 including fixes made after the audit.
 
+### `src/wikipedia_page_client.cpp` — `getPageById()` silently emitted an empty page when the ID was missing
+
+The metadata response must now contain the requested page with a nonempty title
+and no `missing` or `invalid` marker before HTML loading starts. Otherwise the
+client emits a translated `errorOccurred` message and skips the HTML request.
+Fixture regression tests cover empty pages, a different page ID, missing/invalid
+markers, a missing title/query, malformed JSON, and successful metadata-to-HTML
+loading. Failure cases verify one error, no page signal, and no follow-up request.
+The empty-pages regression reproduced the unwanted HTML request before the fix.
+Validation: `./scripts/run_tests.sh -R '^(WikipediaPageClientTest|WikipediaRequestIsolationTest|ArticleStateTest|QmlTests\.tst_article)$'`
+passed (all four CTest entries).
+
 ### `src/wikipedia_network_access_manager.h` — `NetworkAccessManagerFactory::create()` could recurse into itself
 
 The runtime factory now returns `new NetworkAccessManager(parent)` directly,
@@ -302,11 +307,11 @@ memory handling for a C API. No `console.log` calls exist in QML files.
 |----------|-------------------|
 | Critical | 0 |
 | High     | 2 |
-| Medium   | 14 |
+| Medium   | 13 |
 | Low      | 14 |
 
 The highest-value remaining fixes are the undefined `NavigationState::currentView()`
 method (a linker failure for callers), and the dead `images` prop in
 `getPageById()` (wasted API bandwidth on every article load).
-No builds or tests were run for this audit; the resolved entries above retain
-their previously recorded validation.
+The original audit was static; the resolved entries above record validation
+performed for individual fixes.

@@ -172,8 +172,11 @@ void WikipediaPageClient::getPageById(int pageid) {
             QStringList imageTitles;
 
             for (auto it = pages.begin(); it != pages.end(); ++it) {
-                if (it.key().toInt() == pageid) {
+                if (it.key() == QString::number(pageid)) {
                     QJsonObject pageObj = it.value().toObject();
+                    if (pageObj.contains("missing") || pageObj.contains("invalid")) {
+                        break;
+                    }
                     page.title = pageObj["title"].toString();
                     page.extract = pageObj["extract"].toString();
                     page.pageid = pageid;
@@ -189,7 +192,11 @@ void WikipediaPageClient::getPageById(int pageid) {
                 }
             }
 
-            fetchPageContentWithImages(pageid, page, context);
+            if (page.title.isEmpty()) {
+                emit errorOccurred(tr("Unable to load article: page %1 was not found in the response.").arg(pageid));
+            } else {
+                fetchPageContentWithImages(pageid, page, context);
+            }
         } else if (reply->error() != QNetworkReply::OperationCanceledError) {
             emit errorOccurred(reply->errorString());
         }

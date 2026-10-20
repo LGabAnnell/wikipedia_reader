@@ -93,7 +93,7 @@ Each named entry below has a matching `.cpp` file under `tests/`.
 | `HistoryStateTest` | Global 50-row retention and state recreation, startup pruning including legacy entries, identical-timestamp ordering, edition identity and revisits, trigger-injected insertion/pruning/clear rollback, unchanged memory and notifications on failure, retry recovery, unsupported-schema/startup-pruning errors, and checked-load/output preservation. |
 | `HistoryDatabaseTest` | Database opens, add/load/clear, edition-aware identity and uniqueness across database reopen, legacy-schema migration and idempotence, migration-failure rollback and blocked operations, explicit pruning, load limits, and timestamp ordering. The separate generic error-signal test only checks that no error was emitted; migration tests do inject a failure. |
 | `WikipediaSearchClientTest` | Search-result fields/counts, empty responses, missing keys, and malformed JSON. |
-| `WikipediaPageClientTest` | Page fields, title/ID mismatch, image titles, sections, empty/missing sections, and malformed JSON. |
+| `WikipediaPageClientTest` | Page fields, title/ID mismatch, image titles, sections, empty/missing sections, and malformed JSON. Fixture requests cover successful metadata-to-HTML loading and missing/invalid page responses emitting an error without a follow-up HTML request. |
 | `WikipediaFeaturedClientTest` | Featured parsing, feed thumbnail, missing `tfa`, invalid page IDs, malformed JSON, API errors, and unavailable versus invalid outcomes. |
 | `WikipediaHomeClientTest` | News parsing and thumbnails, current most-read feeds without lookback, bounded lookback, news fallback after older-feed failures, typed section failures, invalid current feeds, on-this-day validation, and both Did-you-know request stages. |
 | `test_sidebar_layout` | Sidebar creation, presence of a ListView, and the `searchResults` property. CTest supplies its working directory and QML import path. |
@@ -103,8 +103,8 @@ The parser tests call parsing helpers directly; they do not establish complete
 HTTP error handling. Some deliberately expect empty/default data for malformed
 JSON or missing fields.
 
-`ArticleStateTest`, `SearchStateTest`, `ImageSelectionStateTest`, and
-`WikipediaRequestIsolationTest` use
+`ArticleStateTest`, `SearchStateTest`, `ImageSelectionStateTest`,
+`WikipediaPageClientTest`, and `WikipediaRequestIsolationTest` use
 the shared fixture transport. Backend implementation and meta-objects are
 linked through `wikipedia_qt_core`; fake-network support is compiled into
 `wikipedia_test_network`. `ContentDisplayModelTest` links its feature module.
