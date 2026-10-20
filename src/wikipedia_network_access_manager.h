@@ -80,7 +80,7 @@ inline QNetworkAccessManager *createNetworkAccessManager(QObject *parent) {
 class NetworkAccessManagerFactory final : public QQmlNetworkAccessManagerFactory {
   public:
     QNetworkAccessManager *create(QObject *parent) override {
-        return createNetworkAccessManager(parent);
+        return new NetworkAccessManager(parent);
     }
 };
 

@@ -15,18 +15,6 @@ data-loss paths were found in normal flows.
 
 ## High
 
-### `src/wikipedia_network_access_manager.h:82` — `NetworkAccessManagerFactory::create()` can recurse into itself
-
-`NetworkAccessManagerFactory::create()` calls `createNetworkAccessManager()`,
-which resolves the installed factory from the application property. If a
-`NetworkAccessManagerFactory` instance is ever passed to
-`installNetworkAccessManagerFactory()`, the lookup returns that same factory and
-the call recurses until the stack overflows. The trap is latent today — tests
-install their own factory types, and `main.cpp` never calls
-`installNetworkAccessManagerFactory` — but the public API invites the crash.
-Make `NetworkAccessManagerFactory::create()` return
-`new NetworkAccessManager(parent)` directly.
-
 ### `src/state/NavigationState.h:21` — `currentView()` is declared but never defined
 
 The header declares `QString currentView() const;` and a
@@ -227,6 +215,19 @@ files" — worth normalizing.
 These findings were fixed and are retained with their recorded validation,
 including fixes made after the audit.
 
+### `src/wikipedia_network_access_manager.h` — `NetworkAccessManagerFactory::create()` could recurse into itself
+
+The runtime factory now returns `new NetworkAccessManager(parent)` directly,
+so installing it through `installNetworkAccessManagerFactory()` no longer
+recurses through the factory lookup. Installed-factory dispatch remains in
+`createNetworkAccessManager()`. Regression coverage exercises API-client and
+QML-image manager creation both with and without the runtime factory installed
+globally, verifies API-client QObject ownership, and checks local-file request
+completion and the runtime HTTP/2 policy. Scoped cleanup restores the previous
+factory property even when an assertion fails.
+Validation: `./scripts/run_tests.sh -R '^WikipediaNetworkAccessManagerTest$'`
+passed (all four data rows).
+
 ### `src/modules/ContentDisplayModule/ContentDisplay.qml` — In-article `/wiki/` links were not percent-decoded
 
 The link handler now decodes the title with `decodeURIComponent()` before
@@ -300,12 +301,12 @@ memory handling for a C API. No `console.log` calls exist in QML files.
 | Severity | Unresolved count |
 |----------|-------------------|
 | Critical | 0 |
-| High     | 3 |
+| High     | 2 |
 | Medium   | 14 |
 | Low      | 14 |
 
-The highest-value remaining fixes are the network factory recursion trap (a
-one-line fix removing a stack-overflow class of bug), and the dead
-`images` prop in `getPageById()` (wasted API bandwidth on every article load).
+The highest-value remaining fixes are the undefined `NavigationState::currentView()`
+method (a linker failure for callers), and the dead `images` prop in
+`getPageById()` (wasted API bandwidth on every article load).
 No builds or tests were run for this audit; the resolved entries above retain
 their previously recorded validation.
