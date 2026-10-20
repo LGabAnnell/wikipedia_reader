@@ -27,15 +27,6 @@ install their own factory types, and `main.cpp` never calls
 Make `NetworkAccessManagerFactory::create()` return
 `new NetworkAccessManager(parent)` directly.
 
-### `src/modules/ContentDisplayModule/ContentDisplay.qml:461` — In-article `/wiki/` links are not percent-decoded
-
-The link handler builds the target title with
-`link.substring(6).replace(/_/g, " ")`, leaving `%C3%A1`-style sequences
-intact. Wikipedia hrefs are percent-encoded, so any title containing diacritics
-or other encoded characters (a large class of pages) fails to resolve or opens
-the wrong article via `loadArticleByTitle`. Apply `decodeURIComponent()` before
-the underscore replacement.
-
 ### `src/state/NavigationState.h:21` — `currentView()` is declared but never defined
 
 The header declares `QString currentView() const;` and a
@@ -231,9 +222,21 @@ Uses `import wikipedia_qt 1.0` while most other files use unversioned
 `import wikipedia_qt`. AGENTS.md notes versioned imports appear in "older
 files" — worth normalizing.
 
-## Resolved in earlier reviews
+## Resolved findings
 
-These findings were fixed and are retained with their recorded validation.
+These findings were fixed and are retained with their recorded validation,
+including fixes made after the audit.
+
+### `src/modules/ContentDisplayModule/ContentDisplay.qml` — In-article `/wiki/` links were not percent-decoded
+
+The link handler now decodes the title with `decodeURIComponent()` before
+replacing underscores with spaces. Malformed encodings log a warning and return
+before freezing the view, loading an article, or navigating. QML regression
+tests cover plain titles, encoded Unicode, percent signs, encoded underscores,
+and incomplete, invalid, or malformed UTF-8 escapes. Successful links preserve
+push/back navigation; rejected links preserve the current article, history,
+request count, and live article bindings.
+Validation: `./scripts/run_tests.sh -R '^QmlTests\.tst_article$'` passed.
 
 ### `src/modules/ImageDisplayModule/ImageGallery.qml` — Back button referenced external `stackView`
 
@@ -297,12 +300,11 @@ memory handling for a C API. No `console.log` calls exist in QML files.
 | Severity | Unresolved count |
 |----------|-------------------|
 | Critical | 0 |
-| High     | 4 |
+| High     | 3 |
 | Medium   | 14 |
 | Low      | 14 |
 
-The highest-value fixes are the `/wiki/` percent-decoding (breaks in-article
-navigation on a large class of pages), the network factory recursion trap (a
+The highest-value remaining fixes are the network factory recursion trap (a
 one-line fix removing a stack-overflow class of bug), and the dead
 `images` prop in `getPageById()` (wasted API bandwidth on every article load).
 No builds or tests were run for this audit; the resolved entries above retain

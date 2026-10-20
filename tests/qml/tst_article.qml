@@ -304,12 +304,21 @@ Item {
             SettingsState.setLanguage("en")
         }
 
-        function test_link_click_pushes_article_and_back_restores_previous_article() {
-            const firstId = 811
+        function test_link_click_pushes_article_and_back_restores_previous_article_data() {
+            return [
+                {tag: "plain", firstId: 811, title: "Second article fixture", link: "/wiki/Second_article_fixture"},
+                {tag: "unicode", firstId: 813, title: "São Paulo", link: "/wiki/S%C3%A3o_Paulo"},
+                {tag: "percent", firstId: 815, title: "100% coverage", link: "/wiki/100%25_coverage"},
+                {tag: "encoded_underscore", firstId: 817, title: "Encoded space", link: "/wiki/Encoded%5Fspace"}
+            ]
+        }
+
+        function test_link_click_pushes_article_and_back_restores_previous_article(data) {
+            const firstId = data.firstId
             const firstTitle = "First article fixture"
-            const secondId = 812
-            const secondTitle = "Second article fixture"
-            const secondLink = "/wiki/" + secondTitle.replace(/ /g, "_")
+            const secondId = firstId + 1
+            const secondTitle = data.title
+            const secondLink = data.link
 
             addArticleFixtures(firstId, firstTitle,
                                "<p>First article body.</p>"
@@ -375,6 +384,49 @@ Item {
             // The covered view did not refetch its sections.
             wait(100)
             compare(networkFixtures.requestCount, 7)
+        }
+
+        function test_malformed_article_link_preserves_current_article_data() {
+            return [
+                {tag: "incomplete_escape", pageId: 831, link: "/wiki/Bad%"},
+                {tag: "invalid_escape", pageId: 832, link: "/wiki/Bad%GG"},
+                {tag: "invalid_utf8", pageId: 833, link: "/wiki/Bad%C3%28"}
+            ]
+        }
+
+        function test_malformed_article_link_preserves_current_article(data) {
+            const title = "Malformed link fixture " + data.tag
+            addArticleFixtures(data.pageId, title, "<p>Current article body.</p>")
+            ArticleState.loadArticleByPageId(data.pageId)
+            tryCompare(ArticleState, "isLoading", false)
+            tryCompare(ArticleState, "currentPageTitle", title)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            tryCompare(networkFixtures, "requestCount", 3)
+            const view = stackView.currentItem
+            const body = findChild(view, "articleBody")
+            tryVerify(function() { return body.text.indexOf("Current article body") >= 0 })
+            const previousText = body.text
+            const previousExtract = ArticleState.currentPageExtract
+
+            ignoreWarning(/Unable to decode article link.*/)
+            body.linkActivated(data.link)
+            wait(100)
+
+            compare(networkFixtures.requestCount, 3)
+            compare(stackView.depth, 2)
+            compare(stackView.currentItem, view)
+            compare(ArticleState.currentPageTitle, title)
+            compare(ArticleState.currentPageExtract, previousExtract)
+            compare(ArticleState.isLoading, false)
+            compare(ArticleState.errorMessage, "")
+            compare(body.text, previousText)
+            compare(HistoryState.history.length, 1)
+
+            // A rejected link must not freeze this view's article bindings.
+            ArticleState.setCurrentPageFromData(title, "<p>Updated article body.</p>", "")
+            tryVerify(function() { return body.text.indexOf("Updated article body") >= 0 })
         }
     }
 }

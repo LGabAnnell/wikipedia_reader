@@ -458,7 +458,13 @@ Item {
                             }
 
                             if (link.startsWith("/wiki/")) {
-                                var title = link.substring(6).replace(/_/g, " ");
+                                let title;
+                                try {
+                                    title = decodeURIComponent(link.substring(6)).replace(/_/g, " ");
+                                } catch (error) {
+                                    console.warn("Unable to decode article link", error);
+                                    return;
+                                }
                                 // Keep this view on its article, then push a new
                                 // article view so the back button returns here.
                                 freezeArticleContent();
