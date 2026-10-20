@@ -196,6 +196,27 @@ Item {
             compare(appStack.currentItem, homeRoot)
         }
 
+        function test_invalid_view_name_data() {
+            return [
+                { tag: "empty", viewName: "" },
+                { tag: "unknown", viewName: "unregisteredView" }
+            ]
+        }
+
+        function test_invalid_view_name(data) {
+            const originalDepth = appStack.depth
+            const originalItem = appStack.currentItem
+            ignoreWarning('Cannot navigate to unregistered view: "' + data.viewName + '"')
+            NavigationState.navigateToView(data.viewName)
+            compare(appStack.depth, originalDepth)
+            compare(appStack.currentItem, originalItem)
+
+            NavigationState.navigateToView(Constants.searchView)
+            tryCompare(appStack, "depth", originalDepth + 1)
+            tryVerify(function() { return !appStack.busy })
+            compare(appStack.currentItem.objectName, "searchView")
+        }
+
         function test_history_navigation_does_not_duplicate_the_current_view() {
             mouseClick(child("historyButton"))
             tryCompare(appStack, "depth", 2)

@@ -17,9 +17,13 @@ previous item in a separately named stack, retaining a root-level gallery, and
 safely clicking Back on a standalone gallery, with no QML warnings.
 Validation: `./scripts/run_tests.sh -R QmlTests.tst_images` passed.
 
-### `src/state/NavigationState.cpp:82` — `views.at(view)` throws `std::out_of_range` for unregistered view names
+### Resolved — `src/state/NavigationState.cpp` — `navigateToView()` threw for unregistered view names
 
-`navigateToView()` is `Q_INVOKABLE` and called from QML. If an invalid view name reaches it, the C++ exception crosses the QML boundary and can abort the app. Use `views.find(view)` with a `qWarning()` fallback.
+`navigateToView()` now uses `views.find(view)`, logs a warning containing an
+unregistered name, and returns without emitting `pushView`. QML regression tests
+cover empty and unknown names, unchanged stack depth/current item, and successful
+registered-view navigation afterward.
+Validation: `./scripts/run_tests.sh -R '^QmlTests\.tst_navigation$'` passed.
 
 ### `src/state/NavigationState.cpp:35` — Same `views.at(view)` pattern in `setCurrentView()`
 
@@ -87,8 +91,11 @@ Uses `import wikipedia_qt 1.0` while most other files use unversioned `import wi
 | Severity | Unresolved count |
 |----------|-------|
 | Critical | 0        |
-| High     | 3        |
+| High     | 2        |
 | Medium   | 8        |
 | Low      | 4        |
 
-The image gallery Back button finding is resolved and covered by regression tests. The remaining `views.at()` crash risk in `NavigationState` and the missing `<map>` include are quick, safe fixes. The dead code in `getPageById()` wastes API bandwidth on every article load.
+The image gallery Back button and invalid `navigateToView()` findings are resolved
+and covered by regression tests. The remaining `views.at()` crash risk in
+`setCurrentView()` and the missing `<map>` include are quick, safe fixes. The dead
+code in `getPageById()` wastes API bandwidth on every article load.

@@ -76,6 +76,12 @@ void NavigationState::navigateToImageGallery() {
 }
 
 void NavigationState::navigateToView(const QString &view) {
+    const auto it = views.find(view);
+    if (it == views.end()) {
+        qWarning() << "Cannot navigate to unregistered view:" << view;
+        return;
+    }
+
     // Header actions and callers may request history more than once. Keep a
     // single history view at the top while still allowing it to be pushed
     // again when another view is currently visible.
@@ -86,7 +92,7 @@ void NavigationState::navigateToView(const QString &view) {
         }
     }
 
-    emit pushView(views.at(view));
+    emit pushView(it->second);
 }
 
 void NavigationState::addView(QString view, QQmlComponent *component) { views.emplace(view, component); }
