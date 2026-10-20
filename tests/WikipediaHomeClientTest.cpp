@@ -304,6 +304,36 @@ class WikipediaHomeClientTest : public QObject {
         QVERIFY(items.isEmpty());
     }
 
+    void testOnThisDayUsesRequestedDate_data() {
+        QTest::addColumn<int>("month");
+        QTest::addColumn<int>("day");
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QString>("url");
+        QTest::newRow("padded date") << 1 << 2 << QString("en")
+            << QString("https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/01/02");
+        QTest::newRow("double digit date and selected edition") << 12 << 31 << QString("fr")
+            << QString("https://api.wikimedia.org/feed/v1/wikipedia/fr/onthisday/all/12/31");
+    }
+
+    void testOnThisDayUsesRequestedDate() {
+        QFETCH(int, month);
+        QFETCH(int, day);
+        QFETCH(QString, language);
+        QFETCH(QString, url);
+        m_network.addFixture("GET", QUrl(url), R"({"selected":[]})");
+        WikipediaHomeClient client;
+        client.setLanguage(language);
+        QSignalSpy events(&client, &WikipediaHomeClient::onThisDayEventsReceived);
+        QSignalSpy errors(&client, &WikipediaHomeClient::errorOccurred);
+
+        client.getOnThisDayEvents(month, day);
+
+        QTRY_COMPARE(events.count(), 1);
+        QVERIFY(events.first().first().value<QVector<on_this_day_event>>().isEmpty());
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(m_network.requestCount(), 1);
+    }
+
     void testParseOnThisDayEvents() {
         QByteArray json = R"({"selected":[
             {

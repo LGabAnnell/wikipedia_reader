@@ -60,6 +60,7 @@ List registered tests, run QML tests as a group, or select individual entries:
 ctest --test-dir build -N
 ctest --test-dir build -R '^QmlTests\.' --output-on-failure
 ctest --test-dir build -R '^QmlTests\.tst_article$' --output-on-failure
+ctest --test-dir build -R '^(ImageSelectionStateTest|QmlTests\.tst_(images|navigation))$' --output-on-failure
 ctest --test-dir build -R '^QmlTests\.tst_feature_isolation$' --output-on-failure
 ctest --test-dir build -R '^WikipediaRequestIsolationTest$' --output-on-failure
 ```
@@ -72,7 +73,7 @@ dependency prefixes first. The separate root `test.sh` always deletes
 
 The current source configuration registers **27 CTest entries: 16 C++ and
 11 QML**. These are executables/test files, not individual test cases or
-data rows. The inventory below reflects the sources reviewed on 2026-10-18;
+data rows. The inventory below reflects the sources reviewed on 2026-10-20;
 it is not a record of a passing test run.
 
 ## C++ coverage
@@ -84,7 +85,7 @@ Each named entry below has a matching `.cpp` file under `tests/`.
 | `ArticleStateTest` | Initial state and notifications, HTML loading and caching, history on repeat visits, title resolution/cache hits, clearing old content before title loads, errors/retry, settings at construction, language-driven content/cache clearing, rejection of obsolete article/title replies, cached selections superseding pending loads, and singleton teardown/recreation. |
 | `SearchStateTest` | Blank queries, trimming, pending/completed/reset state, duplicate submission while busy, errors/retry, settings at construction, restarting stored search text once after language changes, blank-query behavior, stale reply rejection, rapid language changes, and teardown/recreation. |
 | `SettingsStateTest` | Default language, change notifications, ignoring an unchanged language, and singleton teardown/recreation. |
-| `ImageSelectionStateTest` | URL/caption updated together before notifications, unchanged-selection notification suppression, clearing selection on language changes, and teardown/recreation. |
+| `ImageSelectionStateTest` | URL/caption updated together before notifications, unchanged-selection notification suppression, clearing selection and gallery context on language changes, gallery navigation stopping at either end, safe empty/single-image galleries, standalone selection clearing gallery context, deferred image details with duplicate-selection suppression and mismatched-title rejection, thumbnail/caption fallback on failed or missing details, and teardown/recreation. |
 | `WikipediaRequestIsolationTest` | Obsolete search successes/errors and featured replies are ignored; old page and random-title replies cannot start follow-up HTML or summary requests after a language switch. |
 | `WikipediaNetworkAccessManagerTest` | Both API-client and QML-image managers apply the runtime HTTP/2 policy: disabled for Qt 6.11.2, otherwise left at its default. Uses a temporary local file, not a live HTTP server. |
 | `ContentDisplayModelTest` | Per-view section state, section-position/highlight resets, article-driven search/section resets, and case-insensitive text-search navigation wrapping. |
@@ -102,7 +103,8 @@ The parser tests call parsing helpers directly; they do not establish complete
 HTTP error handling. Some deliberately expect empty/default data for malformed
 JSON or missing fields.
 
-`ArticleStateTest`, `SearchStateTest`, and `WikipediaRequestIsolationTest` use
+`ArticleStateTest`, `SearchStateTest`, `ImageSelectionStateTest`, and
+`WikipediaRequestIsolationTest` use
 the shared fixture transport. Backend implementation and meta-objects are
 linked through `wikipedia_qt_core`; fake-network support is compiled into
 `wikipedia_test_network`. `ContentDisplayModelTest` links its feature module.
@@ -132,9 +134,9 @@ Each file under `tests/qml/` is registered as `QmlTests.<filename without .qml>`
 | `tst_search.qml` | Blank input, mouse and Enter submission, pending controls, populated/empty responses, and error recovery/retry. |
 | `tst_article.qml` | Search-result selection, deferred loading and rendered HTML, inline image captions/fullscreen selection and Back, load errors without failed history visits, clearing visible and covered article views on language changes without changing stack depth, and article-link navigation preserving the previous view's content on Back. |
 | `tst_inline_images.qml` | Thumbnail-to-original conversion, SVG/lossy thumbnail handling, unchanged non-thumbnail URLs, full-resolution image links, and captions carried into image links. |
-| `tst_images.qml` | Fixture article/gallery loading, SVG preview selection with original fallback, unchanged raster URLs, URL/caption in `ImageSelectionState`, and opening/closing the separate fullscreen window (Close, Escape, and mouse Back) without changing the main window or navigation stack. See the regression notes below for mouse Back and image request counts. |
+| `tst_images.qml` | Fixture article/gallery loading, SVG preview selection with original fallback, unchanged raster URLs, URL/caption in `ImageSelectionState`, and opening/closing the separate fullscreen window (Close, Escape, and mouse Back) without changing the main window or navigation stack. Saved viewer choice across gallery recreation, embedded viewing and Back, arrow-key navigation in both viewers with endpoint bounds and caption updates, covered/standalone viewer shortcut isolation, stale image-detail rejection, and gallery Back through its owning StackView are also covered. See the regression notes below. |
 | `tst_history.qml` | Article visits through `ArticleState`, newest-first order, revisiting an article without duplicating its history entry, visible but disabled unknown-edition entries, failed-clear feedback with retained entries and enabled Clear, errors predating view creation, and unavailable-state text. |
-| `tst_navigation.qml` | Real Main window: Search/History push, toolbar and mouse Back pop, Home returns to the original root and is idempotent. Language changes retain that root, clear home news, and request/refill data for the selected edition. Featured article navigation and Back, edition-restoring history navigation, cached history selection, duplicate-history-view prevention, and rendering recent most-read fallback content are covered. |
+| `tst_navigation.qml` | Real Main window: Search/History push, toolbar and mouse Back pop, Home returns to the original root and is idempotent. Language changes retain that root, clear home news, and request/refill data for the selected edition. Featured article navigation and Back, edition-restoring history navigation, cached history selection, duplicate-history-view prevention, and rendering recent most-read fallback content are covered. Empty/unknown view names emit the expected warning, preserve stack depth/current item, and allow subsequent registered-view navigation. |
 | `tst_home.qml` | Featured/news/on-this-day/did-you-know pending, ready, empty, error, and retry states; partial failures; duplicate-retry suppression; delayed refresh and language-transition rejection across the Did-you-know summary stage; featured thumbnails, image failure independence, article navigation, URL encoding, narrow/normal viewport width, and article/history isolation. |
 | `tst_sections.qml` | Deferred sections, click-to-heading scrolling, viewport tracking/highlight, discarding pending success/error feedback when the article clears, preserving reading position on panel resize, empty results, and request errors. |
 | `tst_feature_isolation.qml` | Search success/empty/error responses do not complete a pending article or clear its errors; section/gallery failures do not affect article feedback. Language transitions clear search, sections, gallery, and image selection and reject an obsolete gallery reply. |
@@ -146,6 +148,19 @@ grab and disrupt gallery hover. The tests verify that hover still works after
 closing and that a pending close callback cannot close a viewer that has since
 been reopened. Image request counts allow reloads caused by native fullscreen
 resizing; API request counts remain exact to catch duplicate data requests.
+
+The gallery Back regression uses the `imageGalleryBackButton` selector and a
+separately named owning StackView. It verifies returning to the previous item,
+retaining a gallery at the stack root, and safely clicking Back on a standalone
+gallery, without QML warnings. The navigation regression explicitly expects the
+warning for each unregistered name; unexpected QML warnings still fail checks.
+
+Gallery selection waits for image details before publishing the new URL/caption.
+Deferred fixture replies verify that older details cannot replace a newer
+selection. Arrow-key tests exercise both embedded and fullscreen viewing, stop
+at the first/last image, and ensure a covered viewer or standalone inline image
+does not navigate the gallery. The saved fullscreen preference is checked across
+gallery recreation within one process, rather than an application restart.
 
 ## QML test harness and fixtures
 

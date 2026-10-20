@@ -31,12 +31,11 @@ void WikipediaHomeClient::fetchNewsItems(const QDate &date, const WikipediaReque
 }
 
 void WikipediaHomeClient::getOnThisDayEvents(int month, int day) {
-    QDate today = QDate::currentDate();
     const auto context = m_requests.context();
     QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/onthisday/all/%2/%3")
                  .arg(context.language)
-                 .arg(today.month(), 2, 10, QLatin1Char('0'))
-                 .arg(today.day(), 2, 10, QLatin1Char('0')));
+                 .arg(month, 2, 10, QLatin1Char('0'))
+                 .arg(day, 2, 10, QLatin1Char('0')));
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
