@@ -272,7 +272,7 @@ Item {
             configureHistoryArticle("en", 1, "Navigation fixture")
             const homeModel = child("homeModel")
             tryCompare(homeModel, "featuredStatus", HomeModel.Ready)
-            mouseClick(child("featuredReadArticleButton"))
+            mouseClick(child("featuredTitle"), 5, child("featuredTitle").height / 2)
             tryCompare(appStack, "depth", 2)
             tryVerify(function() { return !appStack.busy })
             tryCompare(ArticleState, "isLoading", false)

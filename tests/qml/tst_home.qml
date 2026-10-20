@@ -254,12 +254,12 @@ Item {
             const featured = findChild(screen, "featuredSection")
             const title = findChild(screen, "featuredTitle")
             verify(featured.width <= 960)
-            verify(title.width <= featured.width)
+            tryVerify(function() { return title.width <= featured.width })
             screen.width = 320
             wait(0)
-            verify(scroll.contentWidth <= 320, "Home content must wrap at narrow widths")
-            verify(featured.width <= 320)
-            verify(title.width <= featured.width)
+            tryVerify(function() { return scroll.contentWidth <= 320 }, 5000, "Home content must wrap at narrow widths")
+            tryVerify(function() { return featured.width <= 320 })
+            tryVerify(function() { return title.width <= featured.width })
             screen.destroy(); screen = null
         }
         function test_featured_image_loading_never_hides_text_or_action() {
@@ -276,7 +276,8 @@ Item {
             testSupport.clearQmlWarnings()
             compare(section.title, "Plain title")
             compare(section.extract, "Plain extract")
-            verify(findChild(section, "featuredReadArticleButton") !== null)
+            compare(findChild(section, "featuredTitle").textFormat, Text.RichText)
+            verify(findChild(section, "featuredTitle").text.indexOf('href="page://51"') >= 0)
             section.imageUrl = ""
             compare(section.status, HomeModel.Ready)
             section.destroy()
