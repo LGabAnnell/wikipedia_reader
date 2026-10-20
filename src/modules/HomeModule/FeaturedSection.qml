@@ -52,13 +52,30 @@ ColumnLayout {
             Layout.fillWidth: true
 
             Label {
+                id: featuredTitle
                 objectName: "featuredTitle"
-                text: root.title
-                textFormat: Text.PlainText
+                text: "<a href=\"page://" + root.pageId + "\">"
+                      + root.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                      + "</a>"
+                textFormat: Text.RichText
                 font.pixelSize: 18
                 font.bold: true
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                Layout.preferredWidth: 0
+                HoverHandler {
+                    cursorShape: featuredTitle.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                }
+                onLinkActivated: function(link) {
+                    if (link.startsWith("page://")) {
+                        const pageId = parseInt(link.substring(7))
+                        if (pageId > 0) {
+                            ArticleState.loadArticleByPageId(pageId)
+                            NavigationState.navigateToContent()
+                        }
+                    }
+                }
             }
 
             Label {
@@ -66,17 +83,6 @@ ColumnLayout {
                 textFormat: Text.PlainText
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
-            }
-
-            Button {
-                objectName: "featuredReadArticleButton"
-                text: "Read article"
-                onClicked: {
-                    if (root.pageId > 0) {
-                        ArticleState.loadArticleByPageId(root.pageId)
-                        NavigationState.navigateToContent()
-                    }
-                }
             }
         }
     }
