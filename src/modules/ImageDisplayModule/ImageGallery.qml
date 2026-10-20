@@ -14,10 +14,12 @@ Item {
 
     Settings {
         location: Qt.resolvedUrl(StandardPaths.writableLocation(StandardPaths.AppConfigLocation)
-                                 + "/settings.ini")
+            + "/settings.ini")
         category: "ImageDisplay"
         property alias fullscreen: fullscreenSwitch.checked
     }
+
+    property SystemPalette sysPalette: SystemPalette { }
 
     ColumnLayout {
         anchors.fill: parent
@@ -47,6 +49,7 @@ Item {
                 text: imageModel.articleTitle
                 font.pixelSize: 20
                 font.bold: true
+                color: root.sysPalette.text
                 horizontalAlignment: Text.AlignHCenter
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter

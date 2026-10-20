@@ -11,7 +11,6 @@ ImageHomeModel::ImageHomeModel(QObject *parent)
             m_pageClient->cancelPendingRequests();
             m_imageUrls.clear();
             m_imageTitles.clear();
-            m_selectedTitle.clear();
             m_imageDescriptions.clear();
             m_articleTitle.clear();
             m_currentPageId = -1;
@@ -45,11 +44,6 @@ ImageHomeModel::ImageHomeModel(QObject *parent)
         emit currentPageIdChanged();
         emit loadingChanged();
     });
-    connect(m_pageClient, &WikipediaPageClient::imageDetailsReceived, this,
-            [this](const QString &title, const QString &url, const QString &description) {
-        if (title == m_selectedTitle && ImageSelectionState::instance())
-            ImageSelectionState::instance()->selectImage(url, description);
-    });
     connect(m_pageClient, &WikipediaPageClient::errorOccurred, this, [this](const QString &error) {
         m_errorMessage = error;
         m_isLoading = false;
@@ -77,7 +71,6 @@ void ImageHomeModel::loadImagesForPage(int pageId) {
     m_currentPageId = pageId;
     m_imageUrls.clear();
     m_imageTitles.clear();
-    m_selectedTitle.clear();
     m_imageDescriptions.clear();
     m_isLoading = true;
     m_errorMessage.clear();
@@ -93,7 +86,6 @@ void ImageHomeModel::handlePageWithImagesReceived() {
     if (!m_article)
         return;
     m_pageClient->cancelPendingRequests();
-    m_selectedTitle.clear();
     const page article = m_article->currentPage();
     m_imageUrls = article.imageUrls;
     m_imageTitles = article.imageTitles;
@@ -109,8 +101,5 @@ void ImageHomeModel::handlePageWithImagesReceived() {
 void ImageHomeModel::selectImage(int index) {
     if (index < 0 || index >= m_imageUrls.size() || !ImageSelectionState::instance())
         return;
-    ImageSelectionState::instance()->selectImage(m_imageUrls[index], m_imageDescriptions.value(index));
-    m_selectedTitle = m_imageTitles.value(index);
-    if (!m_selectedTitle.isEmpty())
-        m_pageClient->getImageDetails(m_selectedTitle);
+    ImageSelectionState::instance()->selectGalleryImage(m_imageUrls, m_imageDescriptions, m_imageTitles, index);
 }

@@ -12,6 +12,22 @@ Item {
     property string backButtonText: qsTr("Back")
     signal backRequested()
 
+    Shortcut {
+        sequence: "Right"
+        // WindowShortcut is dispatched only by the active window, even when a
+        // child control such as the Back button owns focus.
+        context: Qt.WindowShortcut
+        enabled: root.visible
+        onActivated: ImageSelectionState.selectNextImage()
+    }
+
+    Shortcut {
+        sequence: "Left"
+        context: Qt.WindowShortcut
+        enabled: root.visible
+        onActivated: ImageSelectionState.selectPreviousImage()
+    }
+
     Rectangle {
         anchors.fill: parent
         color: "black"

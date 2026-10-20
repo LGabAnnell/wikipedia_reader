@@ -56,7 +56,6 @@ private:
     QString m_errorMessage;
     QStringList m_imageUrls;
     QStringList m_imageTitles;
-    QString m_selectedTitle;
     QStringList m_imageDescriptions;
     QString m_articleTitle;
     int m_currentPageId;

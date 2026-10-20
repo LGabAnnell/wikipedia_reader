@@ -124,6 +124,42 @@ Item {
                                        JSON.stringify({query: {pages: imagePages}}))
         }
 
+        function configureMultiImageArticleFixture(pageId) {
+            const titleA = "File:Gallery A.png"
+            const titleB = "File:Gallery B.png"
+            var pages = {}
+            pages[pageId] = {
+                pageid: pageId,
+                title: "Two image gallery fixture",
+                extract: "Gallery fixture extract",
+                images: [{title: titleA}, {title: titleB}]
+            }
+            networkFixtures.addFixture("GET", pageQueryUrl(pageId), JSON.stringify({query: {pages: pages}}))
+            networkFixtures.addFixture("GET", parseUrl(pageId), JSON.stringify({parse: {
+                title: "Two image gallery fixture",
+                pageid: pageId,
+                text: "<p>Two image gallery fixture</p>"
+            }}))
+
+            function metadata(title, description, imageUrl) {
+                return JSON.stringify({query: {pages: {"42": {
+                    title: title,
+                    imageinfo: [{url: imageUrl, mime: "image/png", thumburl: imageUrl,
+                                 extmetadata: {ImageDescription: {value: description}}}]
+                }}}})
+            }
+            networkFixtures.addFixture("GET", imageInfoUrl(titleA), metadata(titleA, "Caption A", imageUrl))
+            networkFixtures.addFixture("GET", imageInfoUrl(titleA, true), metadata(titleA, "Caption A", imageUrl + "#full-a"))
+            networkFixtures.addFixture("GET", imageInfoUrl(titleB), metadata(titleB, "Caption B", imageUrl))
+            networkFixtures.addFixture("GET", imageInfoUrl(titleB, true), metadata(titleB, "Caption B", imageUrl + "#full-b"))
+            networkFixtures.addFixture("GET", imageInfoUrl(titleA + "|" + titleB), JSON.stringify({query: {pages: {
+                "42": {title: titleA, imageinfo: [{url: imageUrl, mime: "image/png", thumburl: imageUrl,
+                                                     extmetadata: {ImageDescription: {value: "Caption A"}}}]},
+                "43": {title: titleB, imageinfo: [{url: imageUrl, mime: "image/png", thumburl: imageUrl,
+                                                     extmetadata: {ImageDescription: {value: "Caption B"}}}]}
+            }}}))
+        }
+
         function init() {
             testSupport.clearRequests()
             testSupport.clearQmlWarnings()
@@ -179,6 +215,158 @@ Item {
             tryVerify(function() { return callbackProcessed })
             compare(viewer.visible, true, "An old click must not close the reopened viewer")
             viewer.close()
+        }
+
+        function test_arrow_shortcuts_navigate_gallery_in_both_viewers() {
+            const urls = [imageUrl + "#one", imageUrl + "#two", imageUrl + "#three"]
+            const captions = ["First", "Second", "Third"]
+            ImageSelectionState.selectGalleryImage(urls, captions, [], 0)
+
+            const embedded = imageViewComponent.createObject(root)
+            verify(embedded !== null)
+            stackView.push(embedded, StackView.Immediate)
+            embedded.forceActiveFocus()
+            verify(testSupport.sendKeyClick(root.Window.window, Qt.Key_Right))
+            tryCompare(ImageSelectionState, "currentImageUrl", urls[1])
+            compare(ImageSelectionState.currentImageDescription, "Second")
+            child("imageBackButton").forceActiveFocus()
+            verify(testSupport.sendKeyClick(root.Window.window, Qt.Key_Right))
+            tryCompare(ImageSelectionState, "currentImageUrl", urls[2])
+            const depth = stackView.depth
+            verify(testSupport.sendKeyClick(root.Window.window, Qt.Key_Right))
+            compare(ImageSelectionState.currentImageUrl, urls[2])
+            compare(stackView.depth, depth)
+            const cover = Qt.createQmlObject("import QtQuick; Item {}", root)
+            stackView.push(cover, StackView.Immediate)
+            verify(testSupport.sendKeyClick(root.Window.window, Qt.Key_Left))
+            compare(ImageSelectionState.currentImageUrl, urls[2], "A covered viewer must not handle arrows")
+            stackView.pop(StackView.Immediate)
+            verify(testSupport.sendKeyClick(root.Window.window, Qt.Key_Left))
+            tryCompare(ImageSelectionState, "currentImageUrl", urls[1])
+            stackView.clear(StackView.Immediate)
+            embedded.destroy()
+            cover.destroy()
+
+            const fullscreen = createTemporaryObject(fullscreenComponent, root)
+            verify(fullscreen !== null)
+            ImageSelectionState.selectGalleryImage(urls, captions, [], 0)
+            fullscreen.showFullScreen()
+            tryCompare(fullscreen, "active", true)
+            const closeButton = child("imageBackButton")
+            closeButton.forceActiveFocus()
+            verify(testSupport.sendKeyClick(fullscreen, Qt.Key_Right))
+            tryCompare(ImageSelectionState, "currentImageUrl", urls[1])
+            compare(ImageSelectionState.currentImageDescription, "Second")
+            verify(testSupport.sendKeyClick(fullscreen, Qt.Key_Left))
+            tryCompare(ImageSelectionState, "currentImageUrl", urls[0])
+            compare(stackView.depth, 0)
+            fullscreen.close()
+
+            ImageSelectionState.selectImage(imageUrl + "#inline", "Inline")
+            const inlineView = imageViewComponent.createObject(root)
+            verify(inlineView !== null)
+            stackView.push(inlineView, StackView.Immediate)
+            verify(testSupport.sendKeyClick(root.Window.window, Qt.Key_Right))
+            compare(ImageSelectionState.currentImageUrl, imageUrl + "#inline")
+            stackView.clear(StackView.Immediate)
+            inlineView.destroy()
+        }
+
+        function test_gallery_click_arrow_navigation_data() {
+            return [
+                {tag: "fullscreen", fullscreen: true},
+                {tag: "embedded", fullscreen: false}
+            ]
+        }
+
+        function test_gallery_click_arrow_navigation(data) {
+            const pageId = 304
+            configureMultiImageArticleFixture(pageId)
+            ArticleState.loadArticleByPageId(pageId)
+            tryCompare(ArticleState, "isLoading", false)
+            compare(ArticleState.currentPageId, pageId)
+
+            gallery = galleryComponent.createObject(root)
+            verify(gallery !== null)
+            tryVerify(function() { return findChild(root, "imageGalleryCell-1") !== null })
+            const toggle = child("imageFullscreenSwitch")
+            const originalFullscreen = toggle.checked
+            if (toggle.checked !== data.fullscreen)
+                toggle.checked = data.fullscreen
+            compare(toggle.checked, data.fullscreen)
+            const firstCell = child("imageGalleryCell-0")
+            const secondCell = child("imageGalleryCell-1")
+            verify(waitForRendering(firstCell))
+            verify(waitForRendering(secondCell))
+            mouseClick(firstCell)
+
+            const viewer = child("imageFullscreenWindow")
+            if (data.fullscreen) {
+                tryCompare(viewer, "visibility", Window.FullScreen)
+            } else {
+                tryCompare(stackView, "depth", 1)
+                tryCompare(stackView, "busy", false)
+                compare(viewer.visible, false)
+            }
+            tryCompare(ImageSelectionState, "currentImageUrl", imageUrl + "#full-a")
+            compare(ImageSelectionState.currentImageDescription, "Caption A")
+            const viewWindow = data.fullscreen ? viewer : root.Window.window
+            viewWindow.requestActivate()
+            tryCompare(viewWindow, "active", true)
+            if (!data.fullscreen) {
+                stackView.currentItem.forceActiveFocus()
+                findChild(stackView.currentItem, "imageBackButton").forceActiveFocus()
+            } else {
+                child("imageBackButton").forceActiveFocus()
+            }
+
+            verify(testSupport.sendKeyClick(viewWindow, Qt.Key_Right))
+            tryCompare(ImageSelectionState, "currentImageUrl", imageUrl + "#full-b")
+            compare(ImageSelectionState.currentImageDescription, "Caption B")
+            verify(testSupport.sendKeyClick(viewWindow, Qt.Key_Right))
+            compare(ImageSelectionState.currentImageUrl, imageUrl + "#full-b", "Right stops at the last image")
+            verify(testSupport.sendKeyClick(viewWindow, Qt.Key_Left))
+            tryCompare(ImageSelectionState, "currentImageUrl", imageUrl + "#full-a")
+            verify(testSupport.sendKeyClick(viewWindow, Qt.Key_Left))
+            compare(ImageSelectionState.currentImageUrl, imageUrl + "#full-a", "Left stops at the first image")
+
+            if (data.fullscreen) {
+                viewer.close()
+            } else {
+                stackView.pop(StackView.Immediate)
+            }
+            if (toggle.checked !== originalFullscreen)
+                mouseClick(toggle)
+            compare(toggle.checked, originalFullscreen)
+        }
+
+        function test_stale_image_details_do_not_replace_new_selection() {
+            function details(title, url, description) {
+                return JSON.stringify({query: {pages: {"42": {title: title, imageinfo: [{
+                    url: url, thumburl: url, mime: "image/png",
+                    extmetadata: {ImageDescription: {value: description}}
+                }]}}}})
+            }
+            const oldTitle = "File:Old.png"
+            const newTitle = "File:New.png"
+            const oldUrl = "https://example.org/old.png"
+            const newUrl = "https://example.org/new.png"
+            networkFixtures.addFixture("GET", imageInfoUrl(oldTitle, true), details(oldTitle, oldUrl, "Old details"))
+            networkFixtures.addFixture("GET", imageInfoUrl(newTitle, true), details(newTitle, newUrl, "New details"))
+
+            networkFixtures.deferNextReply(true)
+            ImageSelectionState.selectGalleryImage(["thumbnail-old.png", "thumbnail-new.png"],
+                                                   ["Old caption", "New caption"],
+                                                   [oldTitle, newTitle], 0)
+            tryCompare(networkFixtures, "pendingReplyCount", 1)
+            ImageSelectionState.selectNextImage()
+            tryCompare(ImageSelectionState, "currentImageUrl", newUrl)
+            compare(ImageSelectionState.currentImageDescription, "New details")
+
+            networkFixtures.completeReply(imageInfoUrl(oldTitle, true))
+            wait(50)
+            compare(ImageSelectionState.currentImageUrl, newUrl)
+            compare(ImageSelectionState.currentImageDescription, "New details")
         }
 
         function test_gallery_image_format_data() {
@@ -248,6 +436,7 @@ Item {
             const fullImage = child("fullScreenImage")
             tryCompare(fullImage, "status", Image.Ready)
             compare(fullImage.source.toString(), imageUrl + "#fullscreen")
+            compare(ImageSelectionState.currentImageDescription, imageDescription)
 
             const captionOverlay = child("imageCaptionOverlay")
             tryCompare(captionOverlay, "visible", true)

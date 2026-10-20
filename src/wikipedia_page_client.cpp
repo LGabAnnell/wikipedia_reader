@@ -298,8 +298,8 @@ page WikipediaPageClient::parsePageWithImages(const QByteArray &responseData, in
 void WikipediaPageClient::getImageDetails(const QString &title) {
     const auto context = m_requests.context();
     fetchImageUrlsFromTitles({title}, {}, context, [this, title, context](page result) {
-        if (m_requests.isCurrent(context) && !result.imageUrls.isEmpty())
-            emit imageDetailsReceived(title, result.imageUrls.first(), result.imageDescriptions.value(0));
+        if (m_requests.isCurrent(context))
+            emit imageDetailsReceived(title, result.imageUrls.value(0), result.imageDescriptions.value(0));
     }, true);
 }
 
