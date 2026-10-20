@@ -137,10 +137,5 @@ ApplicationWindow {
         NavigationState.pushView.connect(view => {
             stackView.push(view);
         });
-
-        NavigationState.replaceView.connect((newView) => {
-            // Clear the stack and replace with the new view instantly
-            stackView.replace(null, newView);
-        });
     }
 }

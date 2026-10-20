@@ -36,12 +36,10 @@ class NavigationState : public QObject {
     void stackViewChanged();
     void currentViewChanged();
     void pushView(const QQmlComponent *view);
-    void replaceView(const QQmlComponent *view);
     void backButtonPressed(); // Emitted when the mouse back button is pressed
 
   public slots:
     void setStackView(QQuickItem *stackView);
-    void setCurrentView(const QString &view);
 
   protected:
     bool eventFilter(QObject *obj, QEvent *event) override;

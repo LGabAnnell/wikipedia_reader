@@ -16,8 +16,6 @@ void NavigationState::setStackView(QQuickItem *stackView) {
     }
 }
 
-void NavigationState::setCurrentView(const QString &view) { emit replaceView(views.at(view)); }
-
 void NavigationState::installEventFilter(QObject *obj) {
     if (obj) {
         obj->installEventFilter(this);

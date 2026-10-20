@@ -3,8 +3,8 @@
 Source review of `src/` (C++20 / Qt6 / QML). Findings reconciled with
 commit `85752d5` on 2026-10-20. This update checks the existing findings and
 recent regression coverage; it is not a fresh audit of every source file.
-The on-this-day fix and its focused validation were added on 2026-10-20
-after that reconciliation.
+The on-this-day fix and removal of the unused navigation replacement path,
+with focused validation, were added on 2026-10-20 after that reconciliation.
 See [the testing guide](full_testing.md) for the current coverage inventory.
 
 ## Critical
@@ -30,12 +30,13 @@ cover empty and unknown names, unchanged stack depth/current item, and successfu
 registered-view navigation afterward.
 Previously recorded validation: `./scripts/run_tests.sh -R '^QmlTests\.tst_navigation$'` passed.
 
-### `src/state/NavigationState.cpp:19` — Same `views.at(view)` pattern in `setCurrentView()`
+### Resolved — `src/state/NavigationState.cpp` — Same `views.at(view)` pattern in `setCurrentView()`
 
-`setCurrentView()` still uses `views.at(view)` and can throw for an unregistered
-name. The guard added to `navigateToView()` does not protect this slot. No current
-QML caller uses it; remove the unused replacement path or guard its lookup too.
-The new invalid-name regression exercises `navigateToView()` only.
+Removed the unused `setCurrentView()` slot, its `replaceView` signal, and the
+corresponding connection in `Main.qml`, eliminating the throwing lookup.
+Existing QML navigation tests cover invalid names, push/back navigation, and
+returning Home. Validation:
+`./scripts/run_tests.sh -R '^QmlTests\.tst_navigation$'` passed.
 
 ### `src/state/NavigationState.h:51` — Missing `#include <map>` for `std::map`
 
@@ -70,9 +71,12 @@ int index;    // uninitialized
 
 Every other numeric member in the file has `= 0`. Default-constructed `section` objects have indeterminate values. Add `= 0` (or `= -1` for `index`) to match the pattern used elsewhere.
 
-### `src/Main.qml:141` — Dead `replaceView` signal connection
+### Resolved — `src/Main.qml` — Dead `replaceView` signal connection
 
-`NavigationState.replaceView.connect(...)` calls `stackView.replace(null, newView)`, but `replaceView` is only emitted by `setCurrentView()`, which is never called from QML. This is dead code that also violates the AGENTS.md rule: "Use `StackView.push()`/`pop()` — NOT `replace` — to preserve history." Remove the signal, slot, and connection.
+Removed the unused connection along with its signal and slot. Navigation now
+has no replacement path; the existing push/pop flow preserves history.
+The focused navigation test run is recorded with the resolved `setCurrentView()`
+finding above.
 
 ### `src/modules/ContentDisplayModule/CMakeLists.txt:1` — Wrong file comment
 
@@ -121,12 +125,14 @@ test run is recorded with its resolved finding above.
 | Severity | Unresolved count |
 |----------|-------|
 | Critical | 0        |
-| High     | 2        |
-| Medium   | 6        |
+| High     | 1        |
+| Medium   | 5        |
 | Low      | 4        |
 
 The image gallery Back button, invalid `navigateToView()`, and ignored
 on-this-day date arguments are resolved and covered by regression tests.
-There are six unresolved medium-severity findings. The remaining `views.at()` crash risk in
-`setCurrentView()` and the missing `<map>` include are quick, safe fixes. The dead
-code in `getPageById()` wastes API bandwidth on every article load.
+The unused `setCurrentView()` replacement path and its throwing lookup have
+also been removed, with the existing navigation regression suite passing.
+There are five unresolved medium-severity findings. The missing `<map>` include
+remains open. The dead code in `getPageById()` wastes API bandwidth on every
+article load.
