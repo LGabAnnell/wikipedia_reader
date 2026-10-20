@@ -31,6 +31,7 @@ class QmlTestSetup final : public QObject {
             qFatal("Could not create temporary QML test data directory");
         }
         qputenv("XDG_DATA_HOME", m_dataDirectory.path().toUtf8());
+        qputenv("XDG_CONFIG_HOME", m_dataDirectory.path().toUtf8());
         connect(&m_networkController, &NetworkFixtureController::unexpectedRequest, this,
                 [](const QString &description) { qFatal("%s", qPrintable(description)); },
                 Qt::DirectConnection);

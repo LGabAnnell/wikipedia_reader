@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
+import QtCore
 import wikipedia_qt // For ArticleState, NavigationState, Constants
 import wikipedia_qt.ImageDisplay
 
@@ -10,6 +11,13 @@ Item {
     id: root
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
+
+    Settings {
+        location: Qt.resolvedUrl(StandardPaths.writableLocation(StandardPaths.AppConfigLocation)
+                                 + "/settings.ini")
+        category: "ImageDisplay"
+        property alias fullscreen: fullscreenSwitch.checked
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -45,8 +53,13 @@ Item {
                 elide: Text.ElideRight
             }
 
-            Item {
-                Layout.preferredWidth: 60 // Spacer to balance the back button
+            Switch {
+                id: fullscreenSwitch
+                objectName: "imageFullscreenSwitch"
+                text: qsTr("Fullscreen")
+                checked: true
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Open images in fullscreen; turn off to view within the app")
             }
         }
 
@@ -164,7 +177,10 @@ Item {
                             if (index < 0 || index >= imageModel.imageUrls.length)
                                 return;
                             imageModel.selectImage(index);
-                            imageWindow.showFullScreen();
+                            if (fullscreenSwitch.checked)
+                                imageWindow.showFullScreen();
+                            else
+                                NavigationState.navigateToView(Constants.imageView);
                         }
                     }
                 }

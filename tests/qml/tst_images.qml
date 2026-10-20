@@ -28,11 +28,25 @@ Item {
         }
     }
 
+    Component {
+        id: imageViewComponent
+        ImageView {
+            onBackRequested: stackView.pop()
+        }
+    }
+
     StackView {
         id: stackView
         objectName: "imageTestStack"
         anchors.fill: parent
         z: 1
+    }
+
+    Connections {
+        target: NavigationState
+        function onPushView(view) {
+            stackView.push(view)
+        }
     }
 
     // The article underneath the viewer also registers Escape (to hide Find).
@@ -116,6 +130,7 @@ Item {
             HistoryState.clearHistory()
             ImageSelectionState.selectImage("", "")
             NavigationState.setStackView(stackView)
+            NavigationState.addView(Constants.imageView, imageViewComponent)
             configureArticleFixture()
             gallery = null
             compare(stackView.depth, 0)
@@ -125,7 +140,7 @@ Item {
             while (networkFixtures.pendingReplyCount > 0)
                 networkFixtures.completeNextReply()
             if (stackView.depth > 0)
-                stackView.pop()
+                stackView.clear(StackView.Immediate)
             if (gallery)
                 gallery.destroy()
             gallery = null
@@ -293,6 +308,61 @@ Item {
             ArticleState.loadArticleByPageId(articleId)
             compare(apiRequestCount(), requestCount, "Gallery must preserve the cached HTML article")
             compare(ArticleState.currentPageExtract, originalHtml)
+        }
+
+        function test_viewer_choice_survives_gallery_recreation() {
+            ArticleState.loadArticleByPageId(articleId)
+            tryCompare(ArticleState, "isLoading", false)
+            gallery = galleryComponent.createObject(root)
+            verify(gallery !== null)
+            mouseClick(child("imageFullscreenSwitch"))
+            compare(child("imageFullscreenSwitch").checked, false)
+            gallery.destroy()
+            gallery = null
+            tryVerify(function() { return findChild(root, "imageFullscreenSwitch") === null })
+
+            gallery = galleryComponent.createObject(root)
+            verify(gallery !== null)
+            compare(child("imageFullscreenSwitch").checked, false)
+            mouseClick(child("imageFullscreenSwitch"))
+            compare(child("imageFullscreenSwitch").checked, true)
+        }
+
+        function test_selecting_image_with_fullscreen_disabled() {
+            ArticleState.loadArticleByPageId(articleId)
+            tryCompare(ArticleState, "isLoading", false)
+            gallery = galleryComponent.createObject(root)
+            verify(gallery !== null)
+            stackView.push(gallery, StackView.Immediate)
+            tryVerify(function() { return findChild(root, "imageGalleryCell-0") !== null })
+            const toggle = child("imageFullscreenSwitch")
+            compare(toggle.checked, true)
+            mouseClick(toggle)
+            compare(toggle.checked, false)
+            const cell = child("imageGalleryCell-0")
+            verify(waitForRendering(cell))
+            const mainWindow = root.Window.window
+            const originalVisibility = mainWindow.visibility
+            mouseClick(cell)
+            tryCompare(stackView, "depth", 2)
+            tryCompare(stackView, "busy", false)
+            compare(child("imageFullscreenWindow").visible, false)
+            compare(mainWindow.visibility, originalVisibility)
+            tryCompare(ImageSelectionState, "currentImageUrl", imageUrl + "#fullscreen")
+            const fullImage = child("fullScreenImage")
+            tryCompare(fullImage, "status", Image.Ready)
+            compare(child("imageCaptionText").text, imageDescription)
+
+            mouseClick(child("imageBackButton"))
+            tryCompare(stackView, "depth", 1)
+            tryCompare(stackView, "busy", false)
+            compare(stackView.currentItem, gallery)
+            compare(toggle.checked, false)
+            mouseClick(toggle)
+            mouseClick(cell)
+            tryCompare(child("imageFullscreenWindow"), "visibility", Window.FullScreen)
+            compare(stackView.depth, 1)
+            child("imageBackButton").clicked()
         }
     }
 }
