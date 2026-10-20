@@ -60,10 +60,12 @@ Item {
                     + "&format=json&formatversion=2&pageid=" + pageId + "&prop=text"
         }
 
-        function imageInfoUrl(title) {
+        function imageInfoUrl(title, details) {
             return "https://en.wikipedia.org/w/api.php?action=query&format=json&prop=imageinfo"
-                    + "&iiextmetadata=ImageDescription&iiprop=url%7Cextmetadata%7Cmime"
-                    + "&iiurlwidth=2048&iiurlheight=2048"
+                    + "&iiprop=url%7Cextmetadata%7Cmime"
+                    + (details ? "&iiextmetadatafilter=ImageDescription" : "")
+                    + "&iiurlwidth=" + (details ? "2048" : "330")
+                    + "&iiurlheight=" + (details ? "2048" : "330")
                     + "&titles=" + encodeURIComponent(title || "File:Fixture.svg")
         }
 
@@ -86,6 +88,7 @@ Item {
 
             var imagePages = {}
             imagePages["42"] = {
+                "title": "File:Fixture.svg",
                 "imageinfo": [{
                     // This original has no transport fixture: loading it is a
                     // failure. The gallery and viewer must request the PNG.
@@ -97,6 +100,9 @@ Item {
             }
             networkFixtures.addFixture("GET", imageInfoUrl(),
                                        JSON.stringify({"query": {"pages": imagePages}}))
+            imagePages["42"].imageinfo[0].thumburl = imageUrl + "#fullscreen"
+            networkFixtures.addFixture("GET", imageInfoUrl("File:Fixture.svg", true),
+                                       JSON.stringify({query: {pages: imagePages}}))
         }
 
         function init() {
@@ -134,7 +140,7 @@ Item {
             return [
                 { tag: "svg-preview", url: "https://example.org/logo.svg?tracking=1", mime: "image/svg+xml", preview: imageUrl, expected: imageUrl },
                 { tag: "svg-suffix-without-mime", url: "https://example.org/logo.SVG?tracking=1", mime: "", preview: imageUrl, expected: imageUrl },
-                { tag: "raster-original", url: imageUrl, mime: "image/png", preview: "https://example.org/small.png", expected: imageUrl },
+                { tag: "raster-original", url: imageUrl, mime: "image/png", preview: "https://example.org/small.png", expected: "https://example.org/small.png" },
                 { tag: "svg-without-preview", url: "https://example.org/logo.svg", mime: "image/svg+xml", preview: "", expected: "https://example.org/logo.svg" }
             ]
         }
@@ -185,7 +191,7 @@ Item {
             const mainWindow = root.Window.window
             const originalVisibility = mainWindow.visibility
             mouseClick(cell)
-            tryCompare(ImageSelectionState, "currentImageUrl", imageUrl)
+            tryCompare(ImageSelectionState, "currentImageUrl", imageUrl + "#fullscreen")
             compare(ImageSelectionState.currentImageDescription, imageDescription)
             const viewer = child("imageFullscreenWindow")
             tryCompare(viewer, "visibility", Window.FullScreen)
@@ -195,13 +201,13 @@ Item {
 
             const fullImage = child("fullScreenImage")
             tryCompare(fullImage, "status", Image.Ready)
-            compare(fullImage.source.toString(), imageUrl)
+            compare(fullImage.source.toString(), imageUrl + "#fullscreen")
 
             const captionOverlay = child("imageCaptionOverlay")
             tryCompare(captionOverlay, "visible", true)
             const caption = child("imageCaptionText")
             compare(caption.text, imageDescription)
-            compare(testSupport.requestCount, 6)
+            compare(testSupport.requestCount, 7)
 
             // The offscreen platform does not expose the secondary native
             // window for mouse synthesis; exercise the Close button's signal.

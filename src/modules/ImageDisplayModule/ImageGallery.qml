@@ -160,10 +160,7 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
-                            var desc = imageModel.imageDescriptions.length > index
-                                ? imageModel.imageDescriptions[index]
-                                : "";
-                            ImageSelectionState.selectImage(modelData, desc);
+                            imageModel.selectImage(index);
                             imageWindow.showFullScreen();
                         }
                     }

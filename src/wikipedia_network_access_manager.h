@@ -7,6 +7,8 @@
 #include <QNetworkRequest>
 #include <QQmlNetworkAccessManagerFactory>
 #include <QVariant>
+#include <memory>
+#include "wikipedia_queued_reply.h"
 #include <QVersionNumber>
 
 namespace WikipediaNetwork {
@@ -33,8 +35,19 @@ class NetworkAccessManager final : public QNetworkAccessManager {
         if (QLibraryInfo::version() == QVersionNumber(6, 11, 2)) {
             compatibleRequest.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
         }
+        if (operation == GetOperation) {
+            return new QueuedReply(compatibleRequest, this, m_queue, [this, compatibleRequest] {
+                return QNetworkAccessManager::createRequest(GetOperation, compatibleRequest, nullptr);
+            });
+        }
         return QNetworkAccessManager::createRequest(operation, compatibleRequest, outgoingData);
     }
+  private:
+    static std::shared_ptr<DownloadQueue> requestQueue() {
+        static auto queue = std::make_shared<DownloadQueue>();
+        return queue;
+    }
+    std::shared_ptr<DownloadQueue> m_queue = requestQueue();
 };
 
 /**

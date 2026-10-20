@@ -24,6 +24,8 @@ class WikipediaPageClient : public QObject {
     void getPage(const QString &title);
     void getPageById(int pageid);
     void getPageWithImages(int pageid);
+    /** @brief Fetch a larger preview and caption for a selected file. */
+    void getImageDetails(const QString &title);
     void resolveTitleToPageId(const QString &title);
     void getSections(const QString &title);
     void setLanguage(const QString &langCode);
@@ -36,6 +38,7 @@ class WikipediaPageClient : public QObject {
   signals:
     void pageReceived(const page &page);
     void pageWithImagesReceived(const page &page);
+    void imageDetailsReceived(const QString &title, const QString &url, const QString &description);
     void pageIdResolved(int pageid);
     void sectionsReceived(const QVector<section> &sections);
     void errorOccurred(const QString &error);
@@ -52,7 +55,7 @@ class WikipediaPageClient : public QObject {
     QHash<QString, QString> mathImageDataUrls;
     void fetchImageUrlsFromTitles(const QStringList &imageTitles, page pageData,
                                   const WikipediaRequestContext &context,
-                                  std::function<void(page)> completion);
+                                  std::function<void(page)> completion, bool details = false);
     void fetchPageContentWithImages(int pageid, const page &pageData, const WikipediaRequestContext &context);
     void fetchMathImageDataUrls(const QString &htmlContent,
                                 const WikipediaRequestContext &context,

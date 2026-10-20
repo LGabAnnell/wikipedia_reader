@@ -34,6 +34,8 @@ public:
 
     Q_INVOKABLE void loadImagesForCurrentPage();
     Q_INVOKABLE void loadImagesForPage(int pageId);
+    /** @brief Select a thumbnail and fetch its fullscreen preview and caption. */
+    Q_INVOKABLE void selectImage(int index);
 
 signals:
     void loadingChanged();
@@ -53,6 +55,8 @@ private:
     bool m_isLoading = false;
     QString m_errorMessage;
     QStringList m_imageUrls;
+    QStringList m_imageTitles;
+    QString m_selectedTitle;
     QStringList m_imageDescriptions;
     QString m_articleTitle;
     int m_currentPageId;

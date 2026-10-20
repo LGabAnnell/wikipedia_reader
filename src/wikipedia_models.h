@@ -35,6 +35,7 @@ class page {
     QString extract;
     int pageid = 0;
     QStringList imageUrls;
+    QStringList imageTitles; // Parallel file titles for deferred metadata lookup
     QStringList imageDescriptions; // Parallel to imageUrls; plain-text caption per image
 };
 

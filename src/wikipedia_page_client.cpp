@@ -295,9 +295,17 @@ page WikipediaPageClient::parsePageWithImages(const QByteArray &responseData, in
     return result;
 }
 
+void WikipediaPageClient::getImageDetails(const QString &title) {
+    const auto context = m_requests.context();
+    fetchImageUrlsFromTitles({title}, {}, context, [this, title, context](page result) {
+        if (m_requests.isCurrent(context) && !result.imageUrls.isEmpty())
+            emit imageDetailsReceived(title, result.imageUrls.first(), result.imageDescriptions.value(0));
+    }, true);
+}
+
 void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitles, page pageData,
                                                    const WikipediaRequestContext &context,
-                                                   std::function<void(page)> completion) {
+                                                   std::function<void(page)> completion, bool details) {
     if (!m_requests.isCurrent(context)) return;
     if (imageTitles.isEmpty()) {
         completion(pageData);
@@ -310,9 +318,10 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
     urlQuery.addQueryItem("format", "json");
     urlQuery.addQueryItem("prop", "imageinfo");
     urlQuery.addQueryItem("iiprop", "url|extmetadata|mime");
-    urlQuery.addQueryItem("iiextmetadata", "ImageDescription");
-    urlQuery.addQueryItem("iiurlwidth", "2048");
-    urlQuery.addQueryItem("iiurlheight", "2048");
+    urlQuery.addQueryItem("iiurlheight", details ? "2048" : "330");
+    if (details)
+        urlQuery.addQueryItem("iiextmetadatafilter", "ImageDescription");
+    urlQuery.addQueryItem("iiurlwidth", details ? "2048" : "330");
     urlQuery.addQueryItem("titles", imageTitles.join("|"));
     url.setQuery(urlQuery);
 
@@ -325,6 +334,13 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
         QByteArray response = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
         QJsonObject jsonObj = jsonDoc.object();
+        if (jsonDoc.isNull() || jsonObj.contains("error")) {
+            emit errorOccurred(jsonObj.contains("error")
+                ? jsonObj["error"].toObject()["info"].toString()
+                : tr("Invalid image metadata response."));
+            reply->deleteLater();
+            return;
+        }
         QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
 
         for (auto it = pages.begin(); it != pages.end(); ++it) {
@@ -333,18 +349,12 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
                 QJsonArray imageInfo = pageObj["imageinfo"].toArray();
                 if (!imageInfo.isEmpty()) {
                     QJsonObject info = imageInfo[0].toObject();
-                    QString imageUrl = info["url"].toString();
-                    // Qt SVG can reject intermediate mask buffers even for
-                    // empty groups (Qt 6.11.2). Prefer MediaWiki's rasterized
-                    // preview for SVGs; retain the original if none is available.
-                    const bool isSvg = info["mime"].toString() == QStringLiteral("image/svg+xml")
-                                       || QUrl(imageUrl).path().endsWith(QStringLiteral(".svg"), Qt::CaseInsensitive);
-                    const QString previewUrl = info["thumburl"].toString();
-                    if (isSvg && !previewUrl.isEmpty()) {
-                        imageUrl = previewUrl;
-                    }
+                    QString imageUrl = info["thumburl"].toString();
+                    if (imageUrl.isEmpty())
+                        imageUrl = info["url"].toString();
                     if (!imageUrl.isEmpty()) {
                         pageData.imageUrls.append(imageUrl);
+                        pageData.imageTitles.append(pageObj["title"].toString());
 
                         // Extract the plain-text image description from
                         // extmetadata, if present.
@@ -359,6 +369,11 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
                 }
             }
         }
+    } else {
+        if (reply->error() != QNetworkReply::OperationCanceledError)
+            emit errorOccurred(reply->errorString());
+        reply->deleteLater();
+        return;
     }
     completion(std::move(pageData));
     reply->deleteLater();
