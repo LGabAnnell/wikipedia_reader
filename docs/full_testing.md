@@ -71,10 +71,10 @@ network testing, and `-r` to delete and rebuild `build/`. Configure local
 dependency prefixes first. The separate root `test.sh` always deletes
 `build/` before configuring and rebuilding.
 
-The current source configuration registers **27 CTest entries: 16 C++ and
+The current source configuration registers **28 CTest entries: 17 C++ and
 11 QML**. These are executables/test files, not individual test cases or
-data rows. The inventory below reflects the sources reviewed on 2026-10-20;
-it is not a record of a passing test run.
+data rows. The inventory below reflects the current source configuration; it
+is not a record of a passing test run.
 
 ## C++ coverage
 
@@ -86,6 +86,7 @@ Each named entry below has a matching `.cpp` file under `tests/`.
 | `SearchStateTest` | Blank queries, trimming, pending/completed/reset state, duplicate submission while busy, errors/retry, settings at construction, restarting stored search text once after language changes, blank-query behavior, stale reply rejection, rapid language changes, and teardown/recreation. |
 | `SettingsStateTest` | Default language, change notifications, ignoring an unchanged language, and singleton teardown/recreation. |
 | `ImageSelectionStateTest` | URL/caption updated together before notifications, unchanged-selection notification suppression, clearing selection and gallery context on language changes, gallery navigation stopping at either end, safe empty/single-image galleries, standalone selection clearing gallery context, deferred image details with duplicate-selection suppression and mismatched-title rejection, thumbnail/caption fallback on failed or missing details, and teardown/recreation. |
+| `ConstantsTest` | QML singleton reuse within one engine, independent instances across simultaneous engines, engine teardown and recreation, `clearSingletons()` recreation, and all six view-name properties. |
 | `WikipediaRequestIsolationTest` | Obsolete search successes/errors and featured replies are ignored; old page and random-title replies cannot start follow-up HTML or summary requests after a language switch. |
 | `WikipediaNetworkAccessManagerTest` | Both API-client and QML-image managers apply the runtime HTTP/2 policy: disabled for Qt 6.11.2, otherwise left at its default. Uses a temporary local file, not a live HTTP server. |
 | `ContentDisplayModelTest` | Per-view section state, section-position/highlight resets, article-driven search/section resets, and case-insensitive text-search navigation wrapping. |
@@ -109,7 +110,9 @@ the shared fixture transport. Backend implementation and meta-objects are
 linked through `wikipedia_qt_core`; fake-network support is compiled into
 `wikipedia_test_network`. `ContentDisplayModelTest` links its feature module.
 The search-display and sidebar-layout executables still compile their feature
-models directly.
+models directly. `ConstantsTest` registers the production factory under an
+isolated QML URI to test engine ownership without importing the application
+module.
 
 ### Live search
 

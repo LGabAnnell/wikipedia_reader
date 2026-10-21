@@ -27,6 +27,12 @@ foreach(state_test HistoryStateTest ArticleStateTest SearchStateTest SettingsSta
     add_test(NAME ${state_test} COMMAND ${state_test})
 endforeach()
 
+qt_add_executable(ConstantsTest ConstantsTest.cpp ${CMAKE_SOURCE_DIR}/src/constants.cpp)
+target_include_directories(ConstantsTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(ConstantsTest PRIVATE Qt::Quick Qt::Test)
+add_test(NAME ConstantsTest COMMAND ConstantsTest)
+set_tests_properties(ConstantsTest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
 qt_add_executable(WikipediaRequestIsolationTest WikipediaRequestIsolationTest.cpp)
 target_link_libraries(WikipediaRequestIsolationTest PRIVATE wikipedia_qt_core Qt::Test wikipedia_test_network)
 add_test(NAME WikipediaRequestIsolationTest COMMAND WikipediaRequestIsolationTest)

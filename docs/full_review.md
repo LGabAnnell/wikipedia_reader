@@ -56,22 +56,6 @@ and others), contradicting the AGENTS.md rule that user-facing strings go
 through `tr()`/`qsTr()`. Only a few files (`History.qml`, `LanguageSelector.qml`,
 `ImageFullscreenWindow.qml`) are translated.
 
-### `src/constants.h:18` — Singleton factory retains a dangling pointer after engine teardown
-
-`Constants::create()` caches a raw pointer in static `m_instance` and returns
-it to every engine. Contrary to the original review, factory-provided QObject
-singletons are owned by the QML engine unless explicitly marked with
-`CppOwnership`; see [Qt's singleton ownership documentation](https://doc.qt.io/qt-6.8/qqml-h.html).
-
-A temporary C++ probe using the current `constants.h` and `constants.cpp`
-registered the factory, obtained its singleton, and tracked it with `QPointer`.
-Destroying the engine deleted the object; a subsequent direct factory call
-returned the same stale address. Engine recreation or singleton clearing can
-therefore reuse a dangling pointer. The normal single-engine application does
-not exercise that reuse path. Prefer a fresh instance per engine, or explicitly
-manage process-wide ownership and engine access. Reclassified from Low
-ownership documentation to a Medium lifetime issue.
-
 ## Low
 
 ### `src/state/NavigationState.h:21` — `currentView()` is declared but never defined
@@ -376,13 +360,12 @@ several concern behavior those tests do not exercise.
 |----------|-------------------|
 | Critical | 0 |
 | High     | 0 |
-| Medium   | 5 |
+| Medium   | 4 |
 | Low      | 17 |
-| **Total** | **22** |
+| **Total** | **21** |
 
-There are 22 unresolved entries and one retracted entry. The previous summary
+There are 21 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.
 
 Prioritize escaping API text in RichText links, bounding the article cache,
-and resolving relative article links. The Constants factory also needs a
-lifetime fix before supporting engine recreation or singleton clearing.
+and resolving relative article links.

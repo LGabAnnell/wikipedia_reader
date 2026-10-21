@@ -16,10 +16,7 @@ class Constants : public QObject {
 
   public:
     static Constants *create(QQmlEngine *, QJSEngine *) {
-        if (!m_instance) {
-            m_instance = new Constants();
-        }
-        return m_instance;
+        return new Constants();
     }
 
     static QString historyView() { return "history"; }
@@ -40,6 +37,5 @@ class Constants : public QObject {
 
   private:
     Constants() {};
-    static Constants *m_instance;
 };
 #endif // CONSTANTS_H
