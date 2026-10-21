@@ -1,11 +1,16 @@
 # Full Code Review: `src/`
 
-Fresh full audit of every file under `src/` (about 7,400 lines across ~50 C++/QML
-files), reconciled with commit `8593ed0` on 2026-10-20. Earlier resolved findings
-are retained below with their recorded validation; all still-open findings were
-re-verified against the current sources. This is a static review only — no
-builds or test runs were performed for this audit. See
-[the testing guide](full_testing.md) for the coverage inventory.
+The original full audit covered every file under `src/` (about 7,400 lines
+across ~50 C++/QML files) and was reconciled with commit `8593ed0` on
+2026-10-20. On 2026-10-21, the listed findings were reassessed against commit
+`e94c87e`; this was a targeted recheck, not a new full-source audit. Severity,
+ownership, singleton construction, caller, and resource-packaging claims have
+been corrected below. Earlier resolved findings retain their recorded validation
+and remain consistent with the current sources.
+
+The recheck included a successful incremental build, all 27 CTest entries, and
+temporary probes for singleton construction and ownership. Live-network testing
+was not enabled. See [the testing guide](full_testing.md) for coverage limits.
 
 ## Critical
 
@@ -15,31 +20,10 @@ data-loss paths were found in normal flows.
 
 ## High
 
-### `src/state/NavigationState.h:21` — `currentView()` is declared but never defined
-
-The header declares `QString currentView() const;` and a
-`currentViewChanged()` signal, but `NavigationState.cpp` defines neither the
-method nor any emission of the signal. Any caller would fail to link. Define it
-from the StackView's current item, or delete the declaration and signal.
-
-### `src/state/NavigationState.h:49` — Missing `#include <map>` for `std::map`
-
-The header declares `std::map<QString, QQmlComponent *> views;` without
-including `<map>`. It compiles only via transitive includes — not portable.
+No current high-severity findings. The two original High entries are retained
+below as Low issues because neither prevents the current application from building.
 
 ## Medium
-
-### `src/wikipedia_featured_client.cpp:27` — Double `reply->deleteLater()`
-
-`getFeaturedArticleOfTheDay()` calls `reply->deleteLater()` in its lambda, and
-`onFeaturedArticleReply()` calls it again at the end. Qt handles the double
-`deleteLater()` gracefully, but one of the two calls should be removed.
-
-### `src/state/NavigationState.h:15` — `NavigationState` lacks `QML_UNCREATABLE("Singleton")`
-
-AGENTS.md requires state singletons registered via `qmlRegisterSingletonInstance`
-to be `QML_UNCREATABLE("Singleton")`. QML can currently instantiate stray
-`NavigationState` instances that operate without a stack view.
 
 ### `src/modules/HomeModule/NewsSection.qml:62` — API text inserted unescaped into RichText links
 
@@ -72,15 +56,66 @@ and others), contradicting the AGENTS.md rule that user-facing strings go
 through `tr()`/`qsTr()`. Only a few files (`History.qml`, `LanguageSelector.qml`,
 `ImageFullscreenWindow.qml`) are translated.
 
+### `src/constants.h:18` — Singleton factory retains a dangling pointer after engine teardown
+
+`Constants::create()` caches a raw pointer in static `m_instance` and returns
+it to every engine. Contrary to the original review, factory-provided QObject
+singletons are owned by the QML engine unless explicitly marked with
+`CppOwnership`; see [Qt's singleton ownership documentation](https://doc.qt.io/qt-6.8/qqml-h.html).
+
+A temporary C++ probe using the current `constants.h` and `constants.cpp`
+registered the factory, obtained its singleton, and tracked it with `QPointer`.
+Destroying the engine deleted the object; a subsequent direct factory call
+returned the same stale address. Engine recreation or singleton clearing can
+therefore reuse a dangling pointer. The normal single-engine application does
+not exercise that reuse path. Prefer a fresh instance per engine, or explicitly
+manage process-wide ownership and engine access. Reclassified from Low
+ownership documentation to a Medium lifetime issue.
+
+## Low
+
+### `src/state/NavigationState.h:21` — `currentView()` is declared but never defined
+
+The header declares `QString currentView() const;`, but there is no method
+implementation or caller. `currentViewChanged()` is declared but never emitted;
+Qt's meta-object compiler supplies the signal implementation. A future C++ call
+to `currentView()` would fail to link, but the current application builds and
+links successfully. Remove the unused method and signal, or implement the API
+when needed. Downgraded from High to Low as a latent API issue.
+
+### `src/state/NavigationState.h:49` — Missing `#include <map>` for `std::map`
+
+The header declares `std::map<QString, QQmlComponent *> views;` without
+including `<map>`. It builds through transitive includes in the current
+environment, but should include its dependency directly. Downgraded from High
+to Low as a portability and header-maintenance issue.
+
+### `src/wikipedia_featured_client.cpp:27` — Double `reply->deleteLater()`
+
+`getFeaturedArticleOfTheDay()` calls `reply->deleteLater()` in its lambda, and
+`onFeaturedArticleReply()` calls it again at the end. Qt handles the double
+`deleteLater()` gracefully, but one of the two calls should be removed.
+Downgraded from Medium to Low; this is harmless redundant cleanup.
+
+### `src/state/NavigationState.h:15` — Missing singleton annotation is a convention issue
+
+AGENTS.md requires `QML_UNCREATABLE("Singleton")` on state singletons registered
+via `qmlRegisterSingletonInstance`. The annotation is missing, but the runtime
+registration in `main.cpp` and the QML test harness already prevents QML
+construction. A temporary test using the existing harness confirmed that
+`Qt.createQmlObject()` with `NavigationState {}` fails with "Element is not
+creatable." Add the annotation for consistency; the earlier claim that QML can
+instantiate stray instances is incorrect. Downgraded from Medium to Low.
+
 ### `src/modules/ContentDisplayModule/CMakeLists.txt:1` — Wrong file comment
 
 Line 1 says `# HistoryModule CMakeLists.txt` — this is the ContentDisplayModule.
+Downgraded from Medium to Low; this is cosmetic.
 
 ### `src/modules/HeaderModule/CMakeLists.txt:1` — Wrong file comment
 
 Line 1 says `# HistoryModule CMakeLists.txt` — this is the HeaderModule.
-
-## Low
+Downgraded from Medium to Low; this is cosmetic.
 
 ### `src/wikipedia_home_client.cpp:253` — Full API response logged at `qWarning`
 
@@ -128,22 +163,11 @@ opens and reads the same file again. Pass the loaded `QByteArray` or
 `m_items` is never used; the `searchRequested` signal declared at line 68 is
 never emitted. Remove both.
 
-### `src/state/db/HistoryDatabase.h:31` — `removeOldestItems()` has no callers
-
-Pruning goes through `pruneHistory()` inside transactions. Remove the dead
-public API.
-
 ### `src/modules/HomeModule/FeaturedSection.qml:38` — Magic status numbers in QML
 
-`visible: root.status === 2` and `HomeFeedback.qml:15`'s `status === 1 || 3 || 4`
-use magic numbers instead of the exposed `HomeModel.Status` enum values, which
+`visible: root.status === 2` and `HomeFeedback.qml:15`'s comparisons against
+`1`, `3`, and `4` use magic numbers instead of the exposed `HomeModel.Status` enum values, which
 the code already uses elsewhere (`homeModel.retrySection(HomeModel.Featured)`).
-
-### `src/constants.h:42` — `Constants::create()` singleton ownership is undocumented
-
-The static `m_instance` is never deleted and ownership is not handed to the QML
-engine. It works as a deliberate one-instance singleton, but the ownership
-should be documented or transferred explicitly.
 
 ### `src/Main.qml:124` — `homeView` registration is unreachable
 
@@ -152,19 +176,34 @@ intercepts `homeView` (`Header.qml`, `Main.qml`) and pops to root instead. The
 registration is dead; a stray `navigateToView(homeView)` would push a second
 HomeScreen on top of the stack.
 
-### `src/CMakeLists.txt:20` — Resources registered through two mechanisms
+### `src/CMakeLists.txt:28` — Duplicate icons and an embedded raw resource manifest
 
-`resources.qrc` plus `../icons/*.svg` are listed in `qt_add_qml_module` RESOURCES
-while the same icons are also added via `qt_add_resources(appwikipedia_qt
-"icons")`, and `styles/table_style.css` appears in both `resources.qrc` and the
-`styles` resource. It works, but the duplication invites alias drift; pick one
-mechanism per file.
+The generated `wikipedia_qt_raw_res_0.qrc` embeds four icons also included in
+the application's `icons` resource, under different resource paths. Consolidate
+the duplicated icon payloads and aliases.
+
+The generated resource also embeds `resources.qrc` itself as raw data at
+`:/qt/qml/wikipedia_qt/resources.qrc`; it does not expand that manifest into
+another stylesheet resource. The stylesheet payload is supplied by the
+application's `styles` resource, so the earlier claim that it is duplicated
+through `resources.qrc` is incorrect. Remove the unnecessary raw manifest
+entry if no consumer needs it. This remains a Low packaging cleanup.
 
 ### `src/SearchScreen.qml:6` — Inconsistent versioned imports
 
 Uses `import wikipedia_qt 1.0` while most other files use unversioned
 `import wikipedia_qt`. AGENTS.md notes versioned imports appear in "older
 files" — worth normalizing.
+
+## Retracted finding
+
+### `src/state/db/HistoryDatabase.h:31` — `removeOldestItems()` has test callers
+
+The earlier "has no callers" claim is incorrect. `HistoryDatabaseTest.cpp`
+calls `removeOldestItems()` in explicit pruning and initialization-failure
+coverage. Production pruning uses `pruneHistory()` within transactions, so the
+public wrapper currently has only test consumers. Removing it would require a
+deliberate API and test change; it is not counted as an unresolved defect.
 
 ## Resolved findings
 
@@ -256,8 +295,9 @@ Validation: `./scripts/run_tests.sh -R '^QmlTests\.tst_article$'` passed.
 
 ### `src/modules/ImageDisplayModule/ImageGallery.qml` — Back button referenced external `stackView`
 
-The Back handler now uses `root.StackView.view` and pops only when the owning
-stack exists and has more than one item. The button exposes the stable
+The Back handler now uses `root.StackView.view`, with a parent attached-view
+fallback, and pops only when the owning stack exists and has more than one
+item. The button exposes the stable
 `imageGalleryBackButton` selector. Regression tests cover returning to the
 previous item in a separately named stack, retaining a root-level gallery, and
 safely clicking Back on a standalone gallery, with no QML warnings.
@@ -311,16 +351,38 @@ destructor). StackView navigation uses push/pop exclusively, history identity
 behaves exactly as AGENTS.md specifies. The Lexbor HTML cleanup has disciplined
 memory handling for a C API. No `console.log` calls exist in QML files.
 
+## Recheck validation
+
+On 2026-10-21 at commit `e94c87e`:
+
+- `cmake --build build -j14` succeeded.
+- `QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure`
+  passed all 27 entries. The opt-in live search was not enabled; these results
+  do not establish live Wikipedia API compatibility.
+- A temporary QML test using the existing harness verified that
+  `NavigationState {}` cannot be instantiated.
+- A temporary C++ probe verified deletion of the factory-provided `Constants`
+  singleton on engine destruction and the stale pointer returned afterward.
+- Generated resource manifests confirmed duplicated icon payloads and raw
+  embedding of `resources.qrc`, rather than a second stylesheet payload.
+
+The temporary probes were outside the repository and were not added as
+regression tests. Passing existing tests does not resolve the open findings;
+several concern behavior those tests do not exercise.
+
 ## Summary
 
 | Severity | Unresolved count |
 |----------|-------------------|
 | Critical | 0 |
-| High     | 2 |
-| Medium   | 9 |
-| Low      | 14 |
+| High     | 0 |
+| Medium   | 5 |
+| Low      | 17 |
+| **Total** | **22** |
 
-The highest-value remaining fix is the undefined `NavigationState::currentView()`
-method (a linker failure for callers).
-The original audit was static; the resolved entries above record validation
-performed for individual fixes.
+There are 22 unresolved entries and one retracted entry. The previous summary
+claimed 25 unresolved findings, but its sections contained only 23.
+
+Prioritize escaping API text in RichText links, bounding the article cache,
+and resolving relative article links. The Constants factory also needs a
+lifetime fix before supporting engine recreation or singleton clearing.
