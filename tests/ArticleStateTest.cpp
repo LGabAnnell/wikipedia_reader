@@ -308,6 +308,42 @@ class ArticleStateTest : public QObject {
         QCOMPARE(article.currentPageId(), 42);
     }
 
+    void failedUncachedSelectionClearsPreviousArticleAndCanRetry() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        article.setCurrentPageFromData("Previous article", "<p>Previous body</p>", "");
+        m_network.addFixture("GET", articleUrl(), "failure", "text/plain", 500);
+        QSignalSpy pageChanges(&article, &ArticleState::currentPageChanged);
+        m_network.deferNextReply();
+
+        article.loadArticleByPageId(42);
+
+        QVERIFY(article.isLoading());
+        QVERIFY(article.currentPageTitle().isEmpty());
+        QVERIFY(article.currentPageExtract().isEmpty());
+        QCOMPARE(article.currentPageId(), 0);
+        QCOMPARE(pageChanges.count(), 1);
+        QVERIFY(m_history->history().isEmpty());
+        QCOMPARE(m_network.pendingReplyCount(), 1);
+        m_network.completeNextReply();
+
+        QTRY_VERIFY(!article.isLoading());
+        QCOMPARE(article.errorMessage(), QString("HTTP 500"));
+        QVERIFY(article.currentPageTitle().isEmpty());
+        QVERIFY(article.currentPageExtract().isEmpty());
+        QCOMPARE(article.currentPageId(), 0);
+        QVERIFY(m_history->history().isEmpty());
+
+        addArticle();
+        article.loadArticleByPageId(42);
+        QTRY_VERIFY(!article.isLoading());
+        QCOMPARE(article.errorMessage(), QString());
+        QCOMPARE(article.currentPageTitle(), QString("Article"));
+        QCOMPARE(article.currentPageId(), 42);
+        QCOMPARE(m_history->history().size(), 1);
+        QCOMPARE(m_history->history().first().pageId, 42);
+    }
+
     void invalidParseResponseDoesNotCacheOrRecordHistoryAndCanRetry() {
         SettingsState settings;
         ArticleState article(*m_history, settings);

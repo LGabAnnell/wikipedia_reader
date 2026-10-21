@@ -10,14 +10,8 @@ After opening article B from article A and navigating Back to A, the visible art
 
 Relevant code: [src/modules/ImageDisplayModule/ImageHomeModel.cpp](src/modules/ImageDisplayModule/ImageHomeModel.cpp#L60)
 
-### [P2] Failed article selections leave the previous article visible
-
-`loadArticleByPageId()` does not clear the current page before starting an uncached request. If that request fails, the old article remains in `ArticleState`; the new article view can display stale content together with the new error. A temporary fixture reproduced this behavior.
-
-Relevant code: [src/state/ArticleState.cpp](src/state/ArticleState.cpp#L55)
-
 ## Validation
 
 - `./scripts/run_tests.sh`: build succeeded; all 27 registered CTest entries passed.
-- Temporary fixture checks reproduced all four findings before remediation. The checks were kept under `/tmp` and were not added to the repository.
+- A temporary fixture check reproduced the remaining gallery finding before remediation. The check was kept under `/tmp` and was not added to the repository.
 - Live Wikipedia API behavior was not tested.

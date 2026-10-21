@@ -60,6 +60,10 @@ void ArticleState::loadArticleByPageId(int pageId) {
         setCurrentPage(article);
         return;
     }
+    // Clear content from a previous selection before opening the new article
+    // view. A failed uncached request must not leave that article visible.
+    m_currentPage = page{};
+    emit currentPageChanged();
     setIsLoading(true);
     m_pageClient->getPageById(pageId);
 }

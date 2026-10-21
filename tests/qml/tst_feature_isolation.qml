@@ -44,19 +44,20 @@ Item {
             compare(testSupport.qmlWarningCount, 0, testSupport.qmlWarnings.join("\n"))
         }
 
-        function beginArticleRequest() {
+        function beginArticleRequest(expectedPendingCount) {
             networkFixtures.deferNextReply()
             ArticleState.loadArticleByPageId(901)
             ArticleState.setErrorMessage("article feedback")
             compare(ArticleState.isLoading, true)
-            compare(networkFixtures.pendingReplyCount, 2)
+            compare(networkFixtures.pendingReplyCount, expectedPendingCount)
         }
 
-        function verifyArticleUnchanged() {
+        function verifyArticleRemainsPending() {
             compare(ArticleState.isLoading, true)
             compare(ArticleState.errorMessage, "article feedback")
-            compare(ArticleState.currentPageTitle, "Original article")
-            compare(ArticleState.currentPageExtract, "<p>Original HTML</p>")
+            compare(ArticleState.currentPageTitle, "")
+            compare(ArticleState.currentPageExtract, "")
+            compare(ArticleState.currentPageId, 0)
             compare(HistoryState.history.length, 0)
             compare(networkFixtures.pendingReplyCount, 1)
         }
@@ -76,13 +77,13 @@ Item {
             networkFixtures.deferNextReply()
             model.performSearch()
             compare(SearchState.isSearching, true)
-            beginArticleRequest()
+            beginArticleRequest(2)
             networkFixtures.completeNextReply()
             tryCompare(SearchState, "isSearching", false)
             compare(SearchState.hasCompletedSearch, data.status === 200)
             compare(SearchState.searchResults.length, data.count)
             compare(SearchState.errorMessage, data.status === 200 ? "" : "HTTP 500")
-            verifyArticleUnchanged()
+            verifyArticleRemainsPending()
         }
 
         function test_search_does_not_clear_existing_article_error() {
@@ -104,24 +105,23 @@ Item {
             networkFixtures.deferNextReply()
             model.fetchSections("Isolation")
             compare(model.isLoading, true)
-            beginArticleRequest()
+            beginArticleRequest(2)
             networkFixtures.completeNextReply()
             tryCompare(model, "isLoading", false)
             compare(model.errorMessage, "HTTP 500")
-            verifyArticleUnchanged()
+            verifyArticleRemainsPending()
         }
 
         function test_gallery_failure_does_not_complete_article() {
             networkFixtures.addFixture("GET", galleryUrl, "gallery failure", "text/plain", 500)
             model = galleryComponent.createObject(root)
-            networkFixtures.deferNextReply()
+            beginArticleRequest(1)
             model.loadImagesForPage(901)
             compare(model.isLoading, true)
-            beginArticleRequest()
-            networkFixtures.completeNextReply()
+            compare(networkFixtures.pendingReplyCount, 1)
             tryCompare(model, "isLoading", false)
             compare(model.errorMessage, "HTTP 500")
-            verifyArticleUnchanged()
+            verifyArticleRemainsPending()
         }
 
         function test_language_transition_clears_search_sections_gallery_and_image_selection() {
