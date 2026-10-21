@@ -1,6 +1,7 @@
 // wikipedia_search_client.cpp
 #include "wikipedia_search_client.h"
 #include "wikipedia_network_access_manager.h"
+#include <QJsonParseError>
 #include <QUrl>
 #include <QUrlQuery>
 
@@ -36,7 +37,21 @@ void WikipediaSearchClient::search(const QString &query, int limit) {
 
 void WikipediaSearchClient::onSearchReply(QNetworkReply *reply, const WikipediaRequestContext &context) {
     if (m_requests.isCurrent(context) && reply->error() == QNetworkReply::NoError) {
-        emit searchCompleted(parseSearchResults(reply->readAll()));
+        const QByteArray responseData = reply->readAll();
+        QJsonParseError parseError;
+        const QJsonDocument document = QJsonDocument::fromJson(responseData, &parseError);
+        const QJsonObject root = document.object();
+        const QJsonValue apiError = root.value("error");
+        if (apiError.isObject()) {
+            const QString info = apiError.toObject().value("info").toString().trimmed();
+            emit errorOccurred(info.isEmpty() ? tr("Wikipedia API returned an error.") : info);
+        } else if (parseError.error != QJsonParseError::NoError || !document.isObject() ||
+                   !root.value("query").isObject() ||
+                   !root.value("query").toObject().value("search").isArray()) {
+            emit errorOccurred(tr("Invalid search response."));
+        } else {
+            emit searchCompleted(parseSearchResults(responseData));
+        }
     } else if (m_requests.isCurrent(context) && reply->error() != QNetworkReply::OperationCanceledError) {
         emit errorOccurred(reply->errorString());
     }

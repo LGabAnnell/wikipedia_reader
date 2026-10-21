@@ -24,6 +24,7 @@ Item {
         readonly property string fixtureUrl: "https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=fixture&srlimit=10"
         readonly property string emptyUrl: "https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=empty&srlimit=10"
         readonly property string failureUrl: "https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=failure&srlimit=10"
+        readonly property string invalidUrl: "https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=invalid&srlimit=10"
 
         property var screen: null
 
@@ -155,6 +156,59 @@ Item {
             const result = child("searchResultContent-0")
             compare(result.resultTitle, "Recovered article")
             compare(result.resultSnippet, "Retry succeeded")
+        }
+
+        function test_invalid_success_response_data() {
+            return [
+                { tag: "API error with info", body: '{"error":{"code":"badquery","info":"Search is unavailable"}}',
+                  error: "Search is unavailable" },
+                { tag: "API error without info", body: '{"error":{"code":"badquery"}}',
+                  error: "Wikipedia API returned an error." },
+                { tag: "API error takes precedence over empty results",
+                  body: '{"error":{"code":"badquery","info":"Search is unavailable"},"query":{"search":[]}}',
+                  error: "Search is unavailable" },
+                { tag: "malformed JSON", body: "not json", error: "Invalid search response." },
+                { tag: "top-level array", body: '[]', error: "Invalid search response." },
+                { tag: "missing query object", body: '{"other":{}}', error: "Invalid search response." },
+                { tag: "wrong query type", body: '{"query":[]}', error: "Invalid search response." },
+                { tag: "missing search field", body: '{"query":{}}', error: "Invalid search response." },
+                { tag: "wrong search field type", body: '{"query":{"search":{}}}', error: "Invalid search response." }
+            ]
+        }
+
+        function test_invalid_success_response(data) {
+            networkFixtures.addFixture("GET", invalidUrl, data.body)
+            const input = child("searchInput")
+            const button = child("searchButton")
+            const busy = child("searchLoadingIndicator")
+            const status = child("searchStatusLabel")
+            const list = child("searchResultsList")
+
+            deferAndSubmit(input, "invalid", button)
+            networkFixtures.completeNextReply()
+            tryCompare(busy, "visible", false)
+            tryCompare(status, "visible", true)
+            compare(status.text, data.error)
+            verify(status.text !== "No results found.")
+            compare(SearchState.isSearching, false)
+            compare(SearchState.hasCompletedSearch, false)
+            compare(input.enabled, true)
+            compare(button.enabled, true)
+            compare(list.count, 0)
+
+            networkFixtures.addFixture("GET", invalidUrl,
+                                       '{"query":{"search":[{"title":"Recovered article","snippet":"Retry succeeded","pageid":10}]}}')
+            networkFixtures.deferNextReply()
+            mouseClick(button)
+            tryCompare(networkFixtures, "pendingReplyCount", 1)
+            compare(busy.visible, true)
+            compare(status.visible, false)
+            networkFixtures.completeNextReply()
+            tryCompare(list, "count", 1)
+            tryCompare(busy, "visible", false)
+            compare(SearchState.hasCompletedSearch, true)
+            compare(button.enabled, true)
+            compare(child("searchResultContent-0").resultTitle, "Recovered article")
         }
     }
 }

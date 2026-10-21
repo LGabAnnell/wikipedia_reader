@@ -22,14 +22,8 @@ Relevant code: [src/modules/ImageDisplayModule/ImageHomeModel.cpp](src/modules/I
 
 Relevant code: [src/state/ArticleState.cpp](src/state/ArticleState.cpp#L55)
 
-### [P2] Search API errors are shown as “No results found”
-
-The search reply handler treats every successful HTTP response as a valid search result. A MediaWiki API error object or malformed response parses to an empty result list and emits `searchCompleted`, so the UI reports no results instead of surfacing an error. A temporary fixture reproduced this behavior.
-
-Relevant code: [src/wikipedia_search_client.cpp](src/wikipedia_search_client.cpp#L37)
-
 ## Validation
 
 - `./scripts/run_tests.sh`: build succeeded; all 27 registered CTest entries passed.
-- Temporary fixture checks reproduced all five findings. The checks were kept under `/tmp` and were not added to the repository.
+- Temporary fixture checks reproduced all four findings before remediation. The checks were kept under `/tmp` and were not added to the repository.
 - Live Wikipedia API behavior was not tested.
