@@ -135,6 +135,65 @@ class WikipediaPageClientTest : public QObject {
         QCOMPARE(m_network.requestCount(), 2);
     }
 
+    void testGetPageByIdRejectsInvalidParseResponse_data() {
+        QTest::addColumn<QByteArray>("response");
+        QTest::addColumn<QString>("errorText");
+        QTest::addColumn<QString>("errorInfo");
+        QTest::newRow("malformed JSON") << QByteArray("not json") << QString() << QString();
+        QTest::newRow("non-object JSON") << QByteArray("[]") << QString() << QString();
+        QTest::newRow("API error")
+            << QByteArray("{\"error\":{\"code\":\"badtoken\",\"info\":\"Invalid token\"},"
+                          "\"parse\":{\"text\":\"<img class=\\\"mwe-math-fallback-image-inline\\\" "
+                          "src=\\\"https://math.example/formula.svg\\\">\"}}")
+            << QString("badtoken") << QString("Invalid token");
+        QTest::newRow("missing parse object") << QByteArray(R"({})") << QString() << QString();
+        QTest::newRow("non-object parse") << QByteArray(R"({"parse":"invalid"})") << QString() << QString();
+        QTest::newRow("missing text") << QByteArray(R"({"parse":{}})") << QString() << QString();
+        QTest::newRow("null text") << QByteArray(R"({"parse":{"text":null}})") << QString() << QString();
+        QTest::newRow("non-string text") << QByteArray(R"({"parse":{"text":42}})") << QString() << QString();
+    }
+
+    void testGetPageByIdRejectsInvalidParseResponse() {
+        QFETCH(QByteArray, response);
+        QFETCH(QString, errorText);
+        QFETCH(QString, errorInfo);
+        const QUrl parseUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&disableeditsection=true&formatversion=2&pageid=736");
+        m_network.addFixture("GET", m_pageUrl,
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Albert Einstein"}}}})");
+        m_network.addFixture("GET", parseUrl, response);
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+
+        client.getPageById(736);
+
+        QTRY_COMPARE(errors.count(), 1);
+        QVERIFY(!errors.first().first().toString().isEmpty());
+        if (!errorText.isEmpty())
+            QVERIFY(errors.first().first().toString().contains(errorText));
+        if (!errorInfo.isEmpty())
+            QVERIFY(errors.first().first().toString().contains(errorInfo));
+        QCOMPARE(pages.count(), 0);
+        QCOMPARE(m_network.requestCount(), 2);
+    }
+
+    void testGetPageByIdAcceptsEmptyParseText() {
+        const QUrl parseUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&disableeditsection=true&formatversion=2&pageid=736");
+        m_network.addFixture("GET", m_pageUrl,
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Albert Einstein"}}}})");
+        m_network.addFixture("GET", parseUrl, R"({"parse":{"text":""}})");
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+
+        client.getPageById(736);
+
+        QTRY_COMPARE(pages.count(), 1);
+        QVERIFY(pages.first().first().value<page>().extract.isEmpty());
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(m_network.requestCount(), 2);
+    }
+
     void testParsePage() {
         QByteArray json = R"({"query":{"pages":{"736":{
             "title":"Albert Einstein",

@@ -308,6 +308,34 @@ class ArticleStateTest : public QObject {
         QCOMPARE(article.currentPageId(), 42);
     }
 
+    void invalidParseResponseDoesNotCacheOrRecordHistoryAndCanRetry() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        m_network.addFixture("GET", articleUrl(),
+            R"({"query":{"pages":{"42":{"pageid":42,"title":"Article","extract":"Plain text","images":[]}}}})");
+        const QUrl parseUrl("https://en.wikipedia.org/w/api.php?action=parse&disableeditsection=true"
+                            "&format=json&formatversion=2&pageid=42&prop=text");
+        m_network.addFixture("GET", parseUrl, R"({"error":{"code":"badtoken","info":"Invalid token"}})");
+
+        article.loadArticleByPageId(42);
+
+        QTRY_VERIFY(!article.isLoading());
+        QCOMPARE(article.currentPageId(), 0);
+        QVERIFY(article.currentPageTitle().isEmpty());
+        QVERIFY(!article.errorMessage().isEmpty());
+        QVERIFY(m_history->history().isEmpty());
+        QCOMPARE(m_network.requestCount(), 2);
+
+        addArticle();
+        article.loadArticleByPageId(42);
+
+        QTRY_VERIFY(!article.isLoading());
+        QCOMPARE(article.currentPageId(), 42);
+        QVERIFY(article.errorMessage().isEmpty());
+        QCOMPARE(m_history->history().size(), 1);
+        QCOMPARE(m_network.requestCount(), 4);
+    }
+
 
     void historyIdentityAndBlankLanguageValidation() {
         m_history->addToHistory("English", 42, "en");

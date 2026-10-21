@@ -403,11 +403,36 @@ void WikipediaPageClient::fetchPageContentWithImages(int pageid, const page &pag
         if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
         if (reply->error() == QNetworkReply::NoError) {
             QByteArray response = reply->readAll();
-            QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
-            QJsonObject jsonObj = jsonDoc.object();
-            QJsonObject pages = jsonObj["parse"].toObject();
+            QJsonParseError parseError;
+            const QJsonDocument jsonDoc = QJsonDocument::fromJson(response, &parseError);
+            if (parseError.error != QJsonParseError::NoError || !jsonDoc.isObject()) {
+                emit errorOccurred(tr("Unable to load article: invalid parse response."));
+                reply->deleteLater();
+                return;
+            }
 
-            fetchMathImageDataUrls(pages["text"].toString(), context, [this, pageData, context](const QString &htmlContent) {
+            const QJsonObject jsonObj = jsonDoc.object();
+            if (jsonObj.contains("error")) {
+                const QJsonObject apiError = jsonObj.value("error").toObject();
+                const QString code = apiError.value("code").toString();
+                const QString info = apiError.value("info").toString();
+                QString message = tr("Unable to load article: the Wikipedia API returned an error.");
+                if (!code.isEmpty() || !info.isEmpty())
+                    message = tr("Unable to load article: Wikipedia API error (%1): %2").arg(code, info);
+                emit errorOccurred(message);
+                reply->deleteLater();
+                return;
+            }
+
+            const QJsonValue parseValue = jsonObj.value("parse");
+            if (!parseValue.isObject() || !parseValue.toObject().value("text").isString()) {
+                emit errorOccurred(tr("Unable to load article: parse response is missing article text."));
+                reply->deleteLater();
+                return;
+            }
+            const QString htmlContent = parseValue.toObject().value("text").toString();
+
+            fetchMathImageDataUrls(htmlContent, context, [this, pageData, context](const QString &htmlContent) {
                 if (!m_requests.isCurrent(context)) return;
                 page page = pageData;
                 page.extract = HtmlProcessor::processHtml(htmlContent);

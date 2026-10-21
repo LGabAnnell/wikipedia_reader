@@ -4,12 +4,6 @@ Review scope: `src/` under the repository's current working tree. The findings b
 
 ## Findings
 
-### [P2] Article API errors can be accepted as successful empty articles
-
-The parse response handler checks only the network error. A successful HTTP response containing a MediaWiki API error or malformed JSON is treated as an empty HTML body, processed, then emitted as `pageReceived`. `ArticleState` can cache and add this invalid page to history as a successful visit.
-
-Relevant code: [src/wikipedia_page_client.cpp](src/wikipedia_page_client.cpp#L401)
-
 ### [P2] Gallery uses the global article instead of the visible article
 
 After opening article B from article A and navigating Back to A, the visible article view is A while `ArticleState` still holds B. `ImageHomeModel::loadImagesForCurrentPage()` reads the singleton's page ID, so the gallery displays B's images under A's title. A temporary navigation fixture reproduced this mismatch.
