@@ -125,9 +125,9 @@ class section {
     Q_PROPERTY(int index MEMBER index)
   public:
     QString title;
-    int level;
+    int level = 0;
     QString anchor;
-    int index;
+    int index = 0;
 };
 
 #endif // WIKIPEDIA_MODELS_H

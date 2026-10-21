@@ -18,9 +18,6 @@ qt_add_qml_module(HistoryModule
     VERSION 1.0
     QML_FILES
         History.qml
-    SOURCES
-        HistoryModel.cpp
-        HistoryModel.h
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt/History
 )
 

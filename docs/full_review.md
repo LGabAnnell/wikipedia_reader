@@ -35,24 +35,6 @@ including `<map>`. It compiles only via transitive includes — not portable.
 `onFeaturedArticleReply()` calls it again at the end. Qt handles the double
 `deleteLater()` gracefully, but one of the two calls should be removed.
 
-### `src/wikipedia_models.h:128` — `section` struct: `level` and `index` lack default initialization
-
-```cpp
-int level;    // uninitialized
-int index;    // uninitialized
-```
-
-Every other numeric member in the file has `= 0`. Default-constructed `section`
-objects have indeterminate values. Add `= 0` (or `= -1` for `index`) to match
-the pattern used elsewhere.
-
-### `src/modules/HistoryModule/HistoryModel.cpp:14` — `HistoryModel` is dead code
-
-`History.qml` uses `HistoryState` exclusively; nothing else references this
-class. It duplicates history logic with different semantics (no database, no
-edition-aware dedup) and is still compiled and exposed as a QML element in
-`wikipedia_qt.History`. Remove the class from the module.
-
 ### `src/state/NavigationState.h:15` — `NavigationState` lacks `QML_UNCREATABLE("Singleton")`
 
 AGENTS.md requires state singletons registered via `qmlRegisterSingletonInstance`
@@ -189,6 +171,26 @@ files" — worth normalizing.
 These findings were fixed and are retained with their recorded validation,
 including fixes made after the audit.
 
+### `src/wikipedia_models.h` — `section` numeric fields lacked default initialization
+
+`section::level` and `section::index` now default to zero, so default-constructed
+sections have deterministic numeric values, consistent with the parser's
+fallback values for absent fields.
+Validation: incremental build and existing `WikipediaPageClientTest`,
+`ContentDisplayModelTest`, `QmlTests.tst_sections`, and `QmlTests.tst_smoke` passed.
+These checks cover parsing, section display, and QML registration; no dedicated
+default-construction regression test was added.
+
+### `src/modules/HistoryModule/HistoryModel.cpp` — Unused duplicate history model
+
+Removed `HistoryModel.h` and `HistoryModel.cpp` and their `SOURCES` entries from
+the History QML module. Source-reference inspection confirmed that no consumer
+used the class; `History.qml` uses the persistent `HistoryState` singleton.
+The module retains its `History.qml` component.
+Validation: `./scripts/run_tests.sh -R '^(WikipediaPageClientTest|ContentDisplayModelTest|QmlTests\.tst_(history|navigation|sections|smoke))$'`
+passed (incremental build and all six CTest entries), including history-screen
+operations and navigation with the regenerated QML module.
+
 ### `src/wikipedia_page_client.cpp` — Gallery image order followed JSON key order instead of requested title order
 
 `fetchImageUrlsFromTitles()` now indexes response pages by file title and
@@ -315,7 +317,7 @@ memory handling for a C API. No `console.log` calls exist in QML files.
 |----------|-------------------|
 | Critical | 0 |
 | High     | 2 |
-| Medium   | 11 |
+| Medium   | 9 |
 | Low      | 14 |
 
 The highest-value remaining fix is the undefined `NavigationState::currentView()`
