@@ -241,10 +241,9 @@ class WikipediaPageClientTest : public QObject {
         QCOMPARE(p.title, QString("Albert Einstein"));
         QCOMPARE(p.extract, QString("A theoretical physicist."));
         QCOMPARE(p.pageid, 736);
-        // parsePageWithImages stores image titles in imageUrls temporarily
-        QCOMPARE(p.imageUrls.size(), 2);
-        QCOMPARE(p.imageUrls[0], QString("File:Einstein.jpg"));
-        QCOMPARE(p.imageUrls[1], QString("File:Einstein2.jpg"));
+        QCOMPARE(p.imageTitles, QStringList({"File:Einstein.jpg", "File:Einstein2.jpg"}));
+        QVERIFY(p.imageUrls.isEmpty());
+        QVERIFY(p.imageDescriptions.isEmpty());
     }
 
     void testGalleryPreservesRequestedImageOrder() {
@@ -310,7 +309,9 @@ class WikipediaPageClientTest : public QObject {
 
         page p = WikipediaPageClient::parsePageWithImages(json, 736);
         QCOMPARE(p.title, QString("Albert Einstein"));
+        QVERIFY(p.imageTitles.isEmpty());
         QVERIFY(p.imageUrls.isEmpty());
+        QVERIFY(p.imageDescriptions.isEmpty());
     }
 
     void testParsePageWithImagesPageIdMismatch() {
@@ -322,6 +323,9 @@ class WikipediaPageClientTest : public QObject {
 
         page p = WikipediaPageClient::parsePageWithImages(json, 999);
         QVERIFY(p.title.isEmpty());
+        QVERIFY(p.imageTitles.isEmpty());
+        QVERIFY(p.imageUrls.isEmpty());
+        QVERIFY(p.imageDescriptions.isEmpty());
     }
 
     void testParseSections() {

@@ -253,10 +253,10 @@ void WikipediaPageClient::onPageWithImagesReply(QNetworkReply *reply, int pageid
     if (reply->error() == QNetworkReply::NoError) {
         page p = parsePageWithImages(reply->readAll(), pageid);
 
-        // parsePageWithImages stores image titles in imageUrls temporarily;
-        // extract them and fetch the actual URLs
-        const QStringList imageTitles = p.imageUrls;
-        p.imageUrls.clear();
+        // parsePageWithImages stores the requested file titles in imageTitles;
+        // clear them before metadata lookup so completion contains only usable images.
+        const QStringList imageTitles = p.imageTitles;
+        p.imageTitles.clear();
         fetchImageUrlsFromTitles(imageTitles, p, context, [this, context](page completedPage) {
             if (m_requests.isCurrent(context))
                 emit pageWithImagesReceived(completedPage);
@@ -279,13 +279,13 @@ page WikipediaPageClient::parsePageWithImages(const QByteArray &responseData, in
             result.title = pageObj["title"].toString();
             result.extract = pageObj["extract"].toString();
             result.pageid = pageid;
-            result.imageUrls = QStringList();
+            result.imageTitles = QStringList();
 
-            // Extract image titles into imageUrls temporarily (caller fetches URLs)
+            // Extract image titles; the caller fetches their URLs and metadata.
             if (pageObj.contains("images")) {
                 QJsonArray images = pageObj["images"].toArray();
                 for (const QJsonValueConstRef &image : std::as_const(images)) {
-                    result.imageUrls.append(image.toObject().value("title").toString());
+                    result.imageTitles.append(image.toObject().value("title").toString());
                 }
             }
             break;

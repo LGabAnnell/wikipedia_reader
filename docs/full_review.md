@@ -90,13 +90,6 @@ entities (`&#x27;`, `&#169;`), `&apos;`, and others are left as-is. For Wikipedi
 image descriptions this is usually sufficient, but a `QTextDocument`-based
 approach would be more complete.
 
-### `src/wikipedia_page_client.cpp:271` — `parsePageWithImages()` stores image titles in the `imageUrls` field
-
-The comment says "caller fetches URLs" — the caller extracts titles from
-`imageUrls`, clears it, then calls `fetchImageUrlsFromTitles()`. This
-overloading of `imageUrls` is fragile; the `page` struct already has an
-`imageTitles` field that would make the intent explicit.
-
 ### `src/state/SearchState.cpp:14` — Direct `m_isSearching = false` bypasses the setter
 
 The `languageChanged` handler assigns `m_isSearching` directly, skipping
@@ -338,8 +331,8 @@ several concern behavior those tests do not exercise.
 | Critical | 0 |
 | High     | 0 |
 | Medium   | 1 |
-| Low      | 17 |
-| **Total** | **18** |
+| Low      | 16 |
+| **Total** | **17** |
 
-There are 18 unresolved entries and one retracted entry. The previous summary
+There are 17 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.
