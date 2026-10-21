@@ -66,6 +66,9 @@ ApplicationWindow {
             Component {
                 id: articleComponent
                 ContentDisplay {
+                    onGalleryRequested: function(pageId) {
+                        stackView.push(imageGalleryComponent, {"pageId": pageId});
+                    }
                     onBackRequested: function () {
                         if (stackView.depth > 1) {
                             stackView.pop();

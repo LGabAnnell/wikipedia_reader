@@ -27,10 +27,6 @@ ImageHomeModel::ImageHomeModel(QObject *parent)
             m_pageClient->setLanguage(m_settings->language());
         });
     }
-    if (m_article) {
-        connect(m_article, &ArticleState::currentPageChanged, this, &ImageHomeModel::handlePageWithImagesReceived);
-    }
-
     connect(m_pageClient, &WikipediaPageClient::pageWithImagesReceived, this, [this](const page &article) {
         m_imageUrls = article.imageUrls;
         m_imageTitles = article.imageTitles;
@@ -80,22 +76,6 @@ void ImageHomeModel::loadImagesForPage(int pageId) {
     emit loadingChanged();
     emit errorChanged();
     m_pageClient->getPageWithImages(pageId);
-}
-
-void ImageHomeModel::handlePageWithImagesReceived() {
-    if (!m_article)
-        return;
-    m_pageClient->cancelPendingRequests();
-    const page article = m_article->currentPage();
-    m_imageUrls = article.imageUrls;
-    m_imageTitles = article.imageTitles;
-    m_imageDescriptions = article.imageDescriptions;
-    m_articleTitle = article.title;
-    m_currentPageId = article.pageid;
-    emit imageUrlsChanged();
-    emit imageDescriptionsChanged();
-    emit articleTitleChanged();
-    emit currentPageIdChanged();
 }
 
 void ImageHomeModel::selectImage(int index) {

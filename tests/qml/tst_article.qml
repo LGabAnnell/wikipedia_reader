@@ -21,6 +21,7 @@ Item {
 
         ContentDisplay {
             articleText: ArticleState.currentPageExtract
+            onGalleryRequested: function(pageId) { stackView.push(galleryComponent, {"pageId": pageId}) }
         }
     }
 
@@ -29,6 +30,11 @@ Item {
         ImageView {
             onBackRequested: stackView.pop()
         }
+    }
+
+    Component {
+        id: galleryComponent
+        ImageHome { width: root.width; height: root.height }
     }
 
     StackView {
@@ -42,6 +48,7 @@ Item {
         NavigationState.setStackView(stackView)
         NavigationState.addView(Constants.contentView, articleComponent)
         NavigationState.addView(Constants.imageView, imageViewComponent)
+        NavigationState.addView(Constants.imageGalleryView, galleryComponent)
     }
 
     Connections {
@@ -383,6 +390,84 @@ Item {
             // The covered view did not refetch its sections.
             wait(100)
             compare(networkFixtures.requestCount, 7)
+        }
+
+        function test_gallery_uses_covered_article_after_back_navigation() {
+            const firstId = 841
+            const secondId = 842
+            const firstTitle = "Gallery owner A"
+            const secondTitle = "Gallery owner B"
+            const imagesUrl = "https://en.wikipedia.org/w/api.php?action=query&format=json"
+                    + "&prop=extracts%7Cimages&pageids=" + firstId + "&explaintext=1&imlimit=50"
+            const secondImagesUrl = "https://en.wikipedia.org/w/api.php?action=query&format=json"
+                    + "&prop=extracts%7Cimages&pageids=" + secondId + "&explaintext=1&imlimit=50"
+            addArticleFixtures(firstId, firstTitle,
+                               "<p>Article A</p><a href='/wiki/Gallery_owner_B'>B</a>")
+            addArticleFixtures(secondId, secondTitle, "<p>Article B</p>")
+            const resolvedPages = {}
+            resolvedPages[secondId] = {pageid: secondId, title: secondTitle}
+            networkFixtures.addFixture("GET", resolveUrl("Gallery owner B"),
+                                       JSON.stringify({query: {pages: resolvedPages}}))
+            const imageName = "File:Owner A.png"
+            const imageInfoUrl = "https://en.wikipedia.org/w/api.php?action=query&format=json&prop=imageinfo"
+                    + "&iiprop=url%7Cextmetadata%7Cmime&iiurlheight=330&iiurlwidth=330&titles="
+                    + encodeURIComponent(imageName)
+            networkFixtures.addFixture("GET", "https://upload.wikimedia.org/owner-a-thumb.png",
+                                       "P3\n1 1\n255\n255 0 0\n", "image/png")
+            networkFixtures.addFixture("GET", imageInfoUrl, JSON.stringify({query: {pages: {
+                "42": {title: imageName, imageinfo: [{url: "https://upload.wikimedia.org/owner-a.png",
+                    thumburl: "https://upload.wikimedia.org/owner-a-thumb.png", mime: "image/png"}]}
+            }}}))
+            networkFixtures.addFixture("GET", imagesUrl, JSON.stringify({query: {pages: {
+                [firstId]: {pageid: firstId, title: firstTitle, extract: "", images: [{title: imageName}]}
+            }}}))
+
+            networkFixtures.addFixture("GET", secondImagesUrl, JSON.stringify({query: {pages: {
+                [secondId]: {pageid: secondId, title: secondTitle, extract: "", images: []}
+            }}}))
+            ArticleState.loadArticleByPageId(firstId)
+            tryCompare(ArticleState, "isLoading", false)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            const viewA = stackView.currentItem
+            const link = findChild(viewA, "articleBody").text.match(/href="(\/wiki\/[^\"]+)"/)
+            verify(link !== null)
+            findChild(viewA, "articleBody").linkActivated(link[1])
+            tryCompare(stackView, "depth", 3)
+            tryVerify(function() { return !stackView.busy })
+            tryCompare(ArticleState, "isLoading", false)
+            compare(ArticleState.currentPageId, secondId)
+            compare(HistoryState.history.length, 2)
+
+            stackView.pop()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            compare(stackView.currentItem, viewA)
+            compare(findChild(viewA, "articleTitle").text, firstTitle)
+            compare(ArticleState.currentPageId, secondId)
+
+            mouseClick(findChild(viewA, "galleryButton"))
+            tryCompare(stackView, "depth", 3)
+            tryVerify(function() { return !stackView.busy })
+            const gallery = stackView.currentItem
+            tryVerify(function() { return networkFixtures.requestCount >= 8 })
+            compare(findChild(gallery, "galleryTitle").text, firstTitle)
+            verify(findChild(gallery, "imageGalleryCell-0") !== null)
+            compare(ArticleState.currentPageId, secondId)
+            compare(HistoryState.history.length, 2)
+            compare(networkFixtures.requests.filter(function(request) {
+                return request.url.indexOf("pageids=" + firstId) >= 0
+                        && request.url.indexOf("imlimit=50") >= 0
+            }).length, 1)
+
+            mouseClick(findChild(gallery, "imageGalleryBackButton"))
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            compare(stackView.currentItem, viewA)
+            compare(findChild(viewA, "articleTitle").text, firstTitle)
+            compare(ArticleState.currentPageId, secondId)
+            compare(HistoryState.history.length, 2)
         }
 
         function test_malformed_article_link_preserves_current_article_data() {

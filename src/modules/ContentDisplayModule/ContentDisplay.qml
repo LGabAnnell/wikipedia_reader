@@ -15,6 +15,7 @@ Item {
     // another page keeps showing its own article when the user navigates back.
     property string articleTitle: ArticleState.currentPageTitle
     property string articleText: ArticleState.currentPageExtract
+    property int articlePageId: ArticleState.currentPageId
     property string errorMessage: ArticleState.errorMessage
     property bool isLoading: ArticleState.isLoading
     property bool followsArticleState: true
@@ -22,6 +23,7 @@ Item {
     property bool sectionResizeInProgress: false
 
     signal backRequested
+    signal galleryRequested(int pageId)
 
     // StackView bookkeeping: a view covered by another push is marked
     // Inactive, at which point it snapshots the article it is displaying.
@@ -56,6 +58,7 @@ Item {
     function freezeArticleContent() {
         articleTitle = articleTitle;
         articleText = articleText;
+        articlePageId = articlePageId;
         errorMessage = errorMessage;
         isLoading = isLoading;
         followsArticleState = false;
@@ -203,6 +206,7 @@ Item {
             if (!mainContent.followsArticleState) {
                 mainContent.articleTitle = "";
                 mainContent.articleText = "";
+                mainContent.articlePageId = 0;
                 mainContent.errorMessage = "";
                 mainContent.isLoading = false;
             }
@@ -317,12 +321,13 @@ Item {
                 Item { Layout.fillWidth: true }
                 Button {
                     id: galleryButton
+                    objectName: "galleryButton"
 
                     text: "Gallery"
-                    visible: mainContent.articleTitle.length > 0
+                    visible: mainContent.articleTitle.length > 0 && mainContent.articlePageId > 0
 
                     onClicked: {
-                        NavigationState.navigateToImageGallery();
+                        mainContent.galleryRequested(mainContent.articlePageId);
                     }
                 }
                 Button {

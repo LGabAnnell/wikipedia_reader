@@ -11,6 +11,7 @@ Item {
     id: root
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
+    property int pageId: ArticleState.currentPageId
 
     Settings {
         location: Qt.resolvedUrl(StandardPaths.writableLocation(StandardPaths.AppConfigLocation)
@@ -39,14 +40,17 @@ Item {
                 text: "Back"
                 Layout.alignment: Qt.AlignLeft
                 onClicked: {
-                    if (root.StackView.view && root.StackView.view.depth > 1) {
-                        root.StackView.view.pop();
+                    const ownerStack = root.StackView.view
+                            || (root.parent ? root.parent.StackView.view : null);
+                    if (ownerStack && ownerStack.depth > 1) {
+                        ownerStack.pop();
                     }
                 }
             }
 
             Text {
                 id: titleText
+                objectName: "galleryTitle"
                 text: imageModel.articleTitle
                 font.pixelSize: 20
                 font.bold: true
@@ -207,6 +211,6 @@ Item {
     }
 
     Component.onCompleted: {
-        imageModel.loadImagesForCurrentPage();
+        imageModel.loadImagesForPage(pageId);
     }
 }

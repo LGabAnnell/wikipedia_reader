@@ -124,6 +124,26 @@ Item {
             verifyArticleRemainsPending()
         }
 
+        function test_unrelated_article_change_does_not_cancel_or_replace_gallery_request() {
+            networkFixtures.addFixture("GET", galleryUrl,
+                                       '{"query":{"pages":{"901":{"pageid":901,"title":"Requested gallery","extract":"","images":[]}}}}')
+            model = galleryComponent.createObject(root)
+            networkFixtures.deferNextReply(true)
+            model.loadImagesForPage(901)
+            tryCompare(networkFixtures, "pendingReplyCount", 1)
+
+            ArticleState.setCurrentPageFromData("Unrelated article", "<p>Unrelated</p>", "")
+            compare(networkFixtures.pendingReplyCount, 1)
+            verify(model.isLoading)
+            networkFixtures.completeNextReply()
+            tryCompare(model, "isLoading", false)
+            compare(model.articleTitle, "Requested gallery")
+            compare(model.currentPageId, 901)
+            ArticleState.setCurrentPageFromData("Later unrelated article", "<p>Later</p>", "")
+            compare(model.articleTitle, "Requested gallery")
+            compare(model.currentPageId, 901)
+        }
+
         function test_language_transition_clears_search_sections_gallery_and_image_selection() {
             const searchUrl = "https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=isolation&srlimit=10"
             networkFixtures.addFixture("GET", searchUrl,

@@ -45,9 +45,6 @@ signals:
     void articleTitleChanged();
     void currentPageIdChanged();
 
-private slots:
-    void handlePageWithImagesReceived();
-
 private:
     QPointer<ArticleState> m_article;
     QPointer<SettingsState> m_settings;
