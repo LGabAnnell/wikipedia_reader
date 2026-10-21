@@ -25,13 +25,6 @@ below as Low issues because neither prevents the current application from buildi
 
 ## Medium
 
-### `src/modules/ContentDisplayModule/ContentDisplay.qml:468` — Relative links passed to `Qt.openUrlExternally()`
-
-Non-`/wiki/` links are handed to `Qt.openUrlExternally()` as-is, but many
-MediaWiki hrefs are relative (`/w/index.php?...`, `#anchor`), which the OS URL
-handler cannot open. Resolve relative URLs against the edition base URL first,
-and ignore pure fragment links.
-
 ### `src/modules/HeaderModule/Header.qml:52` — User-facing QML strings are not translated
 
 Most user-facing strings are hardcoded without `qsTr()` ("Back", "Home",
@@ -344,11 +337,9 @@ several concern behavior those tests do not exercise.
 |----------|-------------------|
 | Critical | 0 |
 | High     | 0 |
-| Medium   | 2 |
+| Medium   | 1 |
 | Low      | 17 |
-| **Total** | **19** |
+| **Total** | **18** |
 
-There are 19 unresolved entries and one retracted entry. The previous summary
+There are 18 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.
-
-Prioritize resolving relative article links.

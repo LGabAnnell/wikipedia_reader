@@ -2,10 +2,19 @@
 #include "ArticleState.h"
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QDesktopServices>
+#include <QScopeGuard>
+#include <QUrl>
 #include <QtTest/QTest>
 
 class ContentDisplayModelTest : public QObject {
     Q_OBJECT
+
+  private:
+    static inline QUrl s_handledUrl;
+
+  private slots:
+    void captureUrl(const QUrl &url) { s_handledUrl = url; }
 
   private:
     QTemporaryDir m_dataDirectory;
@@ -95,6 +104,33 @@ class ContentDisplayModelTest : public QObject {
         QCOMPARE(model.currentResultIndex(), 1);
         model.performSearch({}, "Text and TEXT");
         QCOMPARE(model.totalResults(), 0);
+    }
+
+    void externalLinksResolveAgainstSelectedEdition() {
+        ContentDisplayModel model;
+        s_handledUrl = QUrl();
+        QDesktopServices::setUrlHandler("https", this, "captureUrl");
+        const auto cleanup = qScopeGuard([] { QDesktopServices::unsetUrlHandler("https"); });
+
+        model.openExternalLink("/w/index.php?title=Some_page&x=1", "en");
+        QCOMPARE(s_handledUrl, QUrl("https://en.wikipedia.org/w/index.php?title=Some_page&x=1"));
+        model.openExternalLink("wiki/Other_page", "fr");
+        QCOMPARE(s_handledUrl, QUrl("https://fr.wikipedia.org/wiki/Other_page"));
+        model.openExternalLink("//commons.wikimedia.org/wiki/File:X", "en");
+        QCOMPARE(s_handledUrl, QUrl("https://commons.wikimedia.org/wiki/File:X"));
+        model.openExternalLink("https://example.org/path", "fr");
+        QCOMPARE(s_handledUrl, QUrl("https://example.org/path"));
+    }
+
+    void emptyAndFragmentOnlyExternalLinksAreIgnored() {
+        ContentDisplayModel model;
+        s_handledUrl = QUrl();
+        QDesktopServices::setUrlHandler("https", this, "captureUrl");
+        const auto cleanup = qScopeGuard([] { QDesktopServices::unsetUrlHandler("https"); });
+
+        model.openExternalLink({}, "en");
+        model.openExternalLink("#Section", "en");
+        QVERIFY(s_handledUrl.isEmpty());
     }
 };
 

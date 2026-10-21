@@ -252,6 +252,42 @@ Item {
             compare(ArticleState.currentPageTitle, inlineTitle)
         }
 
+        function test_fragment_link_preserves_article_state() {
+            const pageId = 804
+            const title = "Fragment link fixture"
+            addArticleFixtures(pageId, title,
+                               "<p><a href='#Details'>Jump to details</a></p><h2 id='Details'>Details</h2><p>Article body remains here.</p>")
+            ArticleState.loadArticleByPageId(pageId)
+            tryCompare(ArticleState, "isLoading", false)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            tryCompare(networkFixtures, "requestCount", 3)
+
+            const view = stackView.currentItem
+            const body = child("articleBody")
+            tryVerify(function() { return body.text.indexOf("Article body remains here") >= 0 })
+            const previousText = body.text
+            const previousExtract = ArticleState.currentPageExtract
+            const previousHistory = HistoryState.history.length
+            const previousDepth = stackView.depth
+            const previousRequests = networkFixtures.requestCount
+            const fragmentLink = body.text.match(/href="(#Details)"/)
+            verify(fragmentLink !== null, "The article fragment link must be rendered")
+
+            body.linkActivated(fragmentLink[1])
+            wait(50)
+
+            compare(stackView.currentItem, view)
+            compare(stackView.depth, previousDepth)
+            compare(networkFixtures.requestCount, previousRequests)
+            compare(HistoryState.history.length, previousHistory)
+            compare(ArticleState.currentPageId, pageId)
+            compare(ArticleState.currentPageTitle, title)
+            compare(ArticleState.currentPageExtract, previousExtract)
+            compare(body.text, previousText)
+        }
+
         function test_article_load_error_is_shown_without_history_visit() {
             addSearchResult("article-error", failureTitle, failureArticleId)
             networkFixtures.addFixture("GET", pageQueryUrl(failureArticleId), "failure", "text/plain", 500)

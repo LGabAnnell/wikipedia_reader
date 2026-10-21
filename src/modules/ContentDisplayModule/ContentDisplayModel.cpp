@@ -5,6 +5,8 @@
 #include <QTextBlock>
 #include <QTextCursor>
 #include <QTextCharFormat>
+#include <QDesktopServices>
+#include <QUrl>
 
 ContentDisplayModel::ContentDisplayModel(QObject *parent) : QObject(parent), m_article(ArticleState::instance()) {
     if (m_article) {
@@ -13,6 +15,14 @@ ContentDisplayModel::ContentDisplayModel(QObject *parent) : QObject(parent), m_a
             performSearch({}, {});
         });
     }
+}
+
+void ContentDisplayModel::openExternalLink(const QString &link, const QString &language) {
+    if (link.isEmpty() || link.startsWith('#'))
+        return;
+
+    const QUrl baseUrl(QStringLiteral("https://%1.wikipedia.org/").arg(language));
+    QDesktopServices::openUrl(baseUrl.resolved(QUrl(link)));
 }
 
 void ContentDisplayModel::setCurrentSectionIndex(int index) {

@@ -476,7 +476,7 @@ Item {
                                 ArticleState.loadArticleByTitle(title);
                                 NavigationState.navigateToContent();
                             } else {
-                                Qt.openUrlExternally(link);
+                                contentDisplay.openExternalLink(link, SettingsState.language);
                             }
                         }
                         onLinkHovered: {}

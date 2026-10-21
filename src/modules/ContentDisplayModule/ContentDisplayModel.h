@@ -28,6 +28,11 @@ class ContentDisplayModel : public QObject
 
 public:
     explicit ContentDisplayModel(QObject *parent = nullptr);
+    /** @brief Open a link in the selected Wikipedia edition in the external browser.
+     * @param link The link activated in the article.
+     * @param language The selected Wikipedia language code.
+     */
+    Q_INVOKABLE void openExternalLink(const QString &link, const QString &language);
     int currentSectionIndex() const { return m_currentSectionIndex; }
     void setCurrentSectionIndex(int index);
     /** @brief Discard per-view section positions and highlighting. */
