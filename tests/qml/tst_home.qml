@@ -10,6 +10,13 @@ Item {
     Component { id: modelComponent; HomeModel {} }
     Component { id: screenComponent; HomeScreen {} }
     Component { id: featuredComponent; FeaturedSection {} }
+    Component { id: newsComponent; NewsSection {} }
+    Component { id: onThisDayComponent; OnThisDaySection {} }
+    Component { id: didYouKnowComponent; DidYouKnowSection {} }
+    Component {
+        id: richTextProbeComponent
+        TextEdit { visible: false; readOnly: true; textFormat: TextEdit.RichText }
+    }
     TestCase {
         name: "HomeExperience"
         when: windowShown
@@ -29,6 +36,68 @@ Item {
         }
         function init() { networkFixtures.clearRequests(); model = modelComponent.createObject(root); }
         function cleanup() { if (screen) screen.destroy(); screen = null; if (model) model.destroy(); model = null; compare(testSupport.qmlWarningCount, 0, testSupport.qmlWarnings.join("\n")); }
+        function test_home_section_link_text_data() {
+            const examples = [
+                ["ordinary text", "A plain title"],
+                ["Unicode", "Café 東京"],
+                ["ampersand", "A & B"],
+                ["angle brackets", "<script>run()</script>"],
+                ["literal entity", "AT&amp;T"],
+                ["nested link markup", 'A <a href="page://999">nested link</a>']
+            ]
+            const sections = ["featured", "news", "onThisDay", "didYouKnow"]
+            const rows = []
+            for (let s = 0; s < sections.length; ++s) {
+                for (let e = 0; e < examples.length; ++e)
+                    rows.push({tag: sections[s] + ": " + examples[e][0], section: sections[s], text: examples[e][1]})
+            }
+            return rows
+        }
+        function test_home_section_link_text(data) {
+            const pageId = 420 + (data.section === "featured" ? 0
+                                  : data.section === "news" ? 1
+                                  : data.section === "onThisDay" ? 2 : 3)
+            let component = featuredComponent
+            let properties = {width: 900, title: data.text, pageId: pageId, status: HomeModel.Ready}
+            if (data.section === "news") {
+                component = newsComponent
+                properties = {width: 900, model: [{title: data.text, description: "", pageid: pageId, imageUrl: ""}]}
+            } else if (data.section === "onThisDay") {
+                component = onThisDayComponent
+                properties = {width: 900, model: [{event: data.text, year: 2024, pageid: pageId}]}
+            } else if (data.section === "didYouKnow") {
+                component = didYouKnowComponent
+                properties = {width: 900, model: [{text: data.text, pageid: pageId}]}
+            }
+            const section = createTemporaryObject(component, root, properties)
+            verify(section !== null)
+            const linkObjectNames = {
+                featured: "featuredTitle",
+                news: "newsTitleLink-0",
+                onThisDay: "onThisDayEventLink-0",
+                didYouKnow: "didYouKnowItemLink-0"
+            }
+            const link = findChild(section, linkObjectNames[data.section])
+            verify(link !== null, "Expected a RichText page link for " + data.section)
+            compare(link.textFormat, Text.RichText)
+            let visibleText = ""
+            let renderedSource = ""
+            if (data.section === "onThisDay" || data.section === "didYouKnow") {
+                // These sections use TextEdit; Featured and News use Text/Label and need a render probe.
+                visibleText = link.getText(0, link.length)
+                renderedSource = link.text
+            } else {
+                const probe = createTemporaryObject(richTextProbeComponent, root, {text: link.text})
+                verify(probe !== null)
+                visibleText = probe.getText(0, probe.length)
+                renderedSource = probe.text
+            }
+            const expected = (data.section === "onThisDay" || data.section === "didYouKnow" ? "• " : "") + data.text
+            compare(visibleText, expected)
+            const links = renderedSource.match(/<a\s+href="([^"]+)"/g) || []
+            compare(links.length, 1, "API text must not add links")
+            compare(links[0], '<a href="page://' + pageId + '"')
+        }
         function installCompleteFixtures(featured, language) {
             const lang = language || "en"
             const date = Qt.formatDate(new Date(), "yyyy/MM/dd")

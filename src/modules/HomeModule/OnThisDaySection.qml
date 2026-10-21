@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import wikipedia_qt
+import "RichText.js" as RichText
 
 Column {
     id: onThisDaySection
@@ -49,8 +50,9 @@ Column {
                     spacing: 5
 
                     TextEdit {
+                        objectName: "onThisDayEventLink-" + index
                         Layout.fillWidth: true
-                        text: "• <a href=\"page://" + modelData.pageid + "\">" + modelData.event + "</a>"
+                        text: "• <a href=\"page://" + modelData.pageid + "\">" + RichText.escapeText(modelData.event) + "</a>"
                         font.pixelSize: 14
                         wrapMode: TextEdit.Wrap
                         textFormat: TextEdit.RichText

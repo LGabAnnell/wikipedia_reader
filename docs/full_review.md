@@ -25,16 +25,6 @@ below as Low issues because neither prevents the current application from buildi
 
 ## Medium
 
-### `src/modules/HomeModule/NewsSection.qml:62` — API text inserted unescaped into RichText links
-
-`modelData.title` is concatenated directly into `<a href=...>` markup. The same
-pattern appears in `src/modules/HomeModule/OnThisDaySection.qml:53` and
-`src/modules/HomeModule/DidYouKnowSection.qml:40`, while
-`src/modules/HomeModule/FeaturedSection.qml:59` correctly escapes `&`, `<`, and
-`>`. Any API-sourced title or event containing those characters corrupts the
-rendered markup. Extract the escaping into a shared helper and apply it in all
-four sections.
-
 ### `src/modules/ContentDisplayModule/ContentDisplay.qml:468` — Relative links passed to `Qt.openUrlExternally()`
 
 Non-`/wiki/` links are handed to `Qt.openUrlExternally()` as-is, but many
@@ -354,12 +344,11 @@ several concern behavior those tests do not exercise.
 |----------|-------------------|
 | Critical | 0 |
 | High     | 0 |
-| Medium   | 3 |
+| Medium   | 2 |
 | Low      | 17 |
-| **Total** | **20** |
+| **Total** | **19** |
 
-There are 20 unresolved entries and one retracted entry. The previous summary
+There are 19 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.
 
-Prioritize escaping API text in RichText links and resolving relative article
-links.
+Prioritize resolving relative article links.

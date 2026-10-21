@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import wikipedia_qt
+import "RichText.js" as RichText
 
 ColumnLayout {
     id: root
@@ -54,9 +55,7 @@ ColumnLayout {
             Label {
                 id: featuredTitle
                 objectName: "featuredTitle"
-                text: "<a href=\"page://" + root.pageId + "\">"
-                      + root.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-                      + "</a>"
+                text: "<a href=\"page://" + root.pageId + "\">" + RichText.escapeText(root.title) + "</a>"
                 textFormat: Text.RichText
                 font.pixelSize: 18
                 font.bold: true

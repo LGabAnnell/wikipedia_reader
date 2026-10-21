@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import wikipedia_qt
+import "RichText.js" as RichText
 
 Column {
     id: didYouKnowSection
@@ -35,9 +36,10 @@ Column {
         Repeater {
             id: repeater
             delegate: TextEdit {
+                objectName: "didYouKnowItemLink-" + index
                 readOnly: true
                 selectByMouse: true
-                text: "• <a href=\"page://" + modelData.pageid + "\">" + modelData.text + "</a>"
+                text: "• <a href=\"page://" + modelData.pageid + "\">" + RichText.escapeText(modelData.text) + "</a>"
                 font.pixelSize: 14
                 wrapMode: TextEdit.Wrap
                 textFormat: TextEdit.RichText

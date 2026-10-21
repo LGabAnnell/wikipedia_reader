@@ -19,6 +19,7 @@ qt6_add_qml_module(HomeModule
     URI wikipedia_qt.Home
     VERSION 1.0
     QML_FILES
+        RichText.js
         HomeScreen.qml
         DidYouKnowSection.qml
         OnThisDaySection.qml

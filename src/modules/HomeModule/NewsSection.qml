@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import wikipedia_qt
+import "RichText.js" as RichText
 
 Column {
     id: newsSection
@@ -59,7 +60,8 @@ Column {
 
                         Text {
                             id: newsTitle
-                            text: "<a href=\"page://" + modelData.pageid + "\">" + modelData.title + "</a>"
+                            objectName: "newsTitleLink-" + index
+                            text: "<a href=\"page://" + modelData.pageid + "\">" + RichText.escapeText(modelData.title) + "</a>"
                             font.pixelSize: 14
                             font.bold: true
                             wrapMode: Text.WordWrap
