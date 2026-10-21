@@ -35,12 +35,6 @@ pattern appears in `src/modules/HomeModule/OnThisDaySection.qml:53` and
 rendered markup. Extract the escaping into a shared helper and apply it in all
 four sections.
 
-### `src/state/ArticleState.h:67` — Article cache is unbounded
-
-`m_articleCache` clears only on language change; a long browsing session grows
-memory indefinitely (each cached `page` holds the full processed HTML). Cap the
-cache and trim to a bounded number of entries.
-
 ### `src/modules/ContentDisplayModule/ContentDisplay.qml:468` — Relative links passed to `Qt.openUrlExternally()`
 
 Non-`/wiki/` links are handed to `Qt.openUrlExternally()` as-is, but many
@@ -360,12 +354,12 @@ several concern behavior those tests do not exercise.
 |----------|-------------------|
 | Critical | 0 |
 | High     | 0 |
-| Medium   | 4 |
+| Medium   | 3 |
 | Low      | 17 |
-| **Total** | **21** |
+| **Total** | **20** |
 
-There are 21 unresolved entries and one retracted entry. The previous summary
+There are 20 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.
 
-Prioritize escaping API text in RichText links, bounding the article cache,
-and resolving relative article links.
+Prioritize escaping API text in RichText links and resolving relative article
+links.

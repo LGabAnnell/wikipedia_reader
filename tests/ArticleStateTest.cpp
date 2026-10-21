@@ -28,12 +28,32 @@ class ArticleStateTest : public QObject {
             R"({"parse":{"text":"<p>Article HTML</p>"}})");
     }
 
+    void addArticle(int pageId, const QString &language = "en") {
+        const QString title = QString("Article %1").arg(pageId);
+        m_network.addFixture("GET",
+            QUrl("https://" + language + ".wikipedia.org/w/api.php?action=query&format=json&pageids=" + QString::number(pageId)),
+            QString(R"({"query":{"pages":{"%1":{"pageid":%1,"title":"%2","extract":"Text %1","images":[]}}}})")
+                .arg(pageId).arg(title).toUtf8());
+        m_network.addFixture("GET",
+            QUrl("https://" + language + ".wikipedia.org/w/api.php?action=parse&disableeditsection=true"
+                 "&format=json&formatversion=2&pageid=" + QString::number(pageId) + "&prop=text"),
+            QString(R"({"parse":{"text":"<p>HTML %1</p>"}})").arg(pageId).toUtf8());
+    }
+
     page cachedArticle() const {
         page article{};
         article.title = "Cached article";
         article.extract = "<p>Cached HTML</p>";
         article.pageid = 42;
         return article;
+    }
+
+    page articleWithId(int pageId) const {
+        page result{};
+        result.title = QString("Article %1").arg(pageId);
+        result.extract = QString("HTML %1").arg(pageId);
+        result.pageid = pageId;
+        return result;
     }
 
   private slots:
@@ -139,6 +159,80 @@ class ArticleStateTest : public QObject {
         QCOMPARE(article.currentPageExtract(), QString("<p>Cached HTML</p>"));
         QCOMPARE(m_network.requestCount(), 1);
         QCOMPARE(historySpy.count(), 1);
+    }
+
+    void cacheHitByIdRefreshesRecencyAndOverflowRefetchesLeastRecent() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        for (int id = 1; id <= 20; ++id)
+            article.setCurrentPage(articleWithId(id));
+
+        // Refresh page 1 by ID, then add page 21. Page 1 should survive and page 2 should not.
+        article.loadArticleByPageId(1);
+        QCOMPARE(m_network.requestCount(), 0);
+        article.setCurrentPage(articleWithId(21));
+        article.loadArticleByPageId(1);
+        QCOMPARE(m_network.requestCount(), 0);
+        QCOMPARE(article.currentPageTitle(), QString("Article 1"));
+        addArticle(2);
+        article.loadArticleByPageId(2);
+        QTRY_VERIFY(!article.isLoading());
+        QCOMPARE(m_network.requestCount(), 2);
+        QCOMPARE(article.currentPageTitle(), QString("Article 2"));
+    }
+
+    void titleCacheHitRefreshesRecency() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        for (int id = 1; id <= 20; ++id)
+            article.setCurrentPage(articleWithId(id));
+        m_network.addFixture("GET",
+            QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json&titles=Article%201&prop=pageprops%7Cpageids"),
+            R"({"query":{"pages":{"1":{"pageid":1,"title":"Article 1"}}}})");
+        article.loadArticleByTitle("Article 1");
+        QTRY_VERIFY(!article.isLoading());
+        QCOMPARE(m_network.requestCount(), 1);
+
+        article.setCurrentPage(articleWithId(21));
+        article.loadArticleByPageId(1);
+        QCOMPARE(m_network.requestCount(), 1);
+        QCOMPARE(article.currentPageTitle(), QString("Article 1"));
+        addArticle(2);
+        article.loadArticleByPageId(2);
+        QTRY_VERIFY(!article.isLoading());
+        QCOMPARE(m_network.requestCount(), 3);
+        QCOMPARE(article.currentPageTitle(), QString("Article 2"));
+    }
+
+    void updatingCachedArticleDoesNotConsumeCapacity() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        for (int id = 1; id <= 20; ++id)
+            article.setCurrentPage(articleWithId(id));
+        page updated = articleWithId(1);
+        updated.title = "Updated 1";
+        article.setCurrentPage(updated);
+        updated.title = "Updated 1 again";
+        article.setCurrentPage(updated);
+        article.loadArticleByPageId(1);
+        QCOMPARE(m_network.requestCount(), 0);
+        QCOMPARE(article.currentPageTitle(), QString("Updated 1 again"));
+
+        // Every original entry remains cached after repeated updates to page 1.
+        for (int id = 2; id <= 20; ++id) {
+            article.loadArticleByPageId(id);
+            QCOMPARE(m_network.requestCount(), 0);
+            QCOMPARE(article.currentPageId(), id);
+        }
+
+        // The hits above establish page 1 as least recent; overflow evicts it.
+        article.setCurrentPage(articleWithId(21));
+        addArticle(1);
+        article.loadArticleByPageId(1);
+        QTRY_VERIFY(!article.isLoading());
+        QCOMPARE(m_network.requestCount(), 2);
+        QCOMPARE(article.currentPageTitle(), QString("Article 1"));
+        QVERIFY(article.currentPageExtract().contains("<p>HTML 1</p>"));
     }
 
     void missingTitleResolutionStopsLoadingAndAllowsRetry() {

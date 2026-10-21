@@ -10,10 +10,12 @@ ArticleState::ArticleState(HistoryState &history, SettingsState &settings, QObje
     connect(&settings, &SettingsState::languageChanged, this, [this]() {
         m_pageClient->setLanguage(m_settings->language());
         m_articleCache.clear();
+        m_articleCacheRecency.clear();
     });
     connect(&settings, &SettingsState::languageTransitionStarted, this, [this]() {
         m_pageClient->cancelPendingRequests();
         m_articleCache.clear();
+        m_articleCacheRecency.clear();
         m_currentPage = page{};
         setIsLoading(false);
         clearErrorMessage();
@@ -29,6 +31,12 @@ void ArticleState::setCurrentPage(const page &article) {
     m_currentPage = article;
     if (article.pageid > 0 && !article.title.isEmpty()) {
         m_articleCache[article.pageid] = article;
+        m_articleCacheRecency.removeAll(article.pageid);
+        m_articleCacheRecency.append(article.pageid);
+        if (m_articleCache.size() > ArticleCacheCapacity) {
+            const int leastRecentlyUsed = m_articleCacheRecency.takeFirst();
+            m_articleCache.remove(leastRecentlyUsed);
+        }
         if (m_history)
             m_history->addToHistory(article.title, article.pageid, language);
     }

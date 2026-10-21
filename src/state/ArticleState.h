@@ -5,6 +5,7 @@
 #include "SettingsState.h"
 #include "wikipedia_page_client.h"
 #include <QMap>
+#include <QList>
 #include <QPointer>
 #include <QQmlEngine>
 
@@ -65,6 +66,8 @@ class ArticleState : public QObject {
     WikipediaPageClient *m_pageClient;
     page m_currentPage{};
     QMap<int, page> m_articleCache;
+    QList<int> m_articleCacheRecency;
+    static constexpr qsizetype ArticleCacheCapacity = 20;
     bool m_isLoading = false;
     QString m_errorMessage;
 };
