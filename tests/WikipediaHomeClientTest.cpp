@@ -12,7 +12,7 @@ class WikipediaHomeClientTest : public QObject {
     NetworkFixtureController m_network;
 
     QUrl feedUrl(int daysBack = 0, const QString &language = "en") const {
-        return QUrl(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2")
+        return QUrl(QString("https://%1.wikipedia.org/api/rest_v1/feed/featured/%2")
                         .arg(language, QDate::currentDate().addDays(-daysBack).toString("yyyy/MM/dd")));
     }
 
@@ -43,9 +43,17 @@ class WikipediaHomeClientTest : public QObject {
     void init() { m_network.clearRequests(); }
     void cleanup() { QCOMPARE(m_network.pendingReplyCount(), 0); }
 
+    void testCurrentMostreadNeedsNoLookback_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("English") << QString("en");
+        QTest::newRow("French") << QString("fr");
+    }
+
     void testCurrentMostreadNeedsNoLookback() {
-        m_network.addFixture("GET", feedUrl(), mostreadFeed(43));
+        QFETCH(QString, language);
+        m_network.addFixture("GET", feedUrl(0, language), mostreadFeed(43));
         WikipediaHomeClient client;
+        client.setLanguage(language);
         QSignalSpy items(&client, &WikipediaHomeClient::newsItemsReceived);
         client.getNewsItems();
         QTRY_COMPARE(items.count(), 1);

@@ -82,8 +82,8 @@ class WikipediaRequestIsolationTest : public QObject {
     void featuredReplyFromOldEditionIsIgnored() {
         WikipediaFeaturedClient client;
         const QString date = QDate::currentDate().toString("yyyy/MM/dd");
-        const QUrl en(QString("https://api.wikimedia.org/feed/v1/wikipedia/en/featured/%1").arg(date));
-        const QUrl fr(QString("https://api.wikimedia.org/feed/v1/wikipedia/fr/featured/%1").arg(date));
+        const QUrl en(QString("https://en.wikipedia.org/api/rest_v1/feed/featured/%1").arg(date));
+        const QUrl fr(QString("https://fr.wikipedia.org/api/rest_v1/feed/featured/%1").arg(date));
         m_network.addFixture("GET", en, R"({"tfa":{"title":"Old","extract":"","pageid":1}})");
         m_network.addFixture("GET", fr, R"({"tfa":{"title":"French","extract":"","pageid":2}})");
         QSignalSpy received(&client, &WikipediaFeaturedClient::featuredArticleReceived);

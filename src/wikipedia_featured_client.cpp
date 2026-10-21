@@ -18,7 +18,7 @@ void WikipediaFeaturedClient::getFeaturedArticleOfTheDay() {
     QString dateString = currentDate.toString("yyyy/MM/dd");
 
     const auto context = m_requests.context();
-    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2").arg(context.language, dateString));
+    QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/feed/featured/%2").arg(context.language, dateString));
 
     QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
     m_requests.track(reply, context);

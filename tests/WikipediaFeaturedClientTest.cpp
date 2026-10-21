@@ -13,7 +13,7 @@ class WikipediaFeaturedClientTest : public QObject {
     NetworkFixtureController m_network;
 
     QUrl featuredUrl() const {
-        return QUrl(QString("https://api.wikimedia.org/feed/v1/wikipedia/en/featured/%1")
+        return QUrl(QString("https://en.wikipedia.org/api/rest_v1/feed/featured/%1")
                         .arg(QDate::currentDate().toString("yyyy/MM/dd")));
     }
 
@@ -25,6 +25,37 @@ class WikipediaFeaturedClientTest : public QObject {
     }
     void cleanupTestCase() { WikipediaNetwork::installNetworkAccessManagerFactory(nullptr); }
     void init() { m_network.clearRequests(); }
+
+    void testEditionFeedSuccess_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("English") << QString("en");
+        QTest::newRow("French") << QString("fr");
+    }
+
+    void testEditionFeedSuccess() {
+        QFETCH(QString, language);
+        const QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/feed/featured/%2")
+                           .arg(language, QDate::currentDate().toString("yyyy/MM/dd")));
+        const QByteArray response = R"({"tfa":{
+            "title":"Featured_article","extract":"Featured summary.","pageid":736,
+            "thumbnail":{"source":"https://upload.wikimedia.org/featured.jpg"}
+        }})";
+        m_network.addFixture("GET", url, response);
+        WikipediaFeaturedClient client;
+        client.setLanguage(language);
+        QSignalSpy received(&client, &WikipediaFeaturedClient::featuredArticleReceived);
+        QSignalSpy errors(&client, &WikipediaFeaturedClient::errorOccurred);
+        QSignalSpy unavailable(&client, &WikipediaFeaturedClient::featuredArticleUnavailable);
+        client.getFeaturedArticleOfTheDay();
+        QTRY_COMPARE(received.count(), 1);
+        QCOMPARE(received.first().at(0).toString(), QString("Featured_article"));
+        QCOMPARE(received.first().at(1).toString(), QString("Featured summary."));
+        QCOMPARE(received.first().at(2).toInt(), 736);
+        QCOMPARE(received.first().at(3).toString(), QString("https://upload.wikimedia.org/featured.jpg"));
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(unavailable.count(), 0);
+        QCOMPARE(m_network.requestCount(), 1);
+    }
 
     void testParseFeaturedArticle() {
         QByteArray json = R"({"tfa":{
