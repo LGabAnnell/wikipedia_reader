@@ -25,7 +25,7 @@ Item {
             const date = Qt.formatDate(new Date(), "yyyy/MM/dd")
             const monthDay = Qt.formatDate(new Date(), "MM/dd")
             for (const lang of ["en", "fr"]) {
-                const featuredUrl = "https://" + lang + ".wikipedia.org/api/rest_v1/feed/featured/" + date
+                const featuredUrl = "https://api.wikimedia.org/feed/v1/wikipedia/" + lang + "/featured/" + date
                 const onThisDayUrl = "https://api.wikimedia.org/feed/v1/wikipedia/" + lang + "/onthisday/all/" + monthDay
                 const randomTitleUrl = "https://" + lang + ".wikipedia.org/api/rest_v1/page/random/title"
                 const title = lang === "en" ? "Navigation fixture" : "Navigation fixture français"
@@ -41,7 +41,7 @@ Item {
                 for (let daysBack = 1; daysBack <= 2; ++daysBack) {
                     const previousDate = new Date()
                     previousDate.setDate(previousDate.getDate() - daysBack)
-                    const previousFeedUrl = "https://" + lang + ".wikipedia.org/api/rest_v1/feed/featured/" + Qt.formatDate(previousDate, "yyyy/MM/dd")
+                    const previousFeedUrl = "https://api.wikimedia.org/feed/v1/wikipedia/" + lang + "/featured/" + Qt.formatDate(previousDate, "yyyy/MM/dd")
                     const previousFeed = lang === "en"
                         ? {"mostread":{"articles":popularArticles}}
                         : {}

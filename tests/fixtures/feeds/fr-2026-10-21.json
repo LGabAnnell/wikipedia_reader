@@ -1,0 +1,191 @@
+{
+  "mostread": {
+    "articles": [
+      {
+        "title": "David_Lisnard",
+        "titles": {
+          "canonical": "David_Lisnard",
+          "normalized": "David Lisnard",
+          "display": "<span lang=\"fr\" dir=\"ltr\"><span class=\"mw-page-title-main\">David Lisnard</span></span>"
+        },
+        "pageid": 2023150,
+        "thumbnail": {
+          "source": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ce/David_Lisnard_en_2026.jpg/330px-David_Lisnard_en_2026.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+          "width": 330,
+          "height": 440
+        },
+        "content_urls": {
+          "desktop": {
+            "page": "https://fr.wikipedia.org/wiki/David_Lisnard",
+            "revisions": "https://fr.wikipedia.org/wiki/David_Lisnard?action=history",
+            "edit": "https://fr.wikipedia.org/wiki/David_Lisnard?action=edit",
+            "talk": "https://fr.wikipedia.org/wiki/Discussion:David_Lisnard"
+          },
+          "mobile": {
+            "page": "https://fr.wikipedia.org/wiki/David_Lisnard",
+            "revisions": "https://fr.wikipedia.org/wiki/Special:History/David_Lisnard",
+            "edit": "https://fr.wikipedia.org/wiki/David_Lisnard?action=edit",
+            "talk": "https://fr.wikipedia.org/wiki/Discussion:David_Lisnard"
+          }
+        },
+        "extract": "David Lisnard, né le 2 février 1969 à Limoges (Haute-Vienne), est un homme politique français."
+      },
+      {
+        "title": "Massacre_du_17_octobre_1961",
+        "titles": {
+          "canonical": "Massacre_du_17_octobre_1961",
+          "normalized": "Massacre du 17 octobre 1961",
+          "display": "<span lang=\"fr\" dir=\"ltr\"><span class=\"mw-page-title-main\">Massacre du 17 octobre 1961</span></span>"
+        },
+        "pageid": 90874,
+        "content_urls": {
+          "desktop": {
+            "page": "https://fr.wikipedia.org/wiki/Massacre_du_17_octobre_1961",
+            "revisions": "https://fr.wikipedia.org/wiki/Massacre_du_17_octobre_1961?action=history",
+            "edit": "https://fr.wikipedia.org/wiki/Massacre_du_17_octobre_1961?action=edit",
+            "talk": "https://fr.wikipedia.org/wiki/Discussion:Massacre_du_17_octobre_1961"
+          },
+          "mobile": {
+            "page": "https://fr.wikipedia.org/wiki/Massacre_du_17_octobre_1961",
+            "revisions": "https://fr.wikipedia.org/wiki/Special:History/Massacre_du_17_octobre_1961",
+            "edit": "https://fr.wikipedia.org/wiki/Massacre_du_17_octobre_1961?action=edit",
+            "talk": "https://fr.wikipedia.org/wiki/Discussion:Massacre_du_17_octobre_1961"
+          }
+        },
+        "extract": "Le massacre du 17 octobre 1961 est la répression, par la police française, d'une manifestation d'Algériens organisée à Paris par la fédération de France du Front de Libération Nationale, durant la guerre d'Algérie. Cette répression a mené à de nombreux morts et disparus parmi les manifestants."
+      }
+    ]
+  },
+  "news": [
+    {
+      "story": "<time class=\"nowrap date-lien\" datetime=\"2026-10-12\" data-sort-value=\"2026-10-12\"><a rel=\"mw:WikiLink\" href=\"./12_octobre\" title=\"12 octobre\">12</a> <a rel=\"mw:WikiLink\" href=\"./Octobre_2026\" title=\"Octobre 2026\">octobre</a></time><span typeof=\"mw:DisplaySpace\">&nbsp;</span>: le <a rel=\"mw:WikiLink\" href=\"./Prix_de_la_Banque_de_Suède_en_sciences_économiques_en_mémoire_d'Alfred_Nobel\" title=\"Prix de la Banque de Suède en sciences économiques en mémoire d'Alfred Nobel\">prix de la Banque de Suède en sciences économiques en mémoire d'Alfred Nobel</a> est décerné à <b><a rel=\"mw:WikiLink\" href=\"./Michael_Woodford\" title=\"Michael Woodford\">Michael Woodford</a></b> et <b><a rel=\"mw:WikiLink\" href=\"./Robert_Hall_(économiste)\" title=\"Robert Hall (économiste)\">Robert Hall</a></b>.",
+      "links": [
+        {
+          "title": "Michael_Woodford",
+          "titles": {
+            "canonical": "Michael_Woodford",
+            "normalized": "Michael Woodford",
+            "display": "<span lang=\"fr\" dir=\"ltr\"><span class=\"mw-page-title-main\">Michael Woodford</span></span>"
+          },
+          "pageid": 17661506,
+          "content_urls": {
+            "desktop": {
+              "page": "https://fr.wikipedia.org/wiki/Michael_Woodford",
+              "revisions": "https://fr.wikipedia.org/wiki/Michael_Woodford?action=history",
+              "edit": "https://fr.wikipedia.org/wiki/Michael_Woodford?action=edit",
+              "talk": "https://fr.wikipedia.org/wiki/Discussion:Michael_Woodford"
+            },
+            "mobile": {
+              "page": "https://fr.wikipedia.org/wiki/Michael_Woodford",
+              "revisions": "https://fr.wikipedia.org/wiki/Special:History/Michael_Woodford",
+              "edit": "https://fr.wikipedia.org/wiki/Michael_Woodford?action=edit",
+              "talk": "https://fr.wikipedia.org/wiki/Discussion:Michael_Woodford"
+            }
+          },
+          "extract": "Michael Dean Woodford est un macroéconomiste et théoricien monétaire américain qui enseigne à l'université Columbia. Il obtient le prix d'économie dit Nobel en 2026, avec Robert Hall."
+        },
+        {
+          "title": "12_octobre",
+          "titles": {
+            "canonical": "12_octobre",
+            "normalized": "12 octobre",
+            "display": "<span lang=\"fr\" dir=\"ltr\"><span class=\"mw-page-title-main\">12 octobre</span></span>"
+          },
+          "pageid": 3797,
+          "content_urls": {
+            "desktop": {
+              "page": "https://fr.wikipedia.org/wiki/12_octobre",
+              "revisions": "https://fr.wikipedia.org/wiki/12_octobre?action=history",
+              "edit": "https://fr.wikipedia.org/wiki/12_octobre?action=edit",
+              "talk": "https://fr.wikipedia.org/wiki/Discussion:12_octobre"
+            },
+            "mobile": {
+              "page": "https://fr.wikipedia.org/wiki/12_octobre",
+              "revisions": "https://fr.wikipedia.org/wiki/Special:History/12_octobre",
+              "edit": "https://fr.wikipedia.org/wiki/12_octobre?action=edit",
+              "talk": "https://fr.wikipedia.org/wiki/Discussion:12_octobre"
+            }
+          },
+          "extract": "Le 12 octobre est le 285e jour de l'année du calendrier grégorien, 286e lorsqu'elle est bissextile."
+        },
+        {
+          "title": "Octobre_2026",
+          "titles": {
+            "canonical": "Octobre_2026",
+            "normalized": "Octobre 2026",
+            "display": "<span lang=\"fr\" dir=\"ltr\"><span class=\"mw-page-title-main\">Octobre 2026</span></span>"
+          },
+          "pageid": 17143567,
+          "content_urls": {
+            "desktop": {
+              "page": "https://fr.wikipedia.org/wiki/Octobre_2026",
+              "revisions": "https://fr.wikipedia.org/wiki/Octobre_2026?action=history",
+              "edit": "https://fr.wikipedia.org/wiki/Octobre_2026?action=edit",
+              "talk": "https://fr.wikipedia.org/wiki/Discussion:Octobre_2026"
+            },
+            "mobile": {
+              "page": "https://fr.wikipedia.org/wiki/Octobre_2026",
+              "revisions": "https://fr.wikipedia.org/wiki/Special:History/Octobre_2026",
+              "edit": "https://fr.wikipedia.org/wiki/Octobre_2026?action=edit",
+              "talk": "https://fr.wikipedia.org/wiki/Discussion:Octobre_2026"
+            }
+          },
+          "extract": "Cette page présente les faits marquants du mois d'octobre 2026."
+        },
+        {
+          "title": "Prix_de_la_Banque_de_Suède_en_sciences_économiques_en_mémoire_d'Alfred_Nobel",
+          "titles": {
+            "canonical": "Prix_de_la_Banque_de_Suède_en_sciences_économiques_en_mémoire_d'Alfred_Nobel",
+            "normalized": "Prix de la Banque de Suède en sciences économiques en mémoire d'Alfred Nobel",
+            "display": "<span lang=\"fr\" dir=\"ltr\"><span class=\"mw-page-title-main\">Prix de la Banque de Suède en sciences économiques en mémoire d&#039;Alfred Nobel</span></span>"
+          },
+          "pageid": 2353,
+          "thumbnail": {
+            "source": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Nobel2008Economics_news_conference1.jpg/330px-Nobel2008Economics_news_conference1.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+            "width": 330,
+            "height": 239
+          },
+          "content_urls": {
+            "desktop": {
+              "page": "https://fr.wikipedia.org/wiki/Prix_de_la_Banque_de_Su%C3%A8de_en_sciences_%C3%A9conomiques_en_m%C3%A9moire_d'Alfred_Nobel",
+              "revisions": "https://fr.wikipedia.org/wiki/Prix_de_la_Banque_de_Su%C3%A8de_en_sciences_%C3%A9conomiques_en_m%C3%A9moire_d'Alfred_Nobel?action=history",
+              "edit": "https://fr.wikipedia.org/wiki/Prix_de_la_Banque_de_Su%C3%A8de_en_sciences_%C3%A9conomiques_en_m%C3%A9moire_d'Alfred_Nobel?action=edit",
+              "talk": "https://fr.wikipedia.org/wiki/Discussion:Prix_de_la_Banque_de_Su%C3%A8de_en_sciences_%C3%A9conomiques_en_m%C3%A9moire_d'Alfred_Nobel"
+            },
+            "mobile": {
+              "page": "https://fr.wikipedia.org/wiki/Prix_de_la_Banque_de_Su%C3%A8de_en_sciences_%C3%A9conomiques_en_m%C3%A9moire_d'Alfred_Nobel",
+              "revisions": "https://fr.wikipedia.org/wiki/Special:History/Prix_de_la_Banque_de_Su%C3%A8de_en_sciences_%C3%A9conomiques_en_m%C3%A9moire_d'Alfred_Nobel",
+              "edit": "https://fr.wikipedia.org/wiki/Prix_de_la_Banque_de_Su%C3%A8de_en_sciences_%C3%A9conomiques_en_m%C3%A9moire_d'Alfred_Nobel?action=edit",
+              "talk": "https://fr.wikipedia.org/wiki/Discussion:Prix_de_la_Banque_de_Su%C3%A8de_en_sciences_%C3%A9conomiques_en_m%C3%A9moire_d'Alfred_Nobel"
+            }
+          },
+          "extract": "Le prix de la Banque de Suède en sciences économiques en mémoire d'Alfred Nobel, plus communément surnommé prix Nobel d'économie, est une distinction qui récompense chaque année une ou plusieurs personnes pour leur contribution exceptionnelle dans le domaine des sciences économiques."
+        },
+        {
+          "title": "Robert_Hall_(économiste)",
+          "titles": {
+            "canonical": "Robert_Hall_(économiste)",
+            "normalized": "Robert Hall (économiste)",
+            "display": "<span lang=\"fr\" dir=\"ltr\"><span class=\"mw-page-title-main\">Robert Hall (économiste)</span></span>"
+          },
+          "pageid": 17661521,
+          "content_urls": {
+            "desktop": {
+              "page": "https://fr.wikipedia.org/wiki/Robert_Hall_(%C3%A9conomiste)",
+              "revisions": "https://fr.wikipedia.org/wiki/Robert_Hall_(%C3%A9conomiste)?action=history",
+              "edit": "https://fr.wikipedia.org/wiki/Robert_Hall_(%C3%A9conomiste)?action=edit",
+              "talk": "https://fr.wikipedia.org/wiki/Discussion:Robert_Hall_(%C3%A9conomiste)"
+            },
+            "mobile": {
+              "page": "https://fr.wikipedia.org/wiki/Robert_Hall_(%C3%A9conomiste)",
+              "revisions": "https://fr.wikipedia.org/wiki/Special:History/Robert_Hall_(%C3%A9conomiste)",
+              "edit": "https://fr.wikipedia.org/wiki/Robert_Hall_(%C3%A9conomiste)?action=edit",
+              "talk": "https://fr.wikipedia.org/wiki/Discussion:Robert_Hall_(%C3%A9conomiste)"
+            }
+          },
+          "extract": "Robert Ernest « Bob » Hall est un économiste américain qui est professeur d'économie à l'université Stanford et chercheur principal Robert et Carole McNeil à l'Institut Hoover. Il est généralement considéré comme un macroéconomiste, mais il se décrit lui-même comme un économiste appliqué. Il obtient le prix Nobel dit d'économie en 2026, avec Michael Woodford."
+        }
+      ]
+    }
+  ]
+}

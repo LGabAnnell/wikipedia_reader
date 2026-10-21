@@ -71,7 +71,7 @@ network testing, and `-r` to delete and rebuild `build/`. Configure local
 dependency prefixes first. The separate root `test.sh` always deletes
 `build/` before configuring and rebuilding.
 
-The current source configuration registers **28 CTest entries: 17 C++ and
+The current source configuration registers **29 CTest entries: 18 C++ and
 11 QML**. These are executables/test files, not individual test cases or
 data rows. The inventory below reflects the current source configuration; it
 is not a record of a passing test run.
@@ -95,8 +95,9 @@ Each named entry below has a matching `.cpp` file under `tests/`.
 | `HistoryDatabaseTest` | Database opens, add/load/clear, edition-aware identity and uniqueness across database reopen, legacy-schema migration and idempotence, migration-failure rollback and blocked operations, explicit pruning, load limits, and timestamp ordering. The separate generic error-signal test only checks that no error was emitted; migration tests do inject a failure. |
 | `WikipediaSearchClientTest` | Search-result fields/counts, empty responses, missing keys, and malformed JSON. |
 | `WikipediaPageClientTest` | Page fields, title/ID mismatch, image titles, sections, empty/missing sections, and malformed JSON. Fixture requests cover successful metadata-to-HTML loading and missing/invalid page responses emitting an error without a follow-up HTML request. |
-| `WikipediaFeaturedClientTest` | Featured parsing, feed thumbnail, missing `tfa`, invalid page IDs, malformed JSON, API errors, and unavailable versus invalid outcomes. |
-| `WikipediaHomeClientTest` | News parsing and thumbnails, current most-read feeds without lookback, bounded lookback, news fallback after older-feed failures, typed section failures, invalid current feeds, on-this-day validation, and both Did-you-know request stages. |
+| `WikipediaFeaturedClientTest` | Recorded English featured/French unavailable responses, featured parsing, feed thumbnail, missing `tfa`, invalid page IDs, malformed JSON, API errors, and unavailable versus invalid outcomes. |
+| `WikipediaHomeClientTest` | Recorded English/French most-read responses, news parsing and thumbnails, current most-read feeds without lookback, bounded lookback, news fallback after older-feed failures, typed section failures, invalid current feeds, on-this-day validation, and Did-you-know summary parsing. |
+| `WikipediaFeedLiveTest` | Opt-in production transport: aggregated feed request URLs, today's English featured article and populated English/French home articles, including usable titles, IDs, summaries, and edition-specific article URLs. Errors, empty content, and timeouts fail. Disabled runs are reported as skipped. |
 | `test_sidebar_layout` | Sidebar creation, presence of a ListView, and the `searchResults` property. CTest supplies its working directory and QML import path. |
 | `test_search_display` | Opt-in live search through `SearchBarModel` and `SearchState`; see the limitations below. |
 
@@ -114,6 +115,39 @@ models directly. `ConstantsTest` registers the production factory under an
 isolated QML URI to test engine ownership without importing the application
 module.
 
+### Live feeds
+
+```bash
+RUN_NETWORK_TESTS=1 ctest --test-dir build-tests -R '^WikipediaFeedLiveTest$' --output-on-failure
+# Or use the incremental runner's build directory:
+./scripts/run_tests.sh -n -R '^WikipediaFeedLiveTest$'
+```
+
+This test uses the real clients and network manager without fixture injection.
+An observing factory records completed request URLs without changing transport or
+responses, so the endpoint contract remains independent of fixture registrations.
+It waits up to 45 seconds per case, with a 150-second CTest limit. It requires
+network access and today's English featured article and English/French home
+articles to exist; upstream outages or publication delays can fail it. It does
+not require a French featured article because editions differ in availability.
+Without `RUN_NETWORK_TESTS=1`, CTest marks the executable **Skipped**, not Passed.
+An HTTP 200 response containing only `onthisday` still fails the content checks.
+This was observed intermittently on both feed hosts during verification; a
+successful HTTP request alone does not establish working article retrieval.
+
+Run it before accepting feed URL or response-schema changes. Offline tests cannot
+verify that a real host supplies the expected content, even when their request
+URLs match production. The endpoint regression in commit `899d95c` passed because
+the fixture URLs were changed together with production while synthetic successful
+bodies were retained. Recorded samples and their source/reduction notes live in
+`tests/fixtures/feeds/`; retain the synthetic edge cases for deterministic failure,
+retry, and request-isolation coverage.
+
+Also check Qt Test discovery (`<test executable> -functions`) when editing test
+slots. On Qt 6.11.2, an unescaped `https://` in a multiline raw JSON string caused
+Qt moc to silently omit eight later slots in the original featured test. The fixture now uses
+JSON slash escapes and initialization checks that the final slot is registered.
+
 ### Live search
 
 ```bash
@@ -121,10 +155,11 @@ RUN_NETWORK_TESTS=1 ctest --test-dir build -R '^test_search_display$' --output-o
 ```
 
 Without a nonzero integer `RUN_NETWORK_TESTS` value, this executable exits
-successfully without exercising search. When enabled, it submits “Quantum
+successfully without exercising search (unlike the feed test's explicit skip).
+When enabled, it submits “Quantum
 Computing,” logs state/results/errors, and exits after ten seconds. It has no
 assertion that a response arrived or that search succeeded, so a passing CTest
-result is not proof of a successful live search. The remaining tests use
+result is not proof of a successful live search. Apart from `WikipediaFeedLiveTest`, the remaining tests use
 fixtures, in-memory inputs, or local files rather than live Wikipedia requests.
 
 ## QML coverage
@@ -232,4 +267,6 @@ request counts. Prefer deferred replies over timing sleeps for pending states.
 - Request-isolation tests cover selected stale-reply paths, not every stage of
   the HTML/math-image/metadata chains. They do not test request deadlines.
 - Headless fixture tests do not establish live API compatibility or validate
-  installed/packaged application deployment.
+  installed/packaged application deployment. `WikipediaFeedLiveTest` checks the
+  production English/French featured-feed integration when explicitly enabled;
+  other endpoints still lack equivalent live assertions.

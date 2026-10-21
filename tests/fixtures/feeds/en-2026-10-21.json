@@ -1,0 +1,187 @@
+{
+  "tfa": {
+    "title": "Hongwu_Emperor",
+    "titles": {
+      "canonical": "Hongwu_Emperor",
+      "normalized": "Hongwu Emperor",
+      "display": "<span lang=\"en\" dir=\"ltr\"><span class=\"mw-page-title-main\">Hongwu Emperor</span></span>"
+    },
+    "pageid": 163029,
+    "thumbnail": {
+      "source": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/14/Portrait_assis_de_l%27empereur_Ming_Taizu.jpg/960px-Portrait_assis_de_l%27empereur_Ming_Taizu.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+      "width": 960,
+      "height": 1563
+    },
+    "content_urls": {
+      "desktop": {
+        "page": "https://en.wikipedia.org/wiki/Hongwu_Emperor",
+        "revisions": "https://en.wikipedia.org/wiki/Hongwu_Emperor?action=history",
+        "edit": "https://en.wikipedia.org/wiki/Hongwu_Emperor?action=edit",
+        "talk": "https://en.wikipedia.org/wiki/Talk:Hongwu_Emperor"
+      },
+      "mobile": {
+        "page": "https://en.wikipedia.org/wiki/Hongwu_Emperor",
+        "revisions": "https://en.wikipedia.org/wiki/Special:History/Hongwu_Emperor",
+        "edit": "https://en.wikipedia.org/wiki/Hongwu_Emperor?action=edit",
+        "talk": "https://en.wikipedia.org/wiki/Talk:Hongwu_Emperor"
+      }
+    },
+    "extract": "The Hongwu Emperor, having the personal name Zhu Yuanzhang, was the founding emperor of the Ming dynasty of China, reigning from 1368 to 1398."
+  },
+  "mostread": {
+    "articles": [
+      {
+        "title": "Kim_Jong_Un",
+        "titles": {
+          "canonical": "Kim_Jong_Un",
+          "normalized": "Kim Jong Un",
+          "display": "<span lang=\"en\" dir=\"ltr\"><span class=\"mw-page-title-main\">Kim Jong Un</span></span>"
+        },
+        "pageid": 5962511,
+        "thumbnail": {
+          "source": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d0/Kim_Jong-un_and_Vladimir_Putin_%282023-09-13%29_12_%28cropped_2%29.jpg/330px-Kim_Jong-un_and_Vladimir_Putin_%282023-09-13%29_12_%28cropped_2%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+          "width": 330,
+          "height": 440
+        },
+        "content_urls": {
+          "desktop": {
+            "page": "https://en.wikipedia.org/wiki/Kim_Jong_Un",
+            "revisions": "https://en.wikipedia.org/wiki/Kim_Jong_Un?action=history",
+            "edit": "https://en.wikipedia.org/wiki/Kim_Jong_Un?action=edit",
+            "talk": "https://en.wikipedia.org/wiki/Talk:Kim_Jong_Un"
+          },
+          "mobile": {
+            "page": "https://en.wikipedia.org/wiki/Kim_Jong_Un",
+            "revisions": "https://en.wikipedia.org/wiki/Special:History/Kim_Jong_Un",
+            "edit": "https://en.wikipedia.org/wiki/Kim_Jong_Un?action=edit",
+            "talk": "https://en.wikipedia.org/wiki/Talk:Kim_Jong_Un"
+          }
+        },
+        "extract": "\n\nKim Jong Un is a North Korean politician and dictator who has been serving as the supreme leader of North Korea since 2011, following the death of his father, Kim Jong Il. He is the third ruler from the Kim family to lead the country, which was founded by his grandfather Kim Il Sung. Kim holds the positions of general secretary of the Workers' Party of Korea (WPK) and president of the State Affairs Commission, as well as the highest offices in the Korean People's Army."
+      },
+      {
+        "title": "Jailer_2",
+        "titles": {
+          "canonical": "Jailer_2",
+          "normalized": "Jailer 2",
+          "display": "<i>Jailer 2</i>"
+        },
+        "pageid": 78888721,
+        "thumbnail": {
+          "source": "https://upload.wikimedia.org/wikipedia/en/d/dc/Jailer_2_poster.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+          "width": 278,
+          "height": 358
+        },
+        "content_urls": {
+          "desktop": {
+            "page": "https://en.wikipedia.org/wiki/Jailer_2",
+            "revisions": "https://en.wikipedia.org/wiki/Jailer_2?action=history",
+            "edit": "https://en.wikipedia.org/wiki/Jailer_2?action=edit",
+            "talk": "https://en.wikipedia.org/wiki/Talk:Jailer_2"
+          },
+          "mobile": {
+            "page": "https://en.wikipedia.org/wiki/Jailer_2",
+            "revisions": "https://en.wikipedia.org/wiki/Special:History/Jailer_2",
+            "edit": "https://en.wikipedia.org/wiki/Jailer_2?action=edit",
+            "talk": "https://en.wikipedia.org/wiki/Talk:Jailer_2"
+          }
+        },
+        "extract": "Jailer 2 is a 2026 Indian Tamil-language action comedy film written and directed by Nelson Dilipkumar. It was produced by Kalanithi Maran through Sun Pictures. A sequel to Jailer (2023), the film stars Rajinikanth, Ramya Krishnan, Yogi Babu, Mirnaa and Rithvik reprising their roles from the predecessor, with S. J. Suryah, Mithun Chakraborty, Suraj Venjaramoodu and Vidya Balan joining the cast."
+      }
+    ]
+  },
+  "news": [
+    {
+      "story": "<!--Oct 17-->The <a rel=\"mw:WikiLink\" href=\"./Hôtel_de_Ville,_Limoges\" title=\"Hôtel de Ville, Limoges\" id=\"mwBg\">Hôtel de Ville</a> in <a rel=\"mw:WikiLink\" href=\"./Limoges\" title=\"Limoges\" id=\"mwBw\">Limoges</a> is partially destroyed by arson <i id=\"mwCA\"></i> as <b id=\"mwCQ\"><a rel=\"mw:WikiLink\" href=\"./2026_French_student_protests\" title=\"2026 French student protests\" id=\"mwCg\">fuel and student protests</a></b> escalate in France.",
+      "links": [
+        {
+          "title": "2026_French_student_protests",
+          "titles": {
+            "canonical": "2026_French_student_protests",
+            "normalized": "2026 French student protests",
+            "display": "<span lang=\"en\" dir=\"ltr\"><span class=\"mw-page-title-main\">2026 French student protests</span></span>"
+          },
+          "pageid": 84387916,
+          "thumbnail": {
+            "source": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c5/Jules_Ferry_%C3%A0_Paris_manif_2_octobre_2026.jpg/330px-Jules_Ferry_%C3%A0_Paris_manif_2_octobre_2026.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+            "width": 330,
+            "height": 248
+          },
+          "content_urls": {
+            "desktop": {
+              "page": "https://en.wikipedia.org/wiki/2026_French_student_protests",
+              "revisions": "https://en.wikipedia.org/wiki/2026_French_student_protests?action=history",
+              "edit": "https://en.wikipedia.org/wiki/2026_French_student_protests?action=edit",
+              "talk": "https://en.wikipedia.org/wiki/Talk:2026_French_student_protests"
+            },
+            "mobile": {
+              "page": "https://en.wikipedia.org/wiki/2026_French_student_protests",
+              "revisions": "https://en.wikipedia.org/wiki/Special:History/2026_French_student_protests",
+              "edit": "https://en.wikipedia.org/wiki/2026_French_student_protests?action=edit",
+              "talk": "https://en.wikipedia.org/wiki/Talk:2026_French_student_protests"
+            }
+          },
+          "extract": "Demonstrations and protests against poor school and economic conditions by lycée high school students have taken place in France since September 2026. In early October, the protests developed into a nationwide mobilisation involving students, teachers, parents, and trade unions, with protests involving 550,000-800,000 people participated nationwide, and spreading to other European countries including Belgium, Albania, Greece, Italy, Portugal, Austria, Ireland, and Germany."
+        },
+        {
+          "title": "Hôtel_de_Ville,_Limoges",
+          "titles": {
+            "canonical": "Hôtel_de_Ville,_Limoges",
+            "normalized": "Hôtel de Ville, Limoges",
+            "display": "<span lang=\"en\" dir=\"ltr\"><span class=\"mw-page-title-main\">Hôtel de Ville, Limoges</span></span>"
+          },
+          "pageid": 78351173,
+          "thumbnail": {
+            "source": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fd/Limoges_-_H%C3%B4tel_de_Ville_-_01.jpg/330px-Limoges_-_H%C3%B4tel_de_Ville_-_01.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+            "width": 330,
+            "height": 286
+          },
+          "content_urls": {
+            "desktop": {
+              "page": "https://en.wikipedia.org/wiki/H%C3%B4tel_de_Ville%2C_Limoges",
+              "revisions": "https://en.wikipedia.org/wiki/H%C3%B4tel_de_Ville%2C_Limoges?action=history",
+              "edit": "https://en.wikipedia.org/wiki/H%C3%B4tel_de_Ville%2C_Limoges?action=edit",
+              "talk": "https://en.wikipedia.org/wiki/Talk:H%C3%B4tel_de_Ville%2C_Limoges"
+            },
+            "mobile": {
+              "page": "https://en.wikipedia.org/wiki/H%C3%B4tel_de_Ville%2C_Limoges",
+              "revisions": "https://en.wikipedia.org/wiki/Special:History/H%C3%B4tel_de_Ville%2C_Limoges",
+              "edit": "https://en.wikipedia.org/wiki/H%C3%B4tel_de_Ville%2C_Limoges?action=edit",
+              "talk": "https://en.wikipedia.org/wiki/Talk:H%C3%B4tel_de_Ville%2C_Limoges"
+            }
+          },
+          "extract": "The Hôtel de Ville is a municipal building in Limoges, Haute-Vienne, France, standing on the Place Jacques Chirac. Completed in 1883, it was designated a monument historique by the French government in 1975. It was badly damaged by arson during the 17 October riots in 2026."
+        },
+        {
+          "title": "Limoges",
+          "titles": {
+            "canonical": "Limoges",
+            "normalized": "Limoges",
+            "display": "<span lang=\"en\" dir=\"ltr\"><span class=\"mw-page-title-main\">Limoges</span></span>"
+          },
+          "pageid": 177195,
+          "thumbnail": {
+            "source": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f2/Centre-ville_et_champ_de_Juillet.JPG/330px-Centre-ville_et_champ_de_Juillet.JPG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+            "width": 330,
+            "height": 220
+          },
+          "content_urls": {
+            "desktop": {
+              "page": "https://en.wikipedia.org/wiki/Limoges",
+              "revisions": "https://en.wikipedia.org/wiki/Limoges?action=history",
+              "edit": "https://en.wikipedia.org/wiki/Limoges?action=edit",
+              "talk": "https://en.wikipedia.org/wiki/Talk:Limoges"
+            },
+            "mobile": {
+              "page": "https://en.wikipedia.org/wiki/Limoges",
+              "revisions": "https://en.wikipedia.org/wiki/Special:History/Limoges",
+              "edit": "https://en.wikipedia.org/wiki/Limoges?action=edit",
+              "talk": "https://en.wikipedia.org/wiki/Talk:Limoges"
+            }
+          },
+          "extract": "Limoges is a city and commune, and the prefecture of the Haute-Vienne department in west-central France. It was the administrative capital of the former Limousin region. Situated on the first western foothills of the Massif Central, Limoges is crossed by the river Vienne, of which it was originally the first ford crossing point."
+        }
+      ]
+    }
+  ]
+}

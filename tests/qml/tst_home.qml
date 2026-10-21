@@ -32,13 +32,13 @@ Item {
         function installCompleteFixtures(featured, language) {
             const lang = language || "en"
             const date = Qt.formatDate(new Date(), "yyyy/MM/dd")
-            fixture("https://" + lang + ".wikipedia.org/api/rest_v1/feed/featured/" + date, featured)
+            fixture("https://api.wikimedia.org/feed/v1/wikipedia/" + lang + "/featured/" + date, featured)
             fixture("https://api.wikimedia.org/feed/v1/wikipedia/" + lang + "/onthisday/all/" + Qt.formatDate(new Date(), "MM/dd"), '{"selected":[]}')
             fixture("https://" + lang + ".wikipedia.org/api/rest_v1/page/random/title", '{"items":[]}')
         }
         function test_feed_completion_and_featured_thumbnail() {
             const date = Qt.formatDate(new Date(), "yyyy/MM/dd")
-            const newsUrl = "https://en.wikipedia.org/api/rest_v1/feed/featured/" + date
+            const newsUrl = "https://api.wikimedia.org/feed/v1/wikipedia/en/featured/" + date
             const onThisDayUrl = "https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/" + Qt.formatDate(new Date(), "MM/dd").replace("/", "/")
             const randomUrl = "https://en.wikipedia.org/api/rest_v1/page/random/title"
             fixture(newsUrl, '{"tfa":{"title":"A & B/100%","extract":"Plain <text>","pageid":77,"thumbnail":{"source":"https://upload.wikimedia.org/featured.jpg"}},"mostread":{"articles":[{"title":"Popular","pageid":1,"extract":"Summary"}]}}')
@@ -60,7 +60,7 @@ Item {
         }
         function test_section_failure_isolated_and_retryable() {
             const date = Qt.formatDate(new Date(), "yyyy/MM/dd")
-            const newsUrl = "https://en.wikipedia.org/api/rest_v1/feed/featured/" + date
+            const newsUrl = "https://api.wikimedia.org/feed/v1/wikipedia/en/featured/" + date
             const onThisDayUrl = "https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/" + Qt.formatDate(new Date(), "MM/dd")
             const randomUrl = "https://en.wikipedia.org/api/rest_v1/page/random/title"
             fixture(newsUrl, '{"mostread":{"articles":[{"title":"Popular","pageid":1}]}}')
@@ -95,7 +95,7 @@ Item {
             tryCompare(model, "onThisDayStatus", HomeModel.Empty)
             tryCompare(model, "didYouKnowStatus", HomeModel.Empty)
             const date = Qt.formatDate(new Date(), "yyyy/MM/dd")
-            const dailyUrl = "https://en.wikipedia.org/api/rest_v1/feed/featured/" + date
+            const dailyUrl = "https://api.wikimedia.org/feed/v1/wikipedia/en/featured/" + date
             networkFixtures.deferNextReply()
             model.retrySection(HomeModel.News)
             compare(model.newsStatus, HomeModel.Loading)
@@ -138,7 +138,7 @@ Item {
             wait(0)
             compare(model.featuredArticleTitle, "Current generation")
 
-            const feedUrl = "https://en.wikipedia.org/api/rest_v1/feed/featured/" + Qt.formatDate(new Date(), "yyyy/MM/dd")
+            const feedUrl = "https://api.wikimedia.org/feed/v1/wikipedia/en/featured/" + Qt.formatDate(new Date(), "yyyy/MM/dd")
             fixture(feedUrl, "unavailable", 503)
             networkFixtures.deferNextReply(true)
             model.retrySection(HomeModel.Featured)
@@ -189,7 +189,7 @@ Item {
         }
         function test_did_you_know_random_and_summary_failures() {
             const date = Qt.formatDate(new Date(), "yyyy/MM/dd")
-            fixture("https://en.wikipedia.org/api/rest_v1/feed/featured/" + date, '{"tfa":{"title":"Featured","pageid":8},"mostread":{"articles":[{"title":"Popular","pageid":1}]}}')
+            fixture("https://api.wikimedia.org/feed/v1/wikipedia/en/featured/" + date, '{"tfa":{"title":"Featured","pageid":8},"mostread":{"articles":[{"title":"Popular","pageid":1}]}}')
             fixture("https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/" + Qt.formatDate(new Date(), "MM/dd"), '{"selected":[]}')
             fixture("https://en.wikipedia.org/api/rest_v1/page/random/title", "failure", 500)
             model.fetchHomeData()
@@ -210,7 +210,7 @@ Item {
                 ["A?B", "A%3FB"], ["A%B", "A%25B"],
                 ["The_Demi-Virgin", "The_Demi-Virgin", "The Demi-Virgin"]
             ]
-            const feedUrl = "https://en.wikipedia.org/api/rest_v1/feed/featured/" + Qt.formatDate(new Date(), "yyyy/MM/dd")
+            const feedUrl = "https://api.wikimedia.org/feed/v1/wikipedia/en/featured/" + Qt.formatDate(new Date(), "yyyy/MM/dd")
             for (let i = 0; i < examples.length; ++i) {
                 fixture(feedUrl, JSON.stringify({tfa:{title:examples[i][0],extract:"<literal>",pageid:10+i},mostread:{articles:[{title:"Popular",pageid:1}]}}))
                 model.retrySection(HomeModel.Featured)
@@ -222,7 +222,7 @@ Item {
         }
         function test_missing_featured_is_empty_and_screen_feedback_is_section_specific() {
             const date = Qt.formatDate(new Date(), "yyyy/MM/dd")
-            fixture("https://en.wikipedia.org/api/rest_v1/feed/featured/" + date, '{"mostread":{"articles":[{"title":"Popular","pageid":1}]}}')
+            fixture("https://api.wikimedia.org/feed/v1/wikipedia/en/featured/" + date, '{"mostread":{"articles":[{"title":"Popular","pageid":1}]}}')
             fixture("https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/" + Qt.formatDate(new Date(), "MM/dd"), "failure", 503)
             fixture("https://en.wikipedia.org/api/rest_v1/page/random/title", "failure", 503)
             screen = screenComponent.createObject(root, {width: root.width, height: root.height})
@@ -243,7 +243,7 @@ Item {
             const date = Qt.formatDate(new Date(), "yyyy/MM/dd")
             const longTitle = "A long featured title with Unicode 東京 and reserved characters & / ? # % " .repeat(4)
             const longExtract = "A long plain text extract that must wrap within the available home width. " .repeat(12)
-            fixture("https://en.wikipedia.org/api/rest_v1/feed/featured/" + date,
+            fixture("https://api.wikimedia.org/feed/v1/wikipedia/en/featured/" + date,
                     JSON.stringify({tfa:{title:longTitle,extract:longExtract,pageid:28},mostread:{articles:[{title:"Popular",pageid:1}]}}))
             fixture("https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/" + Qt.formatDate(new Date(), "MM/dd"), '{"selected":[]}')
             fixture("https://en.wikipedia.org/api/rest_v1/page/random/title", '{"items":[]}')

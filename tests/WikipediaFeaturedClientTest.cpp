@@ -4,6 +4,7 @@
 #include "support/FakeNetworkAccessManager.h"
 #include <QByteArray>
 #include <QDate>
+#include <QFile>
 #include <QtTest/QtTest>
 
 class WikipediaFeaturedClientTest : public QObject {
@@ -13,12 +14,16 @@ class WikipediaFeaturedClientTest : public QObject {
     NetworkFixtureController m_network;
 
     QUrl featuredUrl() const {
-        return QUrl(QString("https://en.wikipedia.org/api/rest_v1/feed/featured/%1")
+        return QUrl(QString("https://api.wikimedia.org/feed/v1/wikipedia/en/featured/%1")
                         .arg(QDate::currentDate().toString("yyyy/MM/dd")));
     }
 
   private slots:
     void initTestCase() {
+        // Qt moc can silently omit later slots after an unescaped URL in a
+        // multiline raw string. Fail instead of reporting a partial suite green.
+        QVERIFY2(metaObject()->indexOfSlot("testApiErrorObjectEmitsError()") >= 0,
+                 "Qt moc did not register the final featured test slot");
         connect(&m_network, &NetworkFixtureController::unexpectedRequest, this,
                 [](const QString &request) { qFatal("%s", qPrintable(request)); });
         WikipediaNetwork::installNetworkAccessManagerFactory(&m_network);
@@ -26,44 +31,48 @@ class WikipediaFeaturedClientTest : public QObject {
     void cleanupTestCase() { WikipediaNetwork::installNetworkAccessManagerFactory(nullptr); }
     void init() { m_network.clearRequests(); }
 
-    void testEditionFeedSuccess_data() {
+    void testRecordedEditionFeed_data() {
         QTest::addColumn<QString>("language");
         QTest::newRow("English") << QString("en");
         QTest::newRow("French") << QString("fr");
     }
 
-    void testEditionFeedSuccess() {
+    void testRecordedEditionFeed() {
         QFETCH(QString, language);
-        const QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/feed/featured/%2")
+        const QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2")
                            .arg(language, QDate::currentDate().toString("yyyy/MM/dd")));
-        const QByteArray response = R"({"tfa":{
-            "title":"Featured_article","extract":"Featured summary.","pageid":736,
-            "thumbnail":{"source":"https://upload.wikimedia.org/featured.jpg"}
-        }})";
-        m_network.addFixture("GET", url, response);
+        QFile fixture(QStringLiteral(FEED_FIXTURE_DIR "/%1-2026-10-21.json").arg(language));
+        QVERIFY(fixture.open(QIODevice::ReadOnly));
+        m_network.addFixture("GET", url, fixture.readAll());
         WikipediaFeaturedClient client;
         client.setLanguage(language);
         QSignalSpy received(&client, &WikipediaFeaturedClient::featuredArticleReceived);
         QSignalSpy errors(&client, &WikipediaFeaturedClient::errorOccurred);
         QSignalSpy unavailable(&client, &WikipediaFeaturedClient::featuredArticleUnavailable);
         client.getFeaturedArticleOfTheDay();
-        QTRY_COMPARE(received.count(), 1);
-        QCOMPARE(received.first().at(0).toString(), QString("Featured_article"));
-        QCOMPARE(received.first().at(1).toString(), QString("Featured summary."));
-        QCOMPARE(received.first().at(2).toInt(), 736);
-        QCOMPARE(received.first().at(3).toString(), QString("https://upload.wikimedia.org/featured.jpg"));
+        if (language == "en") {
+            QTRY_COMPARE(received.count(), 1);
+            QCOMPARE(received.first().at(0).toString(), QString("Hongwu_Emperor"));
+            QVERIFY(received.first().at(1).toString().contains("Ming dynasty"));
+            QCOMPARE(received.first().at(2).toInt(), 163029);
+            QVERIFY(received.first().at(3).toString().startsWith("https://thumb.wikimedia.org/"));
+            QCOMPARE(unavailable.count(), 0);
+        } else {
+            QTRY_COMPARE(unavailable.count(), 1);
+            QCOMPARE(received.count(), 0);
+        }
         QCOMPARE(errors.count(), 0);
-        QCOMPARE(unavailable.count(), 0);
         QCOMPARE(m_network.requestCount(), 1);
     }
 
     void testParseFeaturedArticle() {
-        QByteArray json = R"({"tfa":{
+        // Escape JSON slashes so Qt moc does not interpret the URL as a comment.
+        QByteArray json = R"json({"tfa":{
             "extract":"Albert Einstein was a theoretical physicist.",
             "title":"Albert Einstein",
             "pageid":736,
-            "thumbnail":{"source":"https://upload.wikimedia.org/featured.jpg"}
-        }})";
+            "thumbnail":{"source":"https:\/\/upload.wikimedia.org/featured.jpg"}
+        }})json";
 
         QString title, extract, thumbnail;
         int pageid;
@@ -76,7 +85,7 @@ class WikipediaFeaturedClientTest : public QObject {
     }
 
     void testParseFeaturedArticleMissingTfa() {
-        QByteArray json = R"({"other":"data"})";
+        QByteArray json = R"json({"other":"data"})json";
 
         QString title, extract, thumbnail;
         int pageid;
@@ -88,9 +97,9 @@ class WikipediaFeaturedClientTest : public QObject {
     }
 
     void testParseFeaturedArticlePartialFields() {
-        QByteArray json = R"({"tfa":{
+        QByteArray json = R"json({"tfa":{
             "title":"Some Article"
-        }})";
+        }})json";
 
         QString title, extract, thumbnail;
         int pageid;
@@ -126,7 +135,7 @@ class WikipediaFeaturedClientTest : public QObject {
     }
 
     void testMissingTfaIsUnavailable() {
-        m_network.addFixture("GET", featuredUrl(), R"({"tfa":null})");
+        m_network.addFixture("GET", featuredUrl(), R"json({"tfa":null})json");
         WikipediaFeaturedClient client;
         QSignalSpy unavailable(&client, &WikipediaFeaturedClient::featuredArticleUnavailable);
         QSignalSpy errors(&client, &WikipediaFeaturedClient::errorOccurred);
@@ -136,7 +145,7 @@ class WikipediaFeaturedClientTest : public QObject {
     }
 
     void testInvalidFeaturedArticleIsError() {
-        m_network.addFixture("GET", featuredUrl(), R"({"tfa":{"title":"No ID","pageid":0}})");
+        m_network.addFixture("GET", featuredUrl(), R"json({"tfa":{"title":"No ID","pageid":0}})json");
         WikipediaFeaturedClient client;
         QSignalSpy received(&client, &WikipediaFeaturedClient::featuredArticleReceived);
         QSignalSpy errors(&client, &WikipediaFeaturedClient::errorOccurred);
@@ -146,7 +155,7 @@ class WikipediaFeaturedClientTest : public QObject {
     }
 
     void testApiErrorObjectEmitsError() {
-        m_network.addFixture("GET", featuredUrl(), R"({"error":{"code":"unavailable"}})");
+        m_network.addFixture("GET", featuredUrl(), R"json({"error":{"code":"unavailable"}})json");
         WikipediaFeaturedClient client;
         QSignalSpy received(&client, &WikipediaFeaturedClient::featuredArticleReceived);
         QSignalSpy errors(&client, &WikipediaFeaturedClient::errorOccurred);

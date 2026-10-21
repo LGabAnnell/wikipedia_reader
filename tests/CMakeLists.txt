@@ -178,6 +178,22 @@ target_link_libraries(WikipediaHomeClientTest PRIVATE
 
 add_test(NAME WikipediaHomeClientTest COMMAND WikipediaHomeClientTest)
 
+foreach(feed_test WikipediaFeaturedClientTest WikipediaHomeClientTest)
+    target_compile_definitions(${feed_test} PRIVATE
+        FEED_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/feeds"
+    )
+endforeach()
+
+qt_add_executable(WikipediaFeedLiveTest WikipediaFeedLiveTest.cpp)
+target_link_libraries(WikipediaFeedLiveTest PRIVATE wikipedia_qt_core Qt::Test)
+add_test(NAME WikipediaFeedLiveTest COMMAND WikipediaFeedLiveTest)
+set_tests_properties(WikipediaFeedLiveTest PROPERTIES
+    LABELS "live"
+    SKIP_RETURN_CODE 77
+    TIMEOUT 150
+    RUN_SERIAL TRUE
+)
+
 # ---------------------------------------------------------------------------
 # QML Quick Test harness
 # ---------------------------------------------------------------------------

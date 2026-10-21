@@ -1,6 +1,7 @@
 // tests/WikipediaHomeClientTest.cpp
 #include <QtTest/QtTest>
 #include <QByteArray>
+#include <QFile>
 #include "wikipedia_home_client.h"
 #include "wikipedia_network_access_manager.h"
 #include "support/FakeNetworkAccessManager.h"
@@ -12,7 +13,7 @@ class WikipediaHomeClientTest : public QObject {
     NetworkFixtureController m_network;
 
     QUrl feedUrl(int daysBack = 0, const QString &language = "en") const {
-        return QUrl(QString("https://%1.wikipedia.org/api/rest_v1/feed/featured/%2")
+        return QUrl(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2")
                         .arg(language, QDate::currentDate().addDays(-daysBack).toString("yyyy/MM/dd")));
     }
 
@@ -43,21 +44,35 @@ class WikipediaHomeClientTest : public QObject {
     void init() { m_network.clearRequests(); }
     void cleanup() { QCOMPARE(m_network.pendingReplyCount(), 0); }
 
-    void testCurrentMostreadNeedsNoLookback_data() {
+    void testRecordedMostreadNeedsNoLookback_data() {
         QTest::addColumn<QString>("language");
-        QTest::newRow("English") << QString("en");
-        QTest::newRow("French") << QString("fr");
+        QTest::addColumn<QString>("firstTitle");
+        QTest::addColumn<int>("firstPageId");
+        QTest::newRow("English") << QString("en") << QString("Kim Jong Un") << 5962511;
+        QTest::newRow("French") << QString("fr") << QString("David Lisnard") << 2023150;
     }
 
-    void testCurrentMostreadNeedsNoLookback() {
+    void testRecordedMostreadNeedsNoLookback() {
         QFETCH(QString, language);
-        m_network.addFixture("GET", feedUrl(0, language), mostreadFeed(43));
+        QFETCH(QString, firstTitle);
+        QFETCH(int, firstPageId);
+        QFile fixture(QStringLiteral(FEED_FIXTURE_DIR "/%1-2026-10-21.json").arg(language));
+        QVERIFY(fixture.open(QIODevice::ReadOnly));
+        m_network.addFixture("GET", feedUrl(0, language), fixture.readAll());
         WikipediaHomeClient client;
         client.setLanguage(language);
         QSignalSpy items(&client, &WikipediaHomeClient::newsItemsReceived);
+        QSignalSpy errors(&client, &WikipediaHomeClient::errorOccurred);
         client.getNewsItems();
         QTRY_COMPARE(items.count(), 1);
-        QCOMPARE(items.first().first().value<QVector<news_item>>().size(), 43);
+        const auto articles = items.first().first().value<QVector<news_item>>();
+        QCOMPARE(articles.size(), 2);
+        QCOMPARE(articles.first().title, firstTitle);
+        QCOMPARE(articles.first().pageid, firstPageId);
+        QVERIFY(!articles.first().description.isEmpty());
+        QCOMPARE(QUrl(articles.first().url).host(), language + ".wikipedia.org");
+        QVERIFY(articles.first().imageUrl.startsWith("https://thumb.wikimedia.org/"));
+        QCOMPARE(errors.count(), 0);
         QCOMPARE(m_network.requestCount(), 1);
     }
 

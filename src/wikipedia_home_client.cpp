@@ -21,7 +21,9 @@ void WikipediaHomeClient::fetchNewsItems(const QDate &date, const WikipediaReque
     if (!m_requests.isCurrent(context))
         return;
     const QString dateString = date.toString("yyyy/MM/dd");
-    QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/feed/featured/%2").arg(context.language, dateString));
+    // Use the aggregated feed: the per-edition REST endpoint can omit news
+    // and mostread entirely, even for editions that provide both here.
+    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2").arg(context.language, dateString));
     QNetworkRequest request(url);
     QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
