@@ -24,6 +24,55 @@ class WikipediaPageClientTest : public QObject {
     void init() { m_network.clearRequests(); }
     void cleanup() { QCOMPARE(m_network.pendingReplyCount(), 0); }
 
+    void testResolveTitleWithoutPageId_data() {
+        QTest::addColumn<QByteArray>("response");
+        QTest::addColumn<int>("status");
+        QTest::newRow("missing title") << QByteArray(R"({"query":{"pages":{"-1":{"missing":"","title":"Some title"}}}})") << 200;
+        QTest::newRow("zero page id") << QByteArray(R"({"query":{"pages":{"0":{"pageid":0,"title":"Some title"}}}})") << 200;
+        QTest::newRow("negative page id") << QByteArray(R"({"query":{"pages":{"-2":{"pageid":-2,"title":"Some title"}}}})") << 200;
+        QTest::newRow("empty pages") << QByteArray(R"({"query":{"pages":{}}})") << 200;
+        QTest::newRow("missing query") << QByteArray("{}") << 200;
+        QTest::newRow("api error") << QByteArray(R"({"error":{"code":"badtitle"}})") << 200;
+        QTest::newRow("network error") << QByteArray("failure") << 500;
+        QTest::newRow("malformed json") << QByteArray("not json") << 200;
+    }
+
+    void testResolveTitleWithoutPageId() {
+        QFETCH(QByteArray, response);
+        QFETCH(int, status);
+        const QUrl resolveUrl("https://en.wikipedia.org/w/api.php?action=query&format=json&titles=Some%20title&prop=pageprops%7Cpageids");
+        m_network.addFixture("GET", resolveUrl, response, "application/json", status);
+        WikipediaPageClient client;
+        QSignalSpy resolved(&client, &WikipediaPageClient::pageIdResolved);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+        m_network.deferNextReply();
+
+        client.resolveTitleToPageId("Some title");
+        QCOMPARE(errors.count(), 0);
+        m_network.completeNextReply();
+
+        QTRY_COMPARE(errors.count(), 1);
+        QVERIFY(!errors.first().first().toString().isEmpty());
+        QCOMPARE(resolved.count(), 0);
+        QCOMPARE(m_network.requestCount(), 1);
+    }
+
+    void testResolveTitleSuccessfully() {
+        const QUrl resolveUrl("https://en.wikipedia.org/w/api.php?action=query&format=json&titles=Some%20title&prop=pageprops%7Cpageids");
+        m_network.addFixture("GET", resolveUrl,
+            R"({"query":{"pages":{"123":{"pageid":123,"title":"Some title"}}}})");
+        WikipediaPageClient client;
+        QSignalSpy resolved(&client, &WikipediaPageClient::pageIdResolved);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+
+        client.resolveTitleToPageId("Some title");
+
+        QTRY_COMPARE(resolved.count(), 1);
+        QCOMPARE(resolved.first().first().toInt(), 123);
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(m_network.requestCount(), 1);
+    }
+
     void testGetPageByIdMissingPage_data() {
         QTest::addColumn<QByteArray>("response");
         QTest::newRow("empty pages") << QByteArray(R"({"query":{"pages":{}}})");

@@ -229,12 +229,17 @@ void WikipediaPageClient::resolveTitleToPageId(const QString &title) {
             QJsonObject jsonObj = jsonDoc.object();
             QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
 
+            bool resolved = false;
             for (auto it = pages.begin(); it != pages.end(); ++it) {
                 int pageid = it.value().toObject()["pageid"].toInt();
                 if (pageid > 0) {
                     emit pageIdResolved(pageid);
+                    resolved = true;
                     break;
                 }
+            }
+            if (!resolved) {
+                emit errorOccurred(tr("Unable to resolve article title."));
             }
         } else if (reply->error() != QNetworkReply::OperationCanceledError) {
             emit errorOccurred(reply->errorString());

@@ -141,6 +141,41 @@ class ArticleStateTest : public QObject {
         QCOMPARE(historySpy.count(), 1);
     }
 
+    void missingTitleResolutionStopsLoadingAndAllowsRetry() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        const QUrl resolveUrl("https://en.wikipedia.org/w/api.php?action=query&format=json&titles=Missing%20article&prop=pageprops%7Cpageids");
+        m_network.addFixture("GET", resolveUrl,
+            R"({"query":{"pages":{"-1":{"missing":"","title":"Missing article"}}}})");
+        QSignalSpy historySpy(m_history, &HistoryState::historyChanged);
+        m_network.deferNextReply();
+
+        article.loadArticleByTitle("Missing article");
+        QVERIFY(article.isLoading());
+        QCOMPARE(m_history->history().size(), 0);
+        m_network.completeNextReply();
+
+        QTRY_VERIFY(!article.isLoading());
+        QVERIFY(!article.errorMessage().isEmpty());
+        QCOMPARE(m_network.requestCount(), 1);
+        QCOMPARE(historySpy.count(), 0);
+        QCOMPARE(m_history->history().size(), 0);
+
+        const QUrl retryResolveUrl("https://en.wikipedia.org/w/api.php?action=query&format=json&titles=Article&prop=pageprops%7Cpageids");
+        m_network.addFixture("GET", retryResolveUrl,
+            R"({"query":{"pages":{"42":{"pageid":42,"title":"Article"}}}})");
+        addArticle();
+        article.loadArticleByTitle("Article");
+        QVERIFY(article.isLoading());
+        QVERIFY(article.errorMessage().isEmpty());
+        QTRY_VERIFY(!article.isLoading());
+        QCOMPARE(article.currentPageId(), 42);
+        QCOMPARE(article.currentPageTitle(), QString("Article"));
+        QCOMPARE(historySpy.count(), 1);
+        QCOMPARE(m_history->history().size(), 1);
+        QCOMPARE(m_network.requestCount(), 4);
+    }
+
     void loadArticleByTitleClearsCurrentArticle() {
         SettingsState settings;
         ArticleState article(*m_history, settings);
