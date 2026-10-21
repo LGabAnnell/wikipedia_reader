@@ -34,11 +34,13 @@ class WikipediaFeaturedClient : public QObject {
     void errorOccurred(const QString &error);
 
   private slots:
-    void onFeaturedArticleReply(QNetworkReply *reply, const WikipediaRequestContext &context);
+    void onFeaturedArticleReply(QNetworkReply *reply, const WikipediaRequestContext &context,
+                                const QDate &date, bool alternate);
 
   private:
     QNetworkAccessManager *networkManager;
     WikipediaRequestTracker m_requests;
+    void fetchFeaturedArticle(const WikipediaRequestContext &context, const QDate &date, bool alternate);
 };
 
 #endif // WIKIPEDIA_FEATURED_CLIENT_H

@@ -31,6 +31,49 @@ class WikipediaFeaturedClientTest : public QObject {
     void cleanupTestCase() { WikipediaNetwork::installNetworkAccessManagerFactory(nullptr); }
     void init() { m_network.clearRequests(); }
 
+    void testPartialFeedRecovery_data() {
+        QTest::addColumn<int>("outcome");
+        QTest::newRow("alternate succeeds") << 0;
+        QTest::newRow("both partial") << 1;
+        QTest::newRow("language changes during fallback") << 2;
+        QTest::newRow("refresh cancels fallback") << 3;
+    }
+
+    void testPartialFeedRecovery() {
+        QFETCH(int, outcome);
+        const QUrl alternate(QString("https://en.wikipedia.org/api/rest_v1/feed/featured/%1")
+                                 .arg(QDate::currentDate().toString("yyyy/MM/dd")));
+        const QByteArray partial = R"({"onthisday":[]})";
+        m_network.addFixture("GET", featuredUrl(), partial);
+        m_network.addFixture("GET", alternate, outcome == 1 ? partial :
+            QByteArray(R"({"tfa":{"title":"Recovered article","pageid":42,"extract":"Summary"}})"));
+        WikipediaFeaturedClient client;
+        QSignalSpy received(&client, &WikipediaFeaturedClient::featuredArticleReceived);
+        QSignalSpy unavailable(&client, &WikipediaFeaturedClient::featuredArticleUnavailable);
+        QSignalSpy errors(&client, &WikipediaFeaturedClient::errorOccurred);
+        m_network.deferNextReply();
+        client.getFeaturedArticleOfTheDay();
+        m_network.deferNextReply(true);
+        m_network.completeNextReply();
+        QCOMPARE(m_network.requestCount(), 2);
+        QCOMPARE(m_network.pendingReplyCount(), 1);
+        QCOMPARE(received.count() + unavailable.count() + errors.count(), 0);
+        if (outcome == 2)
+            client.setLanguage("fr");
+        else if (outcome == 3)
+            client.cancelPendingRequests();
+        m_network.completeNextReply();
+        QCOMPARE(received.count(), outcome == 0 ? 1 : 0);
+        QCOMPARE(errors.count(), outcome == 1 ? 1 : 0);
+        QCOMPARE(unavailable.count(), 0);
+        QCOMPARE(m_network.requestCount(), 2);
+        QCOMPARE(m_network.pendingReplyCount(), 0);
+        if (outcome == 0) {
+            QCOMPARE(received.first().at(0).toString(), QString("Recovered article"));
+            QCOMPARE(received.first().at(2).toInt(), 42);
+        }
+    }
+
     void testRecordedEditionFeed_data() {
         QTest::addColumn<QString>("language");
         QTest::newRow("English") << QString("en");

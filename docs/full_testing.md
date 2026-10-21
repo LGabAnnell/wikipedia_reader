@@ -134,6 +134,13 @@ Without `RUN_NETWORK_TESTS=1`, CTest marks the executable **Skipped**, not Passe
 An HTTP 200 response containing only `onthisday` still fails the content checks.
 This was observed intermittently on both feed hosts during verification; a
 successful HTTP request alone does not establish working article retrieval.
+The clients now try the equivalent per-edition REST feed once when the aggregated
+response contains only `onthisday`, requesting cache revalidation. A successful
+fallback satisfies the live content checks. If both routes are partial, the
+featured section reports an error instead of claiming no article is available.
+Fixture tests cover recovery, exhaustion without a retry loop, and cancellation
+or language changes during the alternate request; QML tests verify both featured
+and news return to Ready after recovery.
 
 Run it before accepting feed URL or response-schema changes. Offline tests cannot
 verify that a real host supplies the expected content, even when their request

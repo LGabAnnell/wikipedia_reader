@@ -17,18 +17,21 @@ void WikipediaHomeClient::cancelPendingRequests() { m_requests.cancelPendingRequ
 void WikipediaHomeClient::getNewsItems() { fetchNewsItems(QDate::currentDate(), m_requests.context(), 0, {}); }
 
 void WikipediaHomeClient::fetchNewsItems(const QDate &date, const WikipediaRequestContext &context, int daysBack,
-                                         const QVector<news_item> &fallbackItems) {
+                                         const QVector<news_item> &fallbackItems, bool alternate) {
     if (!m_requests.isCurrent(context))
         return;
     const QString dateString = date.toString("yyyy/MM/dd");
-    // Use the aggregated feed: the per-edition REST endpoint can omit news
-    // and mostread entirely, even for editions that provide both here.
-    QUrl url(QString("https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2").arg(context.language, dateString));
+    const QString endpoint = alternate
+        ? "https://%1.wikipedia.org/api/rest_v1/feed/featured/%2"
+        : "https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2";
+    const QUrl url(endpoint.arg(context.language, dateString));
     QNetworkRequest request(url);
+    if (alternate)
+        request.setRawHeader("Cache-Control", "no-cache");
     QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, context, date, daysBack, fallbackItems]() {
-        onNewsItemsReply(reply, context, date, daysBack, fallbackItems);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, context, date, daysBack, fallbackItems, alternate]() {
+        onNewsItemsReply(reply, context, date, daysBack, fallbackItems, alternate);
     });
 }
 
@@ -56,7 +59,8 @@ void WikipediaHomeClient::getDidYouKnowItems() {
 }
 
 void WikipediaHomeClient::onNewsItemsReply(QNetworkReply *reply, const WikipediaRequestContext &context,
-                                           const QDate &date, int daysBack, QVector<news_item> fallbackItems) {
+                                           const QDate &date, int daysBack, QVector<news_item> fallbackItems,
+                                           bool alternate) {
     if (!m_requests.isCurrent(context)) {
         reply->deleteLater();
         return;
@@ -75,6 +79,14 @@ void WikipediaHomeClient::onNewsItemsReply(QNetworkReply *reply, const Wikipedia
         QJsonParseError parseError;
         const auto document = QJsonDocument::fromJson(data, &parseError);
         const QJsonObject root = document.object();
+        if (!alternate && parseError.error == QJsonParseError::NoError && root.size() == 1 &&
+            root.contains("onthisday")) {
+            // A partial feed is not an empty news section. Retry the equivalent
+            // route once before reporting a failure or checking an older date.
+            reply->deleteLater();
+            fetchNewsItems(date, context, daysBack, fallbackItems, true);
+            return;
+        }
         const bool validShape =
             document.isObject() && !root.contains("error") &&
             ((root.value("mostread").isObject() && root.value("mostread").toObject().value("articles").isArray()) ||

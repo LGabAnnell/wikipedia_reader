@@ -36,6 +36,21 @@ Item {
             fixture("https://api.wikimedia.org/feed/v1/wikipedia/" + lang + "/onthisday/all/" + Qt.formatDate(new Date(), "MM/dd"), '{"selected":[]}')
             fixture("https://" + lang + ".wikipedia.org/api/rest_v1/page/random/title", '{"items":[]}')
         }
+        function test_partial_feed_recovers_featured_and_news() {
+            installCompleteFixtures('{"onthisday":[]}')
+            const alternate = "https://en.wikipedia.org/api/rest_v1/feed/featured/" + Qt.formatDate(new Date(), "yyyy/MM/dd")
+            fixture(alternate, '{"tfa":{"title":"Recovered featured","pageid":42},"mostread":{"articles":[{"title":"Recovered news","pageid":43}]}}')
+            model.fetchHomeData()
+            tryCompare(model, "featuredStatus", HomeModel.Ready)
+            tryCompare(model, "newsStatus", HomeModel.Ready)
+            tryCompare(model, "onThisDayStatus", HomeModel.Empty)
+            tryCompare(model, "didYouKnowStatus", HomeModel.Empty)
+            compare(model.featuredArticleTitle, "Recovered featured")
+            compare(model.newsItems[0].title, "Recovered news")
+            compare(model.featuredError, "")
+            compare(model.newsError, "")
+            compare(testSupport.requestCount, 6)
+        }
         function test_feed_completion_and_featured_thumbnail() {
             const date = Qt.formatDate(new Date(), "yyyy/MM/dd")
             const newsUrl = "https://api.wikimedia.org/feed/v1/wikipedia/en/featured/" + date

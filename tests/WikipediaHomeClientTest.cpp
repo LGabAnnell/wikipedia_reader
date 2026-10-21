@@ -44,6 +44,46 @@ class WikipediaHomeClientTest : public QObject {
     void init() { m_network.clearRequests(); }
     void cleanup() { QCOMPARE(m_network.pendingReplyCount(), 0); }
 
+    void testPartialFeedRecovery_data() {
+        QTest::addColumn<int>("outcome");
+        QTest::newRow("alternate succeeds") << 0;
+        QTest::newRow("both partial") << 1;
+        QTest::newRow("language changes during fallback") << 2;
+        QTest::newRow("refresh cancels fallback") << 3;
+    }
+
+    void testPartialFeedRecovery() {
+        QFETCH(int, outcome);
+        const QUrl alternate(QString("https://en.wikipedia.org/api/rest_v1/feed/featured/%1")
+                                 .arg(QDate::currentDate().toString("yyyy/MM/dd")));
+        const QByteArray partial = R"({"onthisday":[]})";
+        m_network.addFixture("GET", feedUrl(), partial);
+        m_network.addFixture("GET", alternate, outcome == 1 ? partial : mostreadFeed(2));
+        WikipediaHomeClient client;
+        QSignalSpy received(&client, &WikipediaHomeClient::newsItemsReceived);
+        QSignalSpy errors(&client, &WikipediaHomeClient::sectionError);
+        m_network.deferNextReply();
+        client.getNewsItems();
+        m_network.deferNextReply(true);
+        m_network.completeNextReply();
+        QCOMPARE(m_network.requestCount(), 2);
+        QCOMPARE(m_network.pendingReplyCount(), 1);
+        QCOMPARE(received.count() + errors.count(), 0);
+        if (outcome == 2)
+            client.setLanguage("fr");
+        else if (outcome == 3)
+            client.cancelPendingRequests();
+        m_network.completeNextReply();
+        QCOMPARE(received.count(), outcome == 0 ? 1 : 0);
+        QCOMPARE(errors.count(), outcome == 1 ? 1 : 0);
+        QCOMPARE(m_network.requestCount(), 2);
+        if (outcome == 0) {
+            const auto items = received.first().first().value<QVector<news_item>>();
+            QCOMPARE(items.size(), 2);
+            QCOMPARE(items.first().title, QString("Article 1"));
+        }
+    }
+
     void testRecordedMostreadNeedsNoLookback_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<QString>("firstTitle");

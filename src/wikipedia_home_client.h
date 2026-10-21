@@ -42,7 +42,7 @@ class WikipediaHomeClient : public QObject {
 
   private slots:
     void onNewsItemsReply(QNetworkReply *reply, const WikipediaRequestContext &context, const QDate &date, int daysBack,
-                          QVector<news_item> fallbackItems);
+                          QVector<news_item> fallbackItems, bool alternate);
     void onOnThisDayEventsReply(QNetworkReply *reply, const WikipediaRequestContext &context);
     void onRandomArticleTitleReply(QNetworkReply *reply, const WikipediaRequestContext &context);
     void onArticleContentReply(QNetworkReply *reply, const QString &title, const WikipediaRequestContext &context);
@@ -51,7 +51,7 @@ class WikipediaHomeClient : public QObject {
     QNetworkAccessManager *networkManager;
     WikipediaRequestTracker m_requests;
     void fetchNewsItems(const QDate &date, const WikipediaRequestContext &context, int daysBack,
-                        const QVector<news_item> &fallbackItems);
+                        const QVector<news_item> &fallbackItems, bool alternate = false);
     void fetchArticleContent(const QString &title, const WikipediaRequestContext &context);
 };
 
