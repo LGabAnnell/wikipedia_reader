@@ -83,13 +83,6 @@ Downgraded from Medium to Low; this is cosmetic.
 `parseOnThisDayEvents()` dumps the entire response payload into the log when
 the shape is unexpected. Log a shape summary instead.
 
-### `src/wikipedia_page_client.cpp:27` — `stripHtml()` handles only 6 HTML entities
-
-`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&#39;`, `&nbsp;` are decoded. Numeric
-entities (`&#x27;`, `&#169;`), `&apos;`, and others are left as-is. For Wikipedia
-image descriptions this is usually sufficient, but a `QTextDocument`-based
-approach would be more complete.
-
 ### `src/state/SearchState.cpp:14` — Direct `m_isSearching = false` bypasses the setter
 
 The `languageChanged` handler assigns `m_isSearching` directly, skipping
@@ -325,8 +318,8 @@ several concern behavior those tests do not exercise.
 | Critical | 0 |
 | High     | 0 |
 | Medium   | 1 |
-| Low      | 15 |
-| **Total** | **16** |
+| Low      | 14 |
+| **Total** | **15** |
 
-There are 16 unresolved entries and one retracted entry. The previous summary
+There are 15 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.

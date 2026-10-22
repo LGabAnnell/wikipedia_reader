@@ -8,11 +8,10 @@
 #include <QRegularExpression>
 #include <QSharedPointer>
 #include <QSvgRenderer>
+#include <QTextDocument>
 #include <QUrl>
 #include <QUrlQuery>
 #include <algorithm>
-
-static const QRegularExpression htmlTagRegex("<[^>]*>");
 
 namespace {
 struct MathImageRequest {
@@ -25,17 +24,10 @@ struct MathImageRequest {
 // Strip HTML tags and decode common entities so image descriptions render as
 // plain text.
 QString stripHtml(const QString &html) {
-    if (html.isEmpty()) {
-        return html;
-    }
-    QString text = html;
-    text.remove(htmlTagRegex);
-    text.replace("&amp;", "&");
-    text.replace("&lt;", "<");
-    text.replace("&gt;", ">");
-    text.replace("&quot;", "\"");
-    text.replace("&#39;", "'");
-    text.replace("&nbsp;", " ");
+    QTextDocument document;
+    document.setHtml(html);
+    QString text = document.toPlainText();
+    text.replace(QChar::Nbsp, QLatin1Char(' '));
     return text.trimmed();
 }
 

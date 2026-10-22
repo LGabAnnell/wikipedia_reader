@@ -1,6 +1,9 @@
 // tests/WikipediaPageClientTest.cpp
 #include <QtTest/QtTest>
 #include <QByteArray>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include "wikipedia_page_client.h"
 #include "wikipedia_network_access_manager.h"
 #include "support/FakeNetworkAccessManager.h"
@@ -296,6 +299,51 @@ class WikipediaPageClientTest : public QObject {
                                               "https://example.org/alpha-thumb.jpg",
                                               "https://example.org/original.jpg"}));
         QCOMPARE(result.imageDescriptions, QStringList({"Zebra & stripes", "", "Original caption"}));
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(m_network.requestCount(), 2);
+    }
+
+    void testImageDescriptionEntities_data() {
+        QTest::addColumn<QString>("html");
+        QTest::addColumn<QString>("expected");
+        QTest::newRow("decimal entities") << QString("<p>caf&#233; &#169;</p>") << QString("café ©");
+        QTest::newRow("hexadecimal entity") << QString("<p>caf&#xE9;</p>") << QString("café");
+        QTest::newRow("named entities") << QString("<p>&copy; &euro; &mdash;</p>") << QString("© € —");
+        QTest::newRow("existing entities") << QString("<p>A &amp; B &lt; C &gt; D &quot;E&quot; &#39;F&#39;&nbsp;G</p>")
+            << QString("A & B < C > D \"E\" 'F' G");
+        QTest::newRow("apostrophe entities") << QString("<p>&apos; &#x27;</p>") << QString("' '");
+        QTest::newRow("nested formatting") << QString("<p><b>Bold <i>and italic</i></b> text</p>")
+            << QString("Bold and italic text");
+        QTest::newRow("empty description") << QString() << QString();
+        QTest::newRow("trim whitespace") << QString("  <p> Caption </p>  ") << QString("Caption");
+        QTest::newRow("decode once") << QString("<p>&amp;lt;literal&amp;gt;</p>") << QString("&lt;literal&gt;");
+    }
+
+    void testImageDescriptionEntities() {
+        QFETCH(QString, html);
+        QFETCH(QString, expected);
+        const QByteArray imageResponse = QJsonDocument(QJsonObject{
+            {"query", QJsonObject{{"pages", QJsonObject{{"10", QJsonObject{
+                {"title", "File:Caption.jpg"},
+                {"imageinfo", QJsonArray{QJsonObject{
+                    {"url", "https://example.org/caption.jpg"},
+                    {"extmetadata", QJsonObject{{"ImageDescription", QJsonObject{{"value", html}}}}}
+                }}}
+            }}}}}}
+        }).toJson(QJsonDocument::Compact);
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=extracts|images&pageids=736&explaintext=1&imlimit=50"),
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Captions","images":[{"title":"File:Caption.jpg"}]}}}})");
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=imageinfo&iiprop=url|extmetadata|mime&iiurlheight=330&iiurlwidth=330&titles=File:Caption.jpg"),
+            imageResponse);
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageWithImagesReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+        client.getPageWithImages(736);
+        QTRY_COMPARE(pages.count(), 1);
+        const page result = pages.first().first().value<page>();
+        QCOMPARE(result.imageDescriptions, QStringList{expected});
         QCOMPARE(errors.count(), 0);
         QCOMPARE(m_network.requestCount(), 2);
     }
