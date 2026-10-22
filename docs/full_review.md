@@ -35,16 +35,6 @@ No current medium-severity findings.
 `deleteLater()` gracefully, but one of the two calls should be removed.
 Downgraded from Medium to Low; this is harmless redundant cleanup.
 
-### `src/modules/ContentDisplayModule/CMakeLists.txt:1` — Wrong file comment
-
-Line 1 says `# HistoryModule CMakeLists.txt` — this is the ContentDisplayModule.
-Downgraded from Medium to Low; this is cosmetic.
-
-### `src/modules/HeaderModule/CMakeLists.txt:1` — Wrong file comment
-
-Line 1 says `# HistoryModule CMakeLists.txt` — this is the HeaderModule.
-Downgraded from Medium to Low; this is cosmetic.
-
 ## Retracted finding
 
 ### `src/state/db/HistoryDatabase.h:31` — `removeOldestItems()` has test callers
@@ -227,8 +217,8 @@ several concern behavior those tests do not exercise.
 | Critical | 0 |
 | High     | 0 |
 | Medium   | 0 |
-| Low      | 3 |
-| **Total** | **3** |
+| Low      | 1 |
+| **Total** | **1** |
 
-There are 3 unresolved entries and one retracted entry. The previous summary
+There is 1 unresolved entry and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.

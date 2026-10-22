@@ -1,4 +1,4 @@
-# HistoryModule CMakeLists.txt
+# HeaderModule CMakeLists.txt
 cmake_minimum_required(VERSION 3.16)
 
 set(QT_QML_GENERATE_QMLLS_INI ON)
