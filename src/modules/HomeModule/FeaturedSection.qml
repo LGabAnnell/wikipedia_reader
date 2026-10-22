@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import wikipedia_qt
+import wikipedia_qt.Home
 import "RichText.js" as RichText
 
 ColumnLayout {
@@ -12,7 +13,7 @@ ColumnLayout {
     property string extract: ""
     property string imageUrl: ""
     property int pageId: 0
-    property int status: 0
+    property int status: HomeModel.Idle
     property string errorMessage: ""
 
     signal retryRequested()
@@ -36,7 +37,7 @@ ColumnLayout {
     }
 
     RowLayout {
-        visible: root.status === 2
+        visible: root.status === HomeModel.Ready
         Layout.fillWidth: true
 
         Image {

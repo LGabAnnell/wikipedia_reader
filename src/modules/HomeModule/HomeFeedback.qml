@@ -1,37 +1,38 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import wikipedia_qt.Home
 
 ColumnLayout {
     id: root
 
-    property int status: 0
+    property int status: HomeModel.Idle
     property string errorMessage: ""
     property string emptyMessage: "No items available."
     property string sectionName: "section"
 
     signal retryRequested()
 
-    visible: status === 1 || status === 3 || status === 4
+    visible: status === HomeModel.Loading || status === HomeModel.Empty || status === HomeModel.Error
 
     BusyIndicator {
         objectName: root.sectionName + "LoadingIndicator"
-        running: root.status === 1
+        running: root.status === HomeModel.Loading
         visible: running
         Layout.alignment: Qt.AlignHCenter
     }
 
     Label {
         objectName: root.sectionName + "Status"
-        visible: root.status === 3 || root.status === 4
-        text: root.status === 3 ? root.emptyMessage : root.errorMessage
+        visible: root.status === HomeModel.Empty || root.status === HomeModel.Error
+        text: root.status === HomeModel.Empty ? root.emptyMessage : root.errorMessage
         wrapMode: Text.Wrap
         Layout.fillWidth: true
     }
 
     Button {
         objectName: root.sectionName + "RetryButton"
-        visible: root.status === 3 || root.status === 4
+        visible: root.status === HomeModel.Empty || root.status === HomeModel.Error
         text: "Retry"
         onClicked: root.retryRequested()
     }

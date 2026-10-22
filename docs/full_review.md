@@ -117,12 +117,6 @@ opens and reads the same file again. Pass the loaded `QByteArray` or
 `m_items` is never used; the `searchRequested` signal declared at line 68 is
 never emitted. Remove both.
 
-### `src/modules/HomeModule/FeaturedSection.qml:38` — Magic status numbers in QML
-
-`visible: root.status === 2` and `HomeFeedback.qml:15`'s comparisons against
-`1`, `3`, and `4` use magic numbers instead of the exposed `HomeModel.Status` enum values, which
-the code already uses elsewhere (`homeModel.retrySection(HomeModel.Featured)`).
-
 ### `src/Main.qml:124` — `homeView` registration is unreachable
 
 `homeComponent` is registered with `NavigationState.addView()`, but every caller
@@ -331,8 +325,8 @@ several concern behavior those tests do not exercise.
 | Critical | 0 |
 | High     | 0 |
 | Medium   | 1 |
-| Low      | 16 |
-| **Total** | **17** |
+| Low      | 15 |
+| **Total** | **16** |
 
-There are 17 unresolved entries and one retracted entry. The previous summary
+There are 16 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.
