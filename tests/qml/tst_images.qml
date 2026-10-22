@@ -215,6 +215,23 @@ Item {
             }).length
         }
 
+        function test_api_error_stops_gallery_loading_and_shows_error() {
+            networkFixtures.addFixture("GET", pageQueryUrl(articleId),
+                                       JSON.stringify({error: {code: "badvalue", info: "Invalid page"}}))
+            networkFixtures.deferNextReply()
+            gallery = galleryComponent.createObject(root, {pageId: articleId})
+            verify(gallery !== null)
+
+            tryCompare(networkFixtures, "pendingReplyCount", 1)
+            compare(child("galleryLoadingIndicator").running, true)
+            networkFixtures.completeNextReply()
+            tryCompare(child("galleryLoadingIndicator"), "running", false)
+            compare(child("galleryLoadingIndicator").visible, false)
+            compare(child("galleryErrorMessage").visible, true)
+            compare(child("galleryErrorMessage").text, "Invalid page")
+            compare(apiRequestCount(), 1)
+        }
+
         function test_gallery_back_data() {
             return [
                 { tag: "previous-item", initialDepth: 1 },

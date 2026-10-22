@@ -24,16 +24,11 @@ No current high-severity findings.
 
 ## Medium
 
-No current medium-severity findings.
+No unresolved medium-severity findings.
 
 ## Low
 
-### `src/wikipedia_featured_client.cpp:27` — Double `reply->deleteLater()`
-
-`getFeaturedArticleOfTheDay()` calls `reply->deleteLater()` in its lambda, and
-`onFeaturedArticleReply()` calls it again at the end. Qt handles the double
-`deleteLater()` gracefully, but one of the two calls should be removed.
-Downgraded from Medium to Low; this is harmless redundant cleanup.
+No unresolved low-severity findings.
 
 ## Retracted finding
 
@@ -207,8 +202,20 @@ On 2026-10-21 at commit `e94c87e`:
   embedding of `resources.qrc`, rather than a second stylesheet payload.
 
 The temporary probes were outside the repository and were not added as
-regression tests. Passing existing tests does not resolve the open findings;
-several concern behavior those tests do not exercise.
+regression tests.
+
+On 2026-10-22, response validation was added to the gallery and sections API
+handlers. Regression coverage now verifies malformed and non-object JSON, API
+errors, missing or incorrectly typed response structures, invalid gallery
+pages, and valid empty gallery/section results. Deferred QML tests verify that
+HTTP-200 API errors stop loading and appear in the existing error labels.
+`cmake --build build-review -j14 --target WikipediaPageClientTest
+WikipediaRequestIsolationTest QmlTests` succeeded. Targeted offscreen CTest
+passed `WikipediaPageClientTest`, `WikipediaRequestIsolationTest`, and
+`QmlTests.tst_images`, `QmlTests.tst_sections`, and
+`QmlTests.tst_feature_isolation` (5/5). The full build succeeded, and offscreen
+CTest reported 29 entries: 28 passed, `WikipediaFeedLiveTest` was skipped,
+and none failed. Live-network tests were not enabled.
 
 ## Summary
 
@@ -217,8 +224,7 @@ several concern behavior those tests do not exercise.
 | Critical | 0 |
 | High     | 0 |
 | Medium   | 0 |
-| Low      | 1 |
-| **Total** | **1** |
+| Low      | 0 |
+| **Total** | **0** |
 
-There is 1 unresolved entry and one retracted entry. The previous summary
-claimed 25 unresolved findings, but its sections contained only 23.
+One retracted finding is retained above for audit history.

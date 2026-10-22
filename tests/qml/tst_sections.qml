@@ -81,10 +81,12 @@ Item {
             compare(testSupport.qmlWarningCount, 0, testSupport.qmlWarnings.join("\n"))
         }
 
-        function createDisplay(statusCode) {
+        function createDisplay(statusCode, responseBody) {
             networkFixtures.addFixture("GET", sectionsUrl(),
-                                       statusCode === undefined ? sectionsResponse() : "section request failed",
-                                       statusCode === undefined ? "application/json" : "text/plain",
+                                       responseBody !== undefined ? responseBody
+                                           : (statusCode === undefined ? sectionsResponse() : "section request failed"),
+                                       statusCode === undefined || responseBody !== undefined
+                                           ? "application/json" : "text/plain",
                                        statusCode === undefined ? 200 : statusCode)
             root.articleMarkup = articleHtml()
             ArticleState.setCurrentPageFromData(fixtureTitle, "Sections fixture extract", "")
@@ -237,6 +239,22 @@ Item {
             tryCompare(loading, "visible", false)
             tryCompare(error, "visible", true)
             compare(error.text, "HTTP 500")
+        }
+
+        function test_api_error_stops_loading_and_displays_error() {
+            networkFixtures.deferNextReply()
+            createDisplay(200, JSON.stringify({error: {code: "badvalue", info: "Invalid page"}}))
+            expandPanel()
+
+            const loading = child("sectionsLoadingIndicator")
+            const error = child("sectionsErrorMessage")
+            tryCompare(networkFixtures, "pendingReplyCount", 1)
+            compare(loading.visible, true)
+            networkFixtures.completeNextReply()
+            tryCompare(loading, "visible", false)
+            tryCompare(error, "visible", true)
+            compare(error.text, "Invalid page")
+            compare(testSupport.requestCount, 1)
         }
     }
 }

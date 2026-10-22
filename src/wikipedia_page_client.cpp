@@ -3,6 +3,9 @@
 #include "html_processor.h"
 #include "wikipedia_network_access_manager.h"
 #include <QBuffer>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
 #include <QPalette>
 #include <QPainter>
 #include <QRegularExpression>
@@ -243,7 +246,35 @@ void WikipediaPageClient::resolveTitleToPageId(const QString &title) {
 void WikipediaPageClient::onPageWithImagesReply(QNetworkReply *reply, int pageid, const WikipediaRequestContext &context) {
     if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
     if (reply->error() == QNetworkReply::NoError) {
-        page p = parsePageWithImages(reply->readAll(), pageid);
+        const QByteArray responseData = reply->readAll();
+        QJsonParseError parseError;
+        const QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData, &parseError);
+        const QJsonObject root = jsonDoc.object();
+        if (parseError.error != QJsonParseError::NoError || !jsonDoc.isObject()) {
+            emit errorOccurred(tr("Invalid gallery response."));
+            reply->deleteLater();
+            return;
+        }
+        if (root.contains("error")) {
+            const QJsonObject apiError = root.value("error").toObject();
+            const QString message = apiError.value("info").toString(apiError.value("code").toString());
+            emit errorOccurred(message.isEmpty() ? tr("Wikipedia API request failed.") : message);
+            reply->deleteLater();
+            return;
+        }
+
+        const QString pageKey = QString::number(pageid);
+        const QJsonValue pageValue = root.value("query").toObject().value("pages").toObject().value(pageKey);
+        const QJsonObject pageObject = pageValue.toObject();
+        const QString title = pageObject.value("title").toString();
+        if (!pageValue.isObject() || pageObject.contains("missing") || pageObject.contains("invalid")
+            || pageObject.value("pageid").toInt(-1) != pageid || title.trimmed().isEmpty()) {
+            emit errorOccurred(tr("Unable to load gallery for this article."));
+            reply->deleteLater();
+            return;
+        }
+
+        page p = parsePageWithImages(responseData, pageid);
 
         // parsePageWithImages stores the requested file titles in imageTitles;
         // clear them before metadata lookup so completion contains only usable images.
@@ -527,7 +558,25 @@ void WikipediaPageClient::getSections(const QString &title) {
 
 void WikipediaPageClient::onSectionsReply(QNetworkReply *reply, const WikipediaRequestContext &context) {
     if (m_requests.isCurrent(context) && reply->error() == QNetworkReply::NoError) {
-        emit sectionsReceived(parseSections(reply->readAll()));
+        const QByteArray responseData = reply->readAll();
+        QJsonParseError parseError;
+        const QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData, &parseError);
+        const QJsonObject root = jsonDoc.object();
+        if (parseError.error != QJsonParseError::NoError || !jsonDoc.isObject()) {
+            emit errorOccurred(tr("Invalid sections response."));
+        } else if (root.contains("error")) {
+            const QJsonObject apiError = root.value("error").toObject();
+            const QString message = apiError.value("info").toString(apiError.value("code").toString());
+            emit errorOccurred(message.isEmpty() ? tr("Wikipedia API request failed.") : message);
+        } else {
+            const QJsonValue sectionsValue = root.value("parse").toObject()
+                .value("tocdata").toObject().value("sections");
+            if (!sectionsValue.isArray()) {
+                emit errorOccurred(tr("Invalid sections response."));
+            } else {
+                emit sectionsReceived(parseSections(responseData));
+            }
+        }
     } else if (m_requests.isCurrent(context) && reply->error() != QNetworkReply::OperationCanceledError) {
         emit errorOccurred(reply->errorString());
     }

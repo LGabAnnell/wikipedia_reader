@@ -303,6 +303,123 @@ class WikipediaPageClientTest : public QObject {
         QCOMPARE(m_network.requestCount(), 2);
     }
 
+    void testGalleryRejectsInvalidPageResponse_data() {
+        QTest::addColumn<QByteArray>("response");
+        QTest::newRow("malformed json") << QByteArray("not json");
+        QTest::newRow("non-object json") << QByteArray("[]");
+        QTest::newRow("api error") << QByteArray(R"({"error":{"code":"badvalue","info":"Invalid page"}})");
+        QTest::newRow("empty api error with otherwise valid page") << QByteArray(
+            R"({"error":{},"query":{"pages":{"736":{"pageid":736,"title":"Valid"}}}})");
+        QTest::newRow("missing query") << QByteArray("{}");
+        QTest::newRow("wrong pages type") << QByteArray(R"({"query":{"pages":[]}})");
+        QTest::newRow("empty pages") << QByteArray(R"({"query":{"pages":{}}})");
+        QTest::newRow("different page id") << QByteArray(R"({"query":{"pages":{"999":{"pageid":999,"title":"Other"}}}})");
+        QTest::newRow("missing marker") << QByteArray(R"({"query":{"pages":{"736":{"pageid":736,"title":"Missing","missing":""}}}})");
+        QTest::newRow("invalid marker") << QByteArray(R"({"query":{"pages":{"736":{"pageid":736,"title":"Invalid","invalid":""}}}})");
+        QTest::newRow("missing title") << QByteArray(R"({"query":{"pages":{"736":{"pageid":736}}}})");
+        QTest::newRow("blank title") << QByteArray(R"({"query":{"pages":{"736":{"pageid":736,"title":"  "}}}})");
+    }
+
+    void testGalleryRejectsInvalidPageResponse() {
+        QFETCH(QByteArray, response);
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=extracts|images&pageids=736&explaintext=1&imlimit=50"), response);
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageWithImagesReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+        m_network.deferNextReply();
+
+        client.getPageWithImages(736);
+        m_network.completeNextReply();
+
+        QTRY_COMPARE(errors.count(), 1);
+        QVERIFY(!errors.first().first().toString().trimmed().isEmpty());
+        QCOMPARE(pages.count(), 0);
+        QCOMPARE(m_network.requestCount(), 1);
+    }
+
+    void testGalleryWithNoImagesSucceeds() {
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=extracts|images&pageids=736&explaintext=1&imlimit=50"),
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Empty gallery","extract":"","images":[]}}}})");
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageWithImagesReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+
+        client.getPageWithImages(736);
+
+        QTRY_COMPARE(pages.count(), 1);
+        const page result = pages.first().first().value<page>();
+        QCOMPARE(result.pageid, 736);
+        QCOMPARE(result.title, QString("Empty gallery"));
+        QVERIFY(result.imageUrls.isEmpty());
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(m_network.requestCount(), 1);
+    }
+
+    void testGalleryWithOmittedImagesSucceeds() {
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=extracts|images&pageids=736&explaintext=1&imlimit=50"),
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Gallery without image list"}}}})");
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageWithImagesReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+
+        client.getPageWithImages(736);
+
+        QTRY_COMPARE(pages.count(), 1);
+        QCOMPARE(pages.first().first().value<page>().title, QString("Gallery without image list"));
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(m_network.requestCount(), 1);
+    }
+
+    void testSectionsRejectInvalidResponse_data() {
+        QTest::addColumn<QByteArray>("response");
+        QTest::newRow("malformed json") << QByteArray("not json");
+        QTest::newRow("non-object json") << QByteArray("[]");
+        QTest::newRow("api error") << QByteArray(R"({"error":{"code":"badvalue","info":"Invalid page"}})");
+        QTest::newRow("empty api error with otherwise valid sections") << QByteArray(
+            R"({"error":{},"parse":{"tocdata":{"sections":[]}}})");
+        QTest::newRow("missing parse") << QByteArray("{}");
+        QTest::newRow("missing tocdata") << QByteArray(R"({"parse":{}})");
+        QTest::newRow("missing sections") << QByteArray(R"({"parse":{"tocdata":{}}})");
+        QTest::newRow("wrong sections type") << QByteArray(R"({"parse":{"tocdata":{"sections":{}}}})");
+    }
+
+    void testSectionsRejectInvalidResponse() {
+        QFETCH(QByteArray, response);
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json"
+            "&prop=tocdata&page=Albert%20Einstein"), response);
+        WikipediaPageClient client;
+        QSignalSpy sections(&client, &WikipediaPageClient::sectionsReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+        m_network.deferNextReply();
+
+        client.getSections("Albert Einstein");
+        m_network.completeNextReply();
+
+        QTRY_COMPARE(errors.count(), 1);
+        QVERIFY(!errors.first().first().toString().trimmed().isEmpty());
+        QCOMPARE(sections.count(), 0);
+        QCOMPARE(m_network.requestCount(), 1);
+    }
+
+    void testSectionsWithEmptyArraySucceeds() {
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json"
+            "&prop=tocdata&page=Albert%20Einstein"),
+            R"({"parse":{"tocdata":{"sections":[]}}})");
+        WikipediaPageClient client;
+        QSignalSpy sections(&client, &WikipediaPageClient::sectionsReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+
+        client.getSections("Albert Einstein");
+
+        QTRY_COMPARE(sections.count(), 1);
+        QVERIFY(sections.first().first().value<QVector<section>>().isEmpty());
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(m_network.requestCount(), 1);
+    }
+
     void testImageDescriptionEntities_data() {
         QTest::addColumn<QString>("html");
         QTest::addColumn<QString>("expected");
