@@ -25,12 +25,6 @@ qt_add_qml_module(wikipedia_qt
         constants.cpp
         constants.h
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt
-    RESOURCES
-        resources.qrc
-        ../icons/home.svg
-        ../icons/history.svg
-        ../icons/back.svg
-        ../icons/app_icon.svg
     DEPENDENCIES TARGET 
         SearchBarModule 
         SidebarModule

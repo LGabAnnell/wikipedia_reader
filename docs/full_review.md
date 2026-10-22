@@ -45,25 +45,6 @@ Downgraded from Medium to Low; this is cosmetic.
 Line 1 says `# HistoryModule CMakeLists.txt` — this is the HeaderModule.
 Downgraded from Medium to Low; this is cosmetic.
 
-### `src/CMakeLists.txt:28` — Duplicate icons and an embedded raw resource manifest
-
-The generated `wikipedia_qt_raw_res_0.qrc` embeds four icons also included in
-the application's `icons` resource, under different resource paths. Consolidate
-the duplicated icon payloads and aliases.
-
-The generated resource also embeds `resources.qrc` itself as raw data at
-`:/qt/qml/wikipedia_qt/resources.qrc`; it does not expand that manifest into
-another stylesheet resource. The stylesheet payload is supplied by the
-application's `styles` resource, so the earlier claim that it is duplicated
-through `resources.qrc` is incorrect. Remove the unnecessary raw manifest
-entry if no consumer needs it. This remains a Low packaging cleanup.
-
-### `src/SearchScreen.qml:6` — Inconsistent versioned imports
-
-Uses `import wikipedia_qt 1.0` while most other files use unversioned
-`import wikipedia_qt`. AGENTS.md notes versioned imports appear in "older
-files" — worth normalizing.
-
 ## Retracted finding
 
 ### `src/state/db/HistoryDatabase.h:31` — `removeOldestItems()` has test callers
@@ -246,8 +227,8 @@ several concern behavior those tests do not exercise.
 | Critical | 0 |
 | High     | 0 |
 | Medium   | 0 |
-| Low      | 5 |
-| **Total** | **5** |
+| Low      | 3 |
+| **Total** | **3** |
 
-There are 5 unresolved entries and one retracted entry. The previous summary
+There are 3 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.
