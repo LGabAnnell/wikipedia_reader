@@ -28,13 +28,6 @@ No current medium-severity findings.
 
 ## Low
 
-### `src/state/NavigationState.h:49` — Missing `#include <map>` for `std::map`
-
-The header declares `std::map<QString, QQmlComponent *> views;` without
-including `<map>`. It builds through transitive includes in the current
-environment, but should include its dependency directly. Downgraded from High
-to Low as a portability and header-maintenance issue.
-
 ### `src/wikipedia_featured_client.cpp:27` — Double `reply->deleteLater()`
 
 `getFeaturedArticleOfTheDay()` calls `reply->deleteLater()` in its lambda, and
@@ -61,11 +54,6 @@ Downgraded from Medium to Low; this is cosmetic.
 
 Line 1 says `# HistoryModule CMakeLists.txt` — this is the HeaderModule.
 Downgraded from Medium to Low; this is cosmetic.
-
-### `src/modules/ContentDisplayModule/ContentDisplayModel.h:94` — Unused `m_items` member
-
-`m_items` is never used; the `searchRequested` signal declared at line 68 is
-never emitted. Remove both.
 
 ### `src/Main.qml:124` — `homeView` registration is unreachable
 
@@ -275,8 +263,8 @@ several concern behavior those tests do not exercise.
 | Critical | 0 |
 | High     | 0 |
 | Medium   | 0 |
-| Low      | 9 |
-| **Total** | **9** |
+| Low      | 7 |
+| **Total** | **7** |
 
-There are 9 unresolved entries and one retracted entry. The previous summary
+There are 7 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.

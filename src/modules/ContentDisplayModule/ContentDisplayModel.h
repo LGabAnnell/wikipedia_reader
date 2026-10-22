@@ -66,13 +66,6 @@ public:
 
 signals:
     /**
-     * @brief Signal emitted when a search is performed.
-     * @param searchText The text to search for.
-     * @param text The text to search within.
-     */
-    void searchRequested(const QString &searchText, const QString &text);
-
-    /**
      * @brief Signal emitted when search results are available.
      * @param results The list of search results.
      */
@@ -95,8 +88,6 @@ signals:
 private:
     QPointer<ArticleState> m_article;
     int m_currentSectionIndex = -1;
-    // List of items to search through
-    QStringList m_items;
 
     // Store the current search results
     QList<search_indices> m_searchResults;

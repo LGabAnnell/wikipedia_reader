@@ -8,6 +8,8 @@
 #include <QPointer>
 #include <QQuickItem>
 
+#include <map>
+
 #include "constants.h"
 
 class NavigationState : public QObject {
