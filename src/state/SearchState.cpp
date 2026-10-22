@@ -11,7 +11,6 @@ SearchState::SearchState(SettingsState &settings, QObject *parent)
         m_searchClient->setLanguage(m_settings->language());
         const QString query = m_searchText.trimmed();
         if (!query.isEmpty()) {
-            m_isSearching = false;
             search(query);
         }
     });

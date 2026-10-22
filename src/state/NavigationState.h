@@ -18,7 +18,6 @@ class NavigationState : public QObject {
   public:
     explicit NavigationState(QObject *parent = nullptr);
     QQuickItem *stackView() const;
-    QString currentView() const;
 
     // Install the event filter on a QObject (e.g., QQuickWindow or QQuickItem)
     Q_INVOKABLE void installEventFilter(QObject *obj);
@@ -34,7 +33,6 @@ class NavigationState : public QObject {
 
   signals:
     void stackViewChanged();
-    void currentViewChanged();
     void pushView(const QQmlComponent *view);
     void backButtonPressed(); // Emitted when the mouse back button is pressed
 

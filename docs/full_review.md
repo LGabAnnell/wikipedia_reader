@@ -20,23 +20,13 @@ data-loss paths were found in normal flows.
 
 ## High
 
-No current high-severity findings. The two original High entries are retained
-below as Low issues because neither prevents the current application from building.
+No current high-severity findings.
 
 ## Medium
 
 No current medium-severity findings.
 
 ## Low
-
-### `src/state/NavigationState.h:21` — `currentView()` is declared but never defined
-
-The header declares `QString currentView() const;`, but there is no method
-implementation or caller. `currentViewChanged()` is declared but never emitted;
-Qt's meta-object compiler supplies the signal implementation. A future C++ call
-to `currentView()` would fail to link, but the current application builds and
-links successfully. Remove the unused method and signal, or implement the API
-when needed. Downgraded from High to Low as a latent API issue.
 
 ### `src/state/NavigationState.h:49` — Missing `#include <map>` for `std::map`
 
@@ -71,13 +61,6 @@ Downgraded from Medium to Low; this is cosmetic.
 
 Line 1 says `# HistoryModule CMakeLists.txt` — this is the HeaderModule.
 Downgraded from Medium to Low; this is cosmetic.
-
-### `src/state/SearchState.cpp:14` — Direct `m_isSearching = false` bypasses the setter
-
-The `languageChanged` handler assigns `m_isSearching` directly, skipping
-`setIsSearching()` and its change signal. It is also dead code — the
-`languageTransitionStarted` handler already cleared the flag via the setter
-before `languageChanged` fires. Remove it.
 
 ### `src/modules/HeaderModule/HeaderModel.cpp:65` — Dead render path and no-op property
 
@@ -307,8 +290,8 @@ several concern behavior those tests do not exercise.
 | Critical | 0 |
 | High     | 0 |
 | Medium   | 0 |
-| Low      | 13 |
-| **Total** | **13** |
+| Low      | 11 |
+| **Total** | **11** |
 
-There are 13 unresolved entries and one retracted entry. The previous summary
+There are 11 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.
