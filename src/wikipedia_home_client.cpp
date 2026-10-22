@@ -263,8 +263,32 @@ QVector<on_this_day_event> WikipediaHomeClient::parseOnThisDayEvents(const QByte
             onThisDayEvents.append(otd);
         }
     } else {
-        qWarning() << "No 'selected' events found in on-this-day API response";
-        qWarning() << "API Response:" << QString(responseData);
+        QString selectedStatus = QStringLiteral("missing");
+        if (root.contains("selected")) {
+            switch (root["selected"].type()) {
+            case QJsonValue::Null:
+                selectedStatus = QStringLiteral("null");
+                break;
+            case QJsonValue::Bool:
+                selectedStatus = QStringLiteral("boolean");
+                break;
+            case QJsonValue::Double:
+                selectedStatus = QStringLiteral("number");
+                break;
+            case QJsonValue::String:
+                selectedStatus = QStringLiteral("string");
+                break;
+            case QJsonValue::Object:
+                selectedStatus = QStringLiteral("object");
+                break;
+            case QJsonValue::Array:
+            case QJsonValue::Undefined:
+                break;
+            }
+        }
+        qWarning().noquote() << QStringLiteral("Unexpected on-this-day response (%1 bytes): selected is %2")
+                                    .arg(responseData.size())
+                                    .arg(selectedStatus);
     }
 
     return onThisDayEvents;

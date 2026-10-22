@@ -2,9 +2,46 @@
 #include <QtTest/QtTest>
 #include <QByteArray>
 #include <QFile>
+#include <QRegularExpression>
 #include "wikipedia_home_client.h"
 #include "wikipedia_network_access_manager.h"
 #include "support/FakeNetworkAccessManager.h"
+
+namespace {
+QStringList capturedWarnings;
+
+void captureWarning(QtMsgType type, const QMessageLogContext &, const QString &message) {
+    if (type == QtWarningMsg)
+        capturedWarnings.append(message);
+}
+
+class ScopedWarningCapture {
+  public:
+    ScopedWarningCapture() {
+        capturedWarnings.clear();
+        m_previousHandler = qInstallMessageHandler(captureWarning);
+    }
+
+    ~ScopedWarningCapture() { qInstallMessageHandler(m_previousHandler); }
+
+  private:
+    QtMessageHandler m_previousHandler;
+};
+
+void verifyBoundedSelectedDiagnostic(const QByteArray &response, const QString &status) {
+    QCOMPARE(capturedWarnings.size(), 1);
+    const QString warning = capturedWarnings.first();
+    QVERIFY(warning.size() < 256);
+    QVERIFY(warning.contains(QString::number(response.size())));
+    QVERIFY(warning.contains("byte", Qt::CaseInsensitive));
+    QVERIFY(warning.contains("selected", Qt::CaseInsensitive));
+    QVERIFY(warning.contains(status, Qt::CaseInsensitive));
+    QVERIFY(!warning.contains(QString::fromUtf8(response)));
+    QVERIFY(!warning.contains("other", Qt::CaseInsensitive));
+    QVERIFY(!warning.contains("secret", Qt::CaseInsensitive));
+    QVERIFY(!warning.contains(QRegularExpression("\\[[^]]*\\]")));
+}
+} // namespace
 
 class WikipediaHomeClientTest : public QObject {
     Q_OBJECT
@@ -447,14 +484,59 @@ class WikipediaHomeClientTest : public QObject {
 
     void testParseOnThisDayEventsMissingSelected() {
         QByteArray json = R"({"other":"data"})";
-        QVector<on_this_day_event> events = WikipediaHomeClient::parseOnThisDayEvents(json);
+        QVector<on_this_day_event> events;
+        {
+            ScopedWarningCapture capture;
+            events = WikipediaHomeClient::parseOnThisDayEvents(json);
+        }
         QVERIFY(events.isEmpty());
+        verifyBoundedSelectedDiagnostic(json, "missing");
+    }
+
+    void testParseOnThisDayEventsWrongTypeSelected_data() {
+        QTest::addColumn<QByteArray>("selectedJson");
+        QTest::addColumn<QString>("expectedType");
+        QTest::newRow("null") << QByteArray("null") << QString("null");
+        QTest::newRow("boolean") << QByteArray("true") << QString("boolean");
+        QTest::newRow("number") << QByteArray("42") << QString("number");
+        QTest::newRow("string") << QByteArray("\"secret selected payload\"") << QString("string");
+        QTest::newRow("object") << QByteArray(R"({"secret":"value"})") << QString("object");
+    }
+
+    void testParseOnThisDayEventsWrongTypeSelected() {
+        QFETCH(QByteArray, selectedJson);
+        QFETCH(QString, expectedType);
+        const QByteArray json = QByteArray("{\"selected\":") + selectedJson + ",\"other\":\"secret key\"}";
+        QVector<on_this_day_event> events;
+        {
+            ScopedWarningCapture capture;
+            events = WikipediaHomeClient::parseOnThisDayEvents(json);
+        }
+        QVERIFY(events.isEmpty());
+        verifyBoundedSelectedDiagnostic(json, expectedType);
     }
 
     void testParseOnThisDayEventsMalformedJson() {
         QByteArray json = "not json";
-        QVector<on_this_day_event> events = WikipediaHomeClient::parseOnThisDayEvents(json);
+        QVector<on_this_day_event> events;
+        {
+            ScopedWarningCapture capture;
+            events = WikipediaHomeClient::parseOnThisDayEvents(json);
+        }
         QVERIFY(events.isEmpty());
+        verifyBoundedSelectedDiagnostic(json, "missing");
+    }
+
+    void testParseOnThisDayEventsLargeUnexpectedResponse() {
+        const QByteArray payload(128 * 1024, 'x');
+        const QByteArray json = QByteArray("{\"selected\":\"secret\",\"payload\":\"") + payload + "\"}";
+        QVector<on_this_day_event> events;
+        {
+            ScopedWarningCapture capture;
+            events = WikipediaHomeClient::parseOnThisDayEvents(json);
+        }
+        QVERIFY(events.isEmpty());
+        verifyBoundedSelectedDiagnostic(json, "string");
     }
 
     void testParseArticleContent() {

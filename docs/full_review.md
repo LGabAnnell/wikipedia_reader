@@ -72,11 +72,6 @@ Downgraded from Medium to Low; this is cosmetic.
 Line 1 says `# HistoryModule CMakeLists.txt` — this is the HeaderModule.
 Downgraded from Medium to Low; this is cosmetic.
 
-### `src/wikipedia_home_client.cpp:253` — Full API response logged at `qWarning`
-
-`parseOnThisDayEvents()` dumps the entire response payload into the log when
-the shape is unexpected. Log a shape summary instead.
-
 ### `src/state/SearchState.cpp:14` — Direct `m_isSearching = false` bypasses the setter
 
 The `languageChanged` handler assigns `m_isSearching` directly, skipping
@@ -312,8 +307,8 @@ several concern behavior those tests do not exercise.
 | Critical | 0 |
 | High     | 0 |
 | Medium   | 0 |
-| Low      | 14 |
-| **Total** | **14** |
+| Low      | 13 |
+| **Total** | **13** |
 
-There are 14 unresolved entries and one retracted entry. The previous summary
+There are 13 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.
