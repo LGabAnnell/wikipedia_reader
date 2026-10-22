@@ -1,5 +1,4 @@
 #include "SvgImageProvider.h"
-#include "HeaderModel.h"
 #include <QPainter>
 #include <QSvgRenderer>
 #include <QFile>
@@ -8,15 +7,9 @@
 #include <tinyxml2.h>
 #include <QDebug>
 
-SvgImageProvider::SvgImageProvider(HeaderModel *model)
-    : QQuickImageProvider(QQuickImageProvider::Image), m_model(model) {
-    QPalette palette;
-    m_fillColor = palette.color(QPalette::Active, QPalette::Text);
-}
-
-void SvgImageProvider::setFillColor(const QColor &color) {
-    m_fillColor = color;
-}
+SvgImageProvider::SvgImageProvider()
+    : QQuickImageProvider(QQuickImageProvider::Image),
+      m_fillColor(QPalette().color(QPalette::Active, QPalette::Text)) {}
 
 QByteArray SvgImageProvider::modifySvgFillColor(const QByteArray &svgData) {
     tinyxml2::XMLDocument doc;

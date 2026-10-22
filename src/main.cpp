@@ -11,7 +11,6 @@
 #include "HistoryState.h"
 #include "NavigationState.h"
 #include "SvgImageProvider.h"
-#include "HeaderModel.h"
 #include "wikipedia_network_access_manager.h"
 
 int main(int argc, char *argv[]) {
@@ -28,7 +27,6 @@ int main(int argc, char *argv[]) {
     SearchState searchState(settingsState);
     ClipboardHelper clipboardHelper;
     NavigationState navigationState;
-    HeaderModel headerModel;
     WikipediaNetwork::NetworkAccessManagerFactory networkFactory;
     QQmlApplicationEngine engine;
     engine.setNetworkAccessManagerFactory(&networkFactory);
@@ -46,7 +44,7 @@ int main(int argc, char *argv[]) {
     qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "SearchState", &searchState);
     qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "ClipboardHelper", &clipboardHelper);
     qmlRegisterSingletonInstance("wikipedia_qt", 1, 0, "NavigationState", &navigationState);
-    engine.addImageProvider("svg", new SvgImageProvider(&headerModel));
+    engine.addImageProvider("svg", new SvgImageProvider());
     engine.loadFromModule("wikipedia_qt", "Main");
     if (engine.rootObjects().isEmpty())
         return -1;

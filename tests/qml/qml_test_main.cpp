@@ -9,7 +9,6 @@
 #include "HistoryState.h"
 #include "NavigationState.h"
 #include "SvgImageProvider.h"
-#include "HeaderModel.h"
 #include "wikipedia_network_access_manager.h"
 
 #include <QCoreApplication>
@@ -104,7 +103,7 @@ class QmlTestSetup final : public QObject {
         engine->setNetworkAccessManagerFactory(&m_networkController);
         engine->rootContext()->setContextProperty(QStringLiteral("testSupport"), &m_testSupport);
         engine->rootContext()->setContextProperty(QStringLiteral("networkFixtures"), &m_networkController);
-        engine->addImageProvider(QStringLiteral("svg"), new SvgImageProvider(&m_headerModel));
+        engine->addImageProvider(QStringLiteral("svg"), new SvgImageProvider());
         connect(engine, &QQmlEngine::warnings, &m_testSupport, &QmlTestSupport::recordQmlWarnings);
     }
 
@@ -112,7 +111,6 @@ class QmlTestSetup final : public QObject {
     QTemporaryDir m_dataDirectory;
     NetworkFixtureController m_networkController;
     QmlTestSupport m_testSupport;
-    HeaderModel m_headerModel;
     QPointer<HistoryState> m_historyState;
     QPointer<NavigationState> m_navigationState;
     QPointer<ArticleState> m_articleState;

@@ -22,8 +22,6 @@ qt_add_qml_module(HeaderModule
         Header.qml
         LanguageSelector.qml
     SOURCES
-        HeaderModel.cpp
-        HeaderModel.h
         SvgImageProvider.cpp
         SvgImageProvider.h
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt/Header

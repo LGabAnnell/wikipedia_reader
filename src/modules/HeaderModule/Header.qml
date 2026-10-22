@@ -18,10 +18,6 @@ ToolBar {
 
     signal changeView(string viewName)
 
-    HeaderModel {
-        id: headerModel
-    }
-
     RowLayout {
         ToolButton {
             id: backButton

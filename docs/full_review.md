@@ -62,21 +62,6 @@ Downgraded from Medium to Low; this is cosmetic.
 Line 1 says `# HistoryModule CMakeLists.txt` — this is the HeaderModule.
 Downgraded from Medium to Low; this is cosmetic.
 
-### `src/modules/HeaderModule/HeaderModel.cpp:65` — Dead render path and no-op property
-
-`renderer.setProperty("fill", "white")` only sets a dynamic property on
-`QSvgRenderer`; it has no rendering effect. Neither `renderSvgToImage()` nor
-`calculateSvgScaleFactor()` is called from QML, `SvgImageProvider`'s `m_model`
-member is stored but never used, and `SvgImageProvider::setFillColor()` has no
-callers. Trim the cluster; note that `requestImage()` runs on a QML worker
-thread if `m_fillColor` ever becomes mutable state.
-
-### `src/modules/HeaderModule/HeaderModel.cpp:51` — `renderSvgToImage()` reads the SVG file twice
-
-`calculateSvgScaleFactor()` opens and reads the file, then `renderSvgToImage()`
-opens and reads the same file again. Pass the loaded `QByteArray` or
-`QSvgRenderer` between the two calls.
-
 ### `src/modules/ContentDisplayModule/ContentDisplayModel.h:94` — Unused `m_items` member
 
 `m_items` is never used; the `searchRequested` signal declared at line 68 is
@@ -290,8 +275,8 @@ several concern behavior those tests do not exercise.
 | Critical | 0 |
 | High     | 0 |
 | Medium   | 0 |
-| Low      | 11 |
-| **Total** | **11** |
+| Low      | 9 |
+| **Total** | **9** |
 
-There are 11 unresolved entries and one retracted entry. The previous summary
+There are 9 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.
