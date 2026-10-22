@@ -16,12 +16,12 @@ Column {
     signal retryRequested()
 
     Label {
-        text: "In the news"
+        text: qsTr("In the news")
         font.pixelSize: 20
         font.bold: true
     }
 
-    HomeFeedback { width: parent.width; sectionName: "news"; status: newsSection.status; errorMessage: newsSection.errorMessage; emptyMessage: "No news available."; onRetryRequested: newsSection.retryRequested() }
+    HomeFeedback { width: parent.width; sectionName: "news"; status: newsSection.status; errorMessage: newsSection.errorMessage; emptyMessage: qsTr("No news available."); onRetryRequested: newsSection.retryRequested() }
 
     // News items list
     ColumnLayout {

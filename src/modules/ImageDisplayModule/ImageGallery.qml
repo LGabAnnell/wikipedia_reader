@@ -37,7 +37,7 @@ Item {
             Button {
                 id: backButton
                 objectName: "imageGalleryBackButton"
-                text: "Back"
+                text: qsTr("Back")
                 Layout.alignment: Qt.AlignLeft
                 onClicked: {
                     const ownerStack = root.StackView.view
@@ -149,7 +149,7 @@ Item {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "Image not available"
+                                text: qsTr("Image not available")
                                 color: "gray"
                                 font.pixelSize: 12
                                 wrapMode: Text.WordWrap

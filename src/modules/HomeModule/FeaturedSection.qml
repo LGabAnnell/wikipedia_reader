@@ -22,7 +22,7 @@ ColumnLayout {
     Layout.margins: 20
 
     Label {
-        text: "Featured article"
+        text: qsTr("Featured article")
         font.pixelSize: 20
         font.bold: true
     }
@@ -32,7 +32,7 @@ ColumnLayout {
         sectionName: "featured"
         status: root.status
         errorMessage: root.errorMessage
-        emptyMessage: "No featured article available."
+        emptyMessage: qsTr("No featured article available.")
         onRetryRequested: root.retryRequested()
     }
 

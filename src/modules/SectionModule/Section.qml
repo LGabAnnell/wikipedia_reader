@@ -67,7 +67,7 @@ Item {
         id: toggleButton
         objectName: "sectionsToggleButton"
 
-        Accessible.name: collapsed ? "Expand sections panel" : "Collapse sections panel"
+        Accessible.name: collapsed ? qsTr("Expand sections panel") : qsTr("Collapse sections panel")
         anchors.margins: 4
         anchors.right: parent.right
         anchors.top: parent.top
@@ -85,7 +85,7 @@ Item {
         color: sysPalette.text
         font.pixelSize: 12
         rotation: 90
-        text: "Sections"
+        text: qsTr("Sections")
         visible: root.collapsed
     }
 
@@ -102,7 +102,7 @@ Item {
             color: sysPalette.text
             font.bold: true
             font.pixelSize: 16
-            text: "Sections"
+            text: qsTr("Sections")
         }
 
         BusyIndicator {
@@ -166,7 +166,7 @@ Item {
                     anchors.fill: parent
                     color: "#888888"
                     horizontalAlignment: Text.AlignHCenter
-                    text: "No sections found"
+                    text: qsTr("No sections found")
                     verticalAlignment: Text.AlignVCenter
                 }
             }

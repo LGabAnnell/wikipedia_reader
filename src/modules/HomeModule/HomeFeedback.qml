@@ -8,7 +8,7 @@ ColumnLayout {
 
     property int status: HomeModel.Idle
     property string errorMessage: ""
-    property string emptyMessage: "No items available."
+    property string emptyMessage: qsTr("No items available.")
     property string sectionName: "section"
 
     signal retryRequested()
@@ -33,7 +33,7 @@ ColumnLayout {
     Button {
         objectName: root.sectionName + "RetryButton"
         visible: root.status === HomeModel.Empty || root.status === HomeModel.Error
-        text: "Retry"
+        text: qsTr("Retry")
         onClicked: root.retryRequested()
     }
 }

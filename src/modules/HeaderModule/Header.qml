@@ -26,7 +26,7 @@ ToolBar {
         ToolButton {
             id: backButton
             objectName: "backButton"
-            text: "Back"
+            text: qsTr("Back")
             Layout.fillHeight: true
 
             contentItem: Image {
@@ -49,7 +49,7 @@ ToolBar {
                 fillMode: Image.PreserveAspectFit
                 sourceSize: Qt.size(24, 24)
             }
-            text: "Home"
+            text: qsTr("Home")
             onClicked: {
                 header.changeView(Constants.homeView);
             }
@@ -62,7 +62,7 @@ ToolBar {
                 fillMode: Image.PreserveAspectFit
                 sourceSize: Qt.size(24, 24)
             }
-            text: "Search"
+            text: qsTr("Search")
             onClicked: function () {
                 header.changeView(Constants.searchView);
             }
@@ -74,7 +74,7 @@ ToolBar {
                 fillMode: Image.PreserveAspectFit
                 sourceSize: Qt.size(24, 24)
             }
-            text: "History"
+            text: qsTr("History")
             onClicked: header.changeView(Constants.historyView)
         }
         LanguageSelector {

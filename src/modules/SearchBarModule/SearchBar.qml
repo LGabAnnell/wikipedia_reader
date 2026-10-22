@@ -23,7 +23,7 @@ RowLayout {
     TextField {
         id: searchText
         objectName: "searchInput"
-        placeholderText: "Search Wikipedia"
+        placeholderText: qsTr("Search Wikipedia")
         text: searchBarModel.searchText
         onTextChanged: searchBarModel.searchText = text
         onAccepted: searchBarModel.performSearch()
@@ -37,7 +37,7 @@ RowLayout {
     Button {
         id: searchButton
         objectName: "searchButton"
-        text: "Search"
+        text: qsTr("Search")
         enabled: !searchBarModel.isSearching && searchText.text.trim().length > 0
         onClicked: searchBarModel.performSearch()
 

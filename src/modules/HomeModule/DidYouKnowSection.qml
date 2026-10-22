@@ -21,12 +21,12 @@ Column {
 
     Label {
         Layout.fillWidth: true  // Ensure the Label fills the width
-        text: "Did you know ..."
+        text: qsTr("Did you know ...")
         font.pixelSize: 20
         font.bold: true
     }
 
-    HomeFeedback { width: parent.width; sectionName: "didYouKnow"; status: didYouKnowSection.status; errorMessage: didYouKnowSection.errorMessage; emptyMessage: "No article available."; onRetryRequested: didYouKnowSection.retryRequested() }
+    HomeFeedback { width: parent.width; sectionName: "didYouKnow"; status: didYouKnowSection.status; errorMessage: didYouKnowSection.errorMessage; emptyMessage: qsTr("No article available."); onRetryRequested: didYouKnowSection.retryRequested() }
 
     // Did you know items
     ColumnLayout {

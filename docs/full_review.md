@@ -25,13 +25,7 @@ below as Low issues because neither prevents the current application from buildi
 
 ## Medium
 
-### `src/modules/HeaderModule/Header.qml:52` — User-facing QML strings are not translated
-
-Most user-facing strings are hardcoded without `qsTr()` ("Back", "Home",
-"Search", "History", "Retry", the home section titles, "Image not available",
-and others), contradicting the AGENTS.md rule that user-facing strings go
-through `tr()`/`qsTr()`. Only a few files (`History.qml`, `LanguageSelector.qml`,
-`ImageFullscreenWindow.qml`) are translated.
+No current medium-severity findings.
 
 ## Low
 
@@ -317,9 +311,9 @@ several concern behavior those tests do not exercise.
 |----------|-------------------|
 | Critical | 0 |
 | High     | 0 |
-| Medium   | 1 |
+| Medium   | 0 |
 | Low      | 14 |
-| **Total** | **15** |
+| **Total** | **14** |
 
-There are 15 unresolved entries and one retracted entry. The previous summary
+There are 14 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.

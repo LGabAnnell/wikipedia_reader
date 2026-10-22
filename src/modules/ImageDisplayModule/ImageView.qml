@@ -70,7 +70,7 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "Image not available"
+                    text: qsTr("Image not available")
                     color: "gray"
                     font.pixelSize: 14
                     wrapMode: Text.WordWrap

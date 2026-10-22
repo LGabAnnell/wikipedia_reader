@@ -269,7 +269,7 @@ Item {
                     id: searchField
 
                     Layout.fillWidth: true
-                    placeholderText: "Search..."
+                    placeholderText: qsTr("Search...")
                     z: 1
 
                     Keys.onReturnPressed: function (event) {
@@ -287,14 +287,16 @@ Item {
                 Text {
                     color: articleDisplay.systemPalette.text
                     font.pixelSize: 14
-                    text: contentDisplay.totalResults > 0 ? contentDisplay.currentResultIndex + " of " + contentDisplay.totalResults : ""
+                    text: contentDisplay.totalResults > 0
+                          ? qsTr("%1 of %2").arg(contentDisplay.currentResultIndex).arg(contentDisplay.totalResults)
+                          : ""
                     verticalAlignment: Text.AlignVCenter
                 }
                 Button {
                     id: upButton
 
                     text: "↑"
-                    Accessible.name: "Previous search result"
+                    Accessible.name: qsTr("Previous search result")
 
                     onClicked: {
                         contentDisplay.navigateToPreviousResult();
@@ -304,7 +306,7 @@ Item {
                     id: downButton
 
                     text: "↓"
-                    Accessible.name: "Next search result"
+                    Accessible.name: qsTr("Next search result")
 
                     onClicked: {
                         contentDisplay.navigateToNextResult();
@@ -323,7 +325,7 @@ Item {
                     id: galleryButton
                     objectName: "galleryButton"
 
-                    text: "Gallery"
+                    text: qsTr("Gallery")
                     visible: mainContent.articleTitle.length > 0 && mainContent.articlePageId > 0
 
                     onClicked: {
@@ -333,7 +335,7 @@ Item {
                 Button {
                     id: copyHtmlButton
 
-                    text: "Copy HTML"
+                    text: qsTr("Copy HTML")
                     visible: mainContent.articleTitle.length > 0 && mainContent.articleText.length > 0
 
                     onClicked: {
@@ -438,7 +440,7 @@ Item {
 
                         ContextMenu.menu: Menu {
                             MenuItem {
-                                text: "Copy"
+                                text: qsTr("Copy")
 
                                 onTriggered: articleSection.copy()
                             }
@@ -485,7 +487,7 @@ Item {
                         color: articleDisplay.systemPalette.text
                         font.pixelSize: 14
                         horizontalAlignment: Text.AlignHCenter
-                        text: "Select an article to view its content"
+                        text: qsTr("Select an article to view its content")
                         visible: mainContent.articleTitle.length === 0 && !mainContent.isLoading
                         width: parent.width
                         wrapMode: Text.WordWrap
