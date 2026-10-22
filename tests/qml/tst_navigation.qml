@@ -217,6 +217,33 @@ Item {
             compare(appStack.currentItem.objectName, "searchView")
         }
 
+        function test_home_view_cannot_be_pushed_by_direct_navigation() {
+            const homeRequestCount = testSupport.requestCount
+            ignoreWarning('Cannot navigate to unregistered view: "' + Constants.homeView + '"')
+            NavigationState.navigateToView(Constants.homeView)
+            compare(appStack.depth, 1)
+            compare(appStack.currentItem, homeRoot)
+            compare(testSupport.requestCount, homeRequestCount)
+
+            NavigationState.navigateToView(Constants.searchView)
+            tryCompare(appStack, "depth", 2)
+            tryVerify(function() { return !appStack.busy })
+            const searchView = appStack.currentItem
+            compare(searchView.objectName, "searchView")
+
+            const pushedRequestCount = testSupport.requestCount
+            ignoreWarning('Cannot navigate to unregistered view: "' + Constants.homeView + '"')
+            NavigationState.navigateToView(Constants.homeView)
+            compare(appStack.depth, 2)
+            compare(appStack.currentItem, searchView)
+            compare(testSupport.requestCount, pushedRequestCount)
+
+            NavigationState.navigateToView(Constants.historyView)
+            tryCompare(appStack, "depth", 3)
+            tryVerify(function() { return !appStack.busy })
+            compare(appStack.currentItem.objectName, "historyView")
+        }
+
         function test_history_navigation_does_not_duplicate_the_current_view() {
             mouseClick(child("historyButton"))
             tryCompare(appStack, "depth", 2)

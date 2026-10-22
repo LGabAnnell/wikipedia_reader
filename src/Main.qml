@@ -124,7 +124,6 @@ ApplicationWindow {
         NavigationState.addView(Constants.searchView, searchView);
         NavigationState.addView(Constants.contentView, articleComponent);
         NavigationState.addView(Constants.historyView, historyComponent);
-        NavigationState.addView(Constants.homeView, homeComponent);
         NavigationState.addView(Constants.imageGalleryView, imageGalleryComponent);
         NavigationState.addView(Constants.imageView, imageViewComponent);
         // Install the event filter on the root ApplicationWindow

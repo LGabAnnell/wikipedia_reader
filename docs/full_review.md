@@ -35,16 +35,6 @@ No current medium-severity findings.
 `deleteLater()` gracefully, but one of the two calls should be removed.
 Downgraded from Medium to Low; this is harmless redundant cleanup.
 
-### `src/state/NavigationState.h:15` — Missing singleton annotation is a convention issue
-
-AGENTS.md requires `QML_UNCREATABLE("Singleton")` on state singletons registered
-via `qmlRegisterSingletonInstance`. The annotation is missing, but the runtime
-registration in `main.cpp` and the QML test harness already prevents QML
-construction. A temporary test using the existing harness confirmed that
-`Qt.createQmlObject()` with `NavigationState {}` fails with "Element is not
-creatable." Add the annotation for consistency; the earlier claim that QML can
-instantiate stray instances is incorrect. Downgraded from Medium to Low.
-
 ### `src/modules/ContentDisplayModule/CMakeLists.txt:1` — Wrong file comment
 
 Line 1 says `# HistoryModule CMakeLists.txt` — this is the ContentDisplayModule.
@@ -54,13 +44,6 @@ Downgraded from Medium to Low; this is cosmetic.
 
 Line 1 says `# HistoryModule CMakeLists.txt` — this is the HeaderModule.
 Downgraded from Medium to Low; this is cosmetic.
-
-### `src/Main.qml:124` — `homeView` registration is unreachable
-
-`homeComponent` is registered with `NavigationState.addView()`, but every caller
-intercepts `homeView` (`Header.qml`, `Main.qml`) and pops to root instead. The
-registration is dead; a stray `navigateToView(homeView)` would push a second
-HomeScreen on top of the stack.
 
 ### `src/CMakeLists.txt:28` — Duplicate icons and an embedded raw resource manifest
 
@@ -263,8 +246,8 @@ several concern behavior those tests do not exercise.
 | Critical | 0 |
 | High     | 0 |
 | Medium   | 0 |
-| Low      | 7 |
-| **Total** | **7** |
+| Low      | 5 |
+| **Total** | **5** |
 
-There are 7 unresolved entries and one retracted entry. The previous summary
+There are 5 unresolved entries and one retracted entry. The previous summary
 claimed 25 unresolved findings, but its sections contained only 23.

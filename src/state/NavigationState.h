@@ -15,6 +15,7 @@
 class NavigationState : public QObject {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("Singleton")
     Q_PROPERTY(QQuickItem *stackView READ stackView WRITE setStackView NOTIFY stackViewChanged)
 
   public:
