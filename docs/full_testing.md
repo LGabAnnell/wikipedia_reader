@@ -41,7 +41,7 @@ Use the prefix option above when Lexbor is installed locally.
 `QTEST_GUILESS_MAIN` and run without a display or GUI platform plugin.
 Other C++ tests still use `QTEST_MAIN`; setting `QT_QPA_PLATFORM=offscreen`
 for the full run supports headless execution. CTest already sets it individually
-for QML tests, `ContentDisplayModelTest`, and `test_sidebar_layout`.
+for QML tests, `ContentDisplayModelTest`, `ArticlePreviewModelTest`, and `test_sidebar_layout`.
 
 Database-using state tests, `HistoryDatabaseTest`, and the QML harness redirect
 `XDG_DATA_HOME` to their own temporary directories. To also supply a writable
@@ -63,6 +63,7 @@ ctest --test-dir build -R '^QmlTests\.tst_article$' --output-on-failure
 ctest --test-dir build -R '^(ImageSelectionStateTest|QmlTests\.tst_(images|navigation))$' --output-on-failure
 ctest --test-dir build -R '^QmlTests\.tst_feature_isolation$' --output-on-failure
 ctest --test-dir build -R '^WikipediaRequestIsolationTest$' --output-on-failure
+./scripts/run_tests.sh -R '^(ArticlePreviewModelTest|WikipediaSummaryClientTest|HtmlProcessorTest|QmlTests\.tst_article|QmlTests\.tst_article_preview)$'
 ```
 
 `scripts/run_tests.sh` configures when needed, builds incrementally, and runs
@@ -71,8 +72,8 @@ network testing, and `-r` to delete and rebuild `build/`. Configure local
 dependency prefixes first. The separate root `test.sh` always deletes
 `build/` before configuring and rebuilding.
 
-The current source configuration registers **29 CTest entries: 18 C++ and
-11 QML**. These are executables/test files, not individual test cases or
+The current source configuration registers **32 CTest entries: 20 C++ and
+12 QML**. These are executables/test files, not individual test cases or
 data rows. The inventory below reflects the current source configuration; it
 is not a record of a passing test run.
 
@@ -97,6 +98,8 @@ Each named entry below has a matching `.cpp` file under `tests/`.
 | `WikipediaPageClientTest` | Page fields, title/ID mismatch, image titles, sections, empty/missing sections, and malformed JSON. Fixture requests cover successful metadata-to-HTML loading and missing/invalid page responses emitting an error without a follow-up HTML request. |
 | `WikipediaFeaturedClientTest` | Recorded English featured/French unavailable responses, featured parsing, feed thumbnail, missing `tfa`, invalid page IDs, malformed JSON, API errors, and unavailable versus invalid outcomes. |
 | `WikipediaHomeClientTest` | Recorded English/French most-read responses, news parsing and thumbnails, current most-read feeds without lookback, bounded lookback, news fallback after older-feed failures, typed section failures, invalid current feeds, on-this-day validation, and Did-you-know summary parsing. |
+| `WikipediaSummaryClientTest` | Valid and malformed summary responses, namespace metadata, thumbnail extraction, Unicode and reserved-character path encoding, HTTP failures, a deferred-request timeout, and cancellation of obsolete successes and errors. |
+| `ArticlePreviewModelTest` | Per-view cache reuse and five-minute expiration (including suppressed non-article results), 50-entry LRU eviction, edition-change invalidation for article and suppressed entries, and stale reply rejection including a cached target replacing a pending request. |
 | `WikipediaFeedLiveTest` | Opt-in production transport: aggregated feed request URLs, today's English featured article and populated English/French home articles, including usable titles, IDs, summaries, and edition-specific article URLs. Errors, empty content, and timeouts fail. Disabled runs are reported as skipped. |
 | `test_sidebar_layout` | Sidebar creation, presence of a ListView, and the `searchResults` property. CTest supplies its working directory and QML import path. |
 | `test_search_display` | Opt-in live search through `SearchBarModel` and `SearchState`; see the limitations below. |
@@ -178,6 +181,7 @@ Each file under `tests/qml/` is registered as `QmlTests.<filename without .qml>`
 | `tst_smoke.qml` | Backend value-type registration, usable state singletons and initial values, and Sidebar creation without requests or QML warnings. |
 | `tst_search.qml` | Blank input, mouse and Enter submission, pending controls, populated/empty responses, and error recovery/retry. |
 | `tst_article.qml` | Search-result selection, deferred loading and rendered HTML, inline image captions/fullscreen selection and Back, load errors without failed history visits, clearing visible and covered article views on language changes without changing stack depth, and article-link navigation preserving the previous view's content on Back. |
+| `tst_article_preview.qml` | Summary loading, formatted and sanitized preview content, thumbnail metadata, and suppression of non-article namespaces. |
 | `tst_inline_images.qml` | Thumbnail-to-original conversion, SVG/lossy thumbnail handling, unchanged non-thumbnail URLs, full-resolution image links, and captions carried into image links. |
 | `tst_images.qml` | Fixture article/gallery loading, SVG preview selection with original fallback, unchanged raster URLs, URL/caption in `ImageSelectionState`, and opening/closing the separate fullscreen window (Close, Escape, and mouse Back) without changing the main window or navigation stack. Saved viewer choice across gallery recreation, embedded viewing and Back, arrow-key navigation in both viewers with endpoint bounds and caption updates, covered/standalone viewer shortcut isolation, stale image-detail rejection, and gallery Back through its owning StackView are also covered. See the regression notes below. |
 | `tst_history.qml` | Article visits through `ArticleState`, newest-first order, revisiting an article without duplicating its history entry, visible but disabled unknown-edition entries, failed-clear feedback with retained entries and enabled Clear, errors predating view creation, and unavailable-state text. |

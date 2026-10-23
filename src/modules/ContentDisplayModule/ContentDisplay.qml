@@ -19,6 +19,13 @@ Item {
     property string errorMessage: ArticleState.errorMessage
     property bool isLoading: ArticleState.isLoading
     property bool followsArticleState: true
+    property string previewLink: ""
+    property bool previewSuppressed: false
+    property bool articleLinkHovered: false
+    property real lastPointerSceneX: -1
+    property real lastPointerSceneY: -1
+    readonly property int previewDelayMs: 350
+    readonly property int previewCloseDelayMs: 200
     readonly property int currentSectionIndex: contentDisplay.currentSectionIndex
     property bool sectionResizeInProgress: false
 
@@ -34,6 +41,7 @@ Item {
         if (!managedByStack)
             return;
         if (stackStatus === StackView.Inactive) {
+            dismissPreview(true);
             freezeIfCovered();
         } else if (stackStatus === StackView.Active) {
             // The per-article section tracking is reset whenever the global
@@ -44,7 +52,8 @@ Item {
     }
 
     onIsLoadingChanged: freezeIfCovered()
-
+    onWidthChanged: dismissPreview(true)
+    onHeightChanged: dismissPreview(true)
     function freezeIfCovered() {
         // A view whose article is still loading stays attached to the global
         // state; it freezes once its article has arrived (or failed).
@@ -62,6 +71,57 @@ Item {
         errorMessage = errorMessage;
         isLoading = isLoading;
         followsArticleState = false;
+    }
+
+    function articleTitleFromLink(link) {
+        if (!link.startsWith("/wiki/"))
+            return "";
+        let path = link.substring(6).split("#")[0];
+        try {
+            path = decodeURIComponent(path);
+        } catch (error) {
+            return "";
+        }
+        return path.replace(/_/g, " ").trim();
+    }
+
+    function dismissPreview(suppressUntilMove) {
+        previewDelay.stop();
+        previewCloseDelay.stop();
+        previewLink = "";
+        previewSuppressed = suppressUntilMove === true;
+        articleLinkHovered = false;
+        previewModel.clearPreview();
+        previewPopup.close();
+    }
+
+    function updatePreviewLink(link) {
+        if (!link) {
+            articleLinkHovered = false;
+            if (previewPopup.visible) {
+                previewCloseDelay.restart();
+            } else {
+                previewDelay.stop();
+                previewLink = "";
+                previewModel.clearPreview();
+            }
+            return;
+        }
+        if (previewSuppressed)
+            return;
+        const title = articleTitleFromLink(link);
+        if (!title) {
+            updatePreviewLink("");
+            return;
+        }
+        articleLinkHovered = true;
+        previewCloseDelay.stop();
+        if (previewLink === title)
+            return;
+        previewPopup.close();
+        previewLink = title;
+        previewModel.clearPreview();
+        previewDelay.restart();
     }
 
     function decodeHtmlAttribute(value) {
@@ -220,6 +280,7 @@ Item {
     width: parent ? parent.width : 0
 
     onArticleTextChanged: {
+        dismissPreview(true);
         scrollView.ScrollBar.vertical.position = 0;
         contentDisplay.resetSectionTracking();
         updateSectionTracking();
@@ -465,13 +526,12 @@ Item {
                             }
 
                             if (link.startsWith("/wiki/")) {
-                                let title;
-                                try {
-                                    title = decodeURIComponent(link.substring(6)).replace(/_/g, " ");
-                                } catch (error) {
-                                    console.warn("Unable to decode article link", error);
+                                const title = mainContent.articleTitleFromLink(link);
+                                if (!title) {
+                                    console.warn("Unable to decode article link", link);
                                     return;
                                 }
+                                mainContent.dismissPreview(true);
                                 // Keep this view on its article, then push a new
                                 // article view so the back button returns here.
                                 freezeArticleContent();
@@ -481,7 +541,29 @@ Item {
                                 contentDisplay.openExternalLink(link, SettingsState.language);
                             }
                         }
-                        onLinkHovered: {}
+                        onLinkHovered: function (link) {
+                            mainContent.updatePreviewLink(link);
+                        }
+
+                        HoverHandler {
+                            id: articleHover
+                            onPointChanged: {
+                                const scenePoint = articleHover.point.scenePosition;
+                                if (scenePoint.x !== mainContent.lastPointerSceneX
+                                        || scenePoint.y !== mainContent.lastPointerSceneY) {
+                                    mainContent.previewSuppressed = false;
+                                    mainContent.lastPointerSceneX = scenePoint.x;
+                                    mainContent.lastPointerSceneY = scenePoint.y;
+                                }
+                                const mappedPoint = articleSection.mapToItem(Overlay.overlay,
+                                    articleHover.point.position.x, articleHover.point.position.y);
+                                if (!previewPopup.visible) {
+                                    previewPopup.anchorX = mappedPoint.x;
+                                    previewPopup.anchorY = mappedPoint.y;
+                                }
+                                mainContent.updatePreviewLink(articleSection.hoveredLink);
+                            }
+                        }
                     }
                     Text {
                         color: articleDisplay.systemPalette.text
@@ -505,6 +587,72 @@ Item {
             }
         }
 
+        ArticlePreviewModel {
+            id: previewModel
+        }
+        ArticlePreview {
+            id: previewPopup
+            previewModel: previewModel
+            onOpenRequested: {
+                const title = previewModel.requestedTitle;
+                mainContent.dismissPreview(true);
+                if (!title)
+                    return;
+                mainContent.freezeArticleContent();
+                ArticleState.loadArticleByTitle(title);
+                NavigationState.navigateToContent();
+            }
+        }
+        Connections {
+            target: previewModel
+            function onChanged() {
+                if (previewModel.suppressed)
+                    previewPopup.close();
+            }
+        }
+        Connections {
+            target: previewPopup
+            function onPointerEntered() {
+                previewCloseDelay.stop();
+            }
+            function onPointerExited() {
+                previewCloseDelay.restart();
+            }
+        }
+        Connections {
+            target: mainContent.Window.window
+            function onActiveChanged() {
+                if (!target.active)
+                    mainContent.dismissPreview(true);
+            }
+        }
+        Connections {
+            target: SettingsState
+            function onLanguageTransitionStarted() {
+                mainContent.dismissPreview(true);
+            }
+        }
+        Timer {
+            id: previewDelay
+            interval: mainContent.previewDelayMs
+            repeat: false
+            onTriggered: {
+                if (!mainContent.previewSuppressed && mainContent.previewLink) {
+                    previewModel.requestPreview(mainContent.previewLink);
+                    previewPopup.open();
+                }
+            }
+        }
+        Timer {
+            id: previewCloseDelay
+            interval: mainContent.previewCloseDelayMs
+            repeat: false
+            onTriggered: {
+                if (!previewPopup.pointerInside && !mainContent.articleLinkHovered)
+                    mainContent.dismissPreview(false);
+            }
+        }
+
         // Permanent collapsible sections bar anchored to the right
         Section {
             id: sectionBar
@@ -517,6 +665,7 @@ Item {
             visible: mainContent.articleTitle.length > 0
 
             onResizeStarted: {
+                mainContent.dismissPreview(true);
                 if (!mainContent.sectionResizeInProgress)
                     scrollView.pinTopPosition();
                 mainContent.sectionResizeInProgress = true;
@@ -564,8 +713,14 @@ Item {
     // Close the search bar on escape key when visible
     Shortcut {
         sequences: ["Escape"]
+        enabled: !managedByStack || stackStatus === StackView.Active
+        context: Qt.WindowShortcut
 
         onActivated: {
+            if (previewPopup.visible) {
+                mainContent.dismissPreview(true);
+                return;
+            }
             if (searchBar.visible) {
                 searchBar.visible = false;
             }
@@ -576,6 +731,8 @@ Item {
     Connections {
         target: scrollView.contentItem
         function onContentYChanged() {
+            if (previewPopup.visible || mainContent.previewLink || previewDelay.running)
+                mainContent.dismissPreview(true);
             if (!mainContent.sectionResizeInProgress)
                 sectionTrackTimer.restart();
         }

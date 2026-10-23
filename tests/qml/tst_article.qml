@@ -288,6 +288,173 @@ Item {
             compare(body.text, previousText)
         }
 
+        function test_article_link_hover_opens_preview_and_closes_after_leaving_card_and_link() {
+            const pageId = 805
+            const title = "Preview hover owner"
+            const target = "Preview hover target"
+            let articleHtml = "<p>Read <a href='/wiki/Preview_hover_target'>Preview target</a> now.</p>"
+            for (let i = 0; i < 30; ++i)
+                articleHtml += "<p>Extra article text to make the viewport scrollable.</p>"
+            addArticleFixtures(pageId, title, articleHtml)
+            networkFixtures.addFixture("GET",
+                "https://en.wikipedia.org/api/rest_v1/page/summary/Preview hover target",
+                JSON.stringify({title: target, pageid: 806, namespace: {id: 0},
+                                extract: "Preview introduction with a longer description that should wrap within the summary card and remain readable.",
+                                extract_html: "<p><b>Preview</b> introduction with a longer description that should wrap within the summary card and remain readable.</p>",
+                                thumbnail: {source: "https://upload.wikimedia.org/wikipedia/commons/fixture.png"}}))
+            ArticleState.loadArticleByPageId(pageId)
+            tryCompare(ArticleState, "isLoading", false)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            const view = stackView.currentItem
+            const body = findChild(view, "articleBody")
+            tryVerify(function() { return body.text.indexOf("Preview target") >= 0 })
+            const popup = findChild(view, "articlePreviewPopup")
+            verify(popup !== null)
+
+            let linkX = -1
+            let linkY = -1
+            for (let y = 0; y < body.height && linkX < 0; y += 2) {
+                for (let x = 0; x < body.width; x += 2) {
+                    if (body.linkAt(x, y).indexOf("/wiki/Preview_hover_target") >= 0) {
+                        linkX = x
+                        linkY = y
+                        break
+                    }
+                }
+            }
+            verify(linkX >= 0, "Could not locate the article link in rendered text")
+            const blankX = body.width - 4
+            const blankY = linkY + 50
+            const initialRequests = networkFixtures.requestCount
+            mouseMove(body, linkX, linkY)
+            wait(180)
+            compare(networkFixtures.requestCount, initialRequests,
+                    "Preview requests must wait for the hover delay")
+            const scrollView = findChild(view, "articleScrollView")
+            scrollView.contentItem.contentY = 20
+            wait(400)
+            compare(networkFixtures.requestCount, initialRequests,
+                    "Scrolling must cancel a pending preview request")
+            mouseMove(body, blankX, blankY)
+            wait(100)
+            mouseMove(body, linkX, linkY)
+            tryCompare(networkFixtures, "requestCount", initialRequests + 2, 1000)
+            tryVerify(function() { return popup.visible })
+            const summary = findChild(view, "articlePreviewSummary")
+            verify(summary.implicitHeight > summary.font.pixelSize,
+                   "Summary text should wrap to the popup width")
+            const thumbnail = findChild(view, "articlePreviewThumbnail")
+            tryCompare(thumbnail, "status", Image.Ready)
+            verify(thumbnail.visible, "A valid thumbnail should appear above the summary")
+            popup.anchorX = popup.parent.width - 1
+            popup.anchorY = popup.parent.height - 1
+            popup.positionPopup()
+            verify(popup.x >= 12 && popup.x + popup.width <= popup.parent.width - 12,
+                   "Popup should stay within horizontal window margins")
+            verify(popup.y >= 12 && popup.y + popup.height <= popup.parent.height - 12,
+                   "Popup should flip above a link near the bottom edge")
+            popup.width = 266
+            popup.height = 246
+            wait(50)
+            const openButton = findChild(view, "articlePreviewOpenButton")
+            const actionPoint = openButton.mapToItem(popup.contentItem, 0, 0)
+            verify(openButton.visible)
+            verify(actionPoint.y + openButton.height <= popup.contentItem.height,
+                   "Open action should remain inside a narrow preview card")
+            const depthBeforePreview = stackView.depth
+            const historyBeforePreview = HistoryState.history.length
+            compare(stackView.depth, depthBeforePreview)
+            compare(HistoryState.history.length, historyBeforePreview)
+
+            mouseMove(summary, summary.width / 2, summary.height / 2)
+            wait(250)
+            verify(popup.visible, "Moving into the preview card must keep it open")
+            mouseMove(body, linkX, linkY)
+            wait(250)
+            verify(popup.visible, "Returning to the link must cancel the close delay")
+            verify(testSupport.sendKeyClick(root.Window.window, Qt.Key_Escape))
+            tryVerify(function() { return !popup.visible })
+            wait(400)
+            compare(networkFixtures.requestCount, initialRequests + 2,
+                    "Escape must close the preview without reopening under a stationary pointer")
+            mouseMove(body, blankX, blankY)
+            wait(100)
+            mouseMove(body, linkX, linkY)
+            tryVerify(function() { return popup.visible })
+            wait(400)
+            mouseMove(body, blankX, blankY)
+            wait(300)
+            verify(!popup.visible, "Preview should close after leaving the link and card")
+            compare(stackView.depth, depthBeforePreview)
+            compare(HistoryState.history.length, historyBeforePreview)
+
+            const resolvedPages = {}
+            resolvedPages[806] = {pageid: 806, title: target}
+            networkFixtures.addFixture("GET", resolveUrl(target),
+                                       JSON.stringify({query: {pages: resolvedPages}}))
+            addArticleFixtures(806, target, "<p>Preview target article body.</p>")
+            mouseMove(body, linkX, linkY)
+            tryVerify(function() { return popup.visible })
+            compare(networkFixtures.requestCount, initialRequests + 2)
+            compare(stackView.depth, depthBeforePreview)
+            mouseClick(openButton)
+            tryCompare(stackView, "depth", depthBeforePreview + 1)
+            tryCompare(ArticleState, "currentPageTitle", target)
+            tryVerify(function() { return !stackView.busy })
+            compare(HistoryState.history.length, historyBeforePreview + 1)
+            stackView.pop()
+            tryCompare(stackView, "depth", depthBeforePreview)
+            tryVerify(function() { return !stackView.busy })
+            compare(stackView.currentItem, view)
+            tryVerify(function() { return findChild(view, "articleBody").text.indexOf("Preview target") >= 0 })
+        }
+
+        function test_language_transition_closes_loading_preview_and_rejects_late_reply() {
+            SettingsState.setLanguage("en")
+            const pageId = 807
+            const title = "Language preview owner"
+            const target = "Language preview target"
+            addArticleFixtures(pageId, title,
+                "<p><a href='/wiki/Language_preview_target'>Language preview</a></p>")
+            networkFixtures.addFixture("GET",
+                "https://en.wikipedia.org/api/rest_v1/page/summary/Language preview target",
+                JSON.stringify({title: target, pageid: 808, namespace: {id: 0}, extract: "Late summary"}))
+            ArticleState.loadArticleByPageId(pageId)
+            tryCompare(ArticleState, "isLoading", false)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            const view = stackView.currentItem
+            const body = findChild(view, "articleBody")
+            const popup = findChild(view, "articlePreviewPopup")
+            let linkX = -1
+            let linkY = -1
+            for (let y = 0; y < body.height && linkX < 0; y += 2) {
+                for (let x = 0; x < body.width; x += 2) {
+                    if (body.linkAt(x, y).indexOf("/wiki/Language_preview_target") >= 0) {
+                        linkX = x
+                        linkY = y
+                        break
+                    }
+                }
+            }
+            verify(linkX >= 0)
+            networkFixtures.deferNextReply(true)
+            mouseMove(body, linkX, linkY)
+            tryCompare(networkFixtures, "pendingReplyCount", 1, 1500)
+            tryVerify(function() { return popup.visible })
+            SettingsState.setLanguage("fr")
+            tryVerify(function() { return !popup.visible })
+            tryCompare(ArticleState, "currentPageTitle", "")
+            networkFixtures.completeNextReply()
+            tryCompare(networkFixtures, "pendingReplyCount", 0)
+            wait(100)
+            verify(!popup.visible, "An obsolete summary must not reopen after an edition change")
+            SettingsState.setLanguage("en")
+        }
+
         function test_article_load_error_is_shown_without_history_visit() {
             addSearchResult("article-error", failureTitle, failureArticleId)
             networkFixtures.addFixture("GET", pageQueryUrl(failureArticleId), "failure", "text/plain", 500)

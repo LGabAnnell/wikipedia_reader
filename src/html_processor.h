@@ -11,6 +11,8 @@ class HtmlProcessor {
      * @return A cleaned HTML fragment with the article stylesheet prepended.
      */
     static QString processHtml(const QString &htmlContent);
+    /** @brief Sanitizes a short summary fragment to the supported inline markup. */
+    static QString sanitizeSummaryHtml(const QString &htmlContent);
 };
 
 #endif // HTML_PROCESSOR_H

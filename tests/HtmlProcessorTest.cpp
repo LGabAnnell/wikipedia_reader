@@ -93,6 +93,21 @@ class HtmlProcessorTest : public QObject {
     Q_OBJECT
 
 private slots:
+    void summarySanitizerAllowsOnlySafeInlineMarkup() {
+        const QString result = HtmlProcessor::sanitizeSummaryHtml(
+            QStringLiteral("<p title='x'><b>Lead</b> <a href='https://evil.test'>linked</a>"
+                           "<img src=x><script>secret()</script><span class='x'><em>word</em></span></p>"));
+        QVERIFY(result.contains(QStringLiteral("<p>")));
+        QVERIFY(result.contains(QStringLiteral("<b>Lead</b>")));
+        QVERIFY(result.contains(QStringLiteral("linked")));
+        QVERIFY(result.contains(QStringLiteral("<em>word</em>")));
+        QVERIFY(!result.contains(QStringLiteral("href")));
+        QVERIFY(!result.contains(QStringLiteral("title=")));
+        QVERIFY(!result.contains(QStringLiteral("<img")));
+        QVERIFY(!result.contains(QStringLiteral("script")));
+        QVERIFY(!result.contains(QStringLiteral("secret")));
+    }
+
     void removesSourceStylesAndPreservesArticleText() {
         const auto result = processed(QStringLiteral(
             "<style>body{color:red}</style><p style=color:red>Before</p>"

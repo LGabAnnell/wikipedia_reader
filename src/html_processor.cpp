@@ -4,6 +4,7 @@
 #include <QPalette>
 #include <QTextDocument>
 #include <QUrl>
+#include <QSet>
 
 #include <lexbor/html/html.h>
 #include <lexbor/dom/interfaces/character_data.h>
@@ -491,4 +492,74 @@ QString HtmlProcessor::processHtml(const QString &htmlContent) {
         return withApplicationStyle(htmlContent);
     }
     return withApplicationStyle(processed);
+}
+
+QString HtmlProcessor::sanitizeSummaryHtml(const QString &htmlContent) {
+    const QByteArray utf8 = htmlContent.toUtf8();
+    Document document(lxb_html_document_create());
+    if (!document)
+        return {};
+    lxb_html_document_scripting_set(document.get(), false);
+    Node *context = makeElement(document.get(), "body");
+    if (!context)
+        return {};
+    Node *root = lxb_html_document_parse_fragment(document.get(), lxb_dom_interface_element(context),
+        reinterpret_cast<const lxb_char_t *>(utf8.constData()), size_t(utf8.size()));
+    if (!root)
+        return {};
+
+    std::vector<Node *> nodes;
+    collectNodes(root, nodes);
+    const QSet<QString> allowed{QStringLiteral("p"), QStringLiteral("br"), QStringLiteral("b"),
+        QStringLiteral("strong"), QStringLiteral("i"), QStringLiteral("em"),
+        QStringLiteral("sub"), QStringLiteral("sup")};
+    const QSet<QString> discarded{QStringLiteral("script"), QStringLiteral("style"),
+        QStringLiteral("iframe"), QStringLiteral("object"), QStringLiteral("img"),
+        QStringLiteral("video"), QStringLiteral("audio")};
+    for (Node *node : nodes) {
+        if (!isConnected(node, root) || node->type != LXB_DOM_NODE_TYPE_ELEMENT)
+            continue;
+        const QString tag = tagName(node);
+        if (discarded.contains(tag)) {
+            lxb_dom_node_remove(node);
+            continue;
+        }
+        if (tag == QStringLiteral("a")) {
+            Node *parent = node->parent;
+            if (parent) {
+                while (node->first_child) {
+                    Node *child = node->first_child;
+                    lxb_dom_node_remove(child);
+                    lxb_dom_node_insert_before(node, child);
+                }
+                lxb_dom_node_remove(node);
+            }
+            continue;
+        }
+        if (!allowed.contains(tag)) {
+            Node *parent = node->parent;
+            if (parent) {
+                while (node->first_child) {
+                    Node *child = node->first_child;
+                    lxb_dom_node_remove(child);
+                    lxb_dom_node_insert_before(node, child);
+                }
+                lxb_dom_node_remove(node);
+            }
+            continue;
+        }
+        Element *element = lxb_dom_interface_element(node);
+        while (element->first_attr)
+            lxb_dom_element_attr_remove(element, element->first_attr);
+    }
+    lexbor_str_t output = {0};
+    if (lxb_html_serialize_deep_str(root, &output) != LXB_STATUS_OK || !output.data) {
+        if (output.data)
+            lexbor_str_destroy(&output, document->dom_document.text, false);
+        return {};
+    }
+    const QString result = QString::fromUtf8(reinterpret_cast<const char *>(output.data),
+                                              qsizetype(output.length));
+    lexbor_str_destroy(&output, document->dom_document.text, false);
+    return result;
 }

@@ -49,6 +49,16 @@ target_link_libraries(ContentDisplayModelTest PRIVATE ContentDisplayModule wikip
 add_test(NAME ContentDisplayModelTest COMMAND ContentDisplayModelTest)
 set_tests_properties(ContentDisplayModelTest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
+qt_add_executable(ArticlePreviewModelTest ArticlePreviewModelTest.cpp)
+target_include_directories(ArticlePreviewModelTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/modules/ContentDisplayModule
+)
+target_link_libraries(ArticlePreviewModelTest PRIVATE
+    ContentDisplayModule wikipedia_qt_core Qt::Test wikipedia_test_network
+)
+add_test(NAME ArticlePreviewModelTest COMMAND ArticlePreviewModelTest)
+set_tests_properties(ArticlePreviewModelTest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
 # ---------------------------------------------------------------------------
 # test_search_display (network integration test, guarded by RUN_NETWORK_TESTS)
 # ---------------------------------------------------------------------------
@@ -177,6 +187,10 @@ target_link_libraries(WikipediaHomeClientTest PRIVATE
 )
 
 add_test(NAME WikipediaHomeClientTest COMMAND WikipediaHomeClientTest)
+
+qt_add_executable(WikipediaSummaryClientTest WikipediaSummaryClientTest.cpp)
+target_link_libraries(WikipediaSummaryClientTest PRIVATE wikipedia_qt_core Qt::Test wikipedia_test_network)
+add_test(NAME WikipediaSummaryClientTest COMMAND WikipediaSummaryClientTest)
 
 foreach(feed_test WikipediaFeaturedClientTest WikipediaHomeClientTest)
     target_compile_definitions(${feed_test} PRIVATE

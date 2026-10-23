@@ -18,9 +18,12 @@ qt_add_qml_module(ContentDisplayModule
     VERSION 1.0
     QML_FILES
         ContentDisplay.qml
+        ArticlePreview.qml
     SOURCES
         ContentDisplayModel.cpp
         ContentDisplayModel.h
+        ArticlePreviewModel.cpp
+        ArticlePreviewModel.h
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wikipedia_qt/ContentDisplay
 )
 

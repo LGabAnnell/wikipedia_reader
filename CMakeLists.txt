@@ -76,6 +76,8 @@ add_library(wikipedia_qt_core SHARED
     src/wikipedia_featured_client.h
     src/wikipedia_home_client.cpp
     src/wikipedia_home_client.h
+    src/wikipedia_summary_client.cpp
+    src/wikipedia_summary_client.h
     src/wikipedia_models.h
     src/wikipedia_network_access_manager.h
     src/wikipedia_request_context.h
