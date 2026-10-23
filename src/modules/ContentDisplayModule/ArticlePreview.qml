@@ -9,6 +9,15 @@ Popup {
     property real anchorX: 0
     property real anchorY: 0
     property bool pointerInside: false
+    property bool opensBelow: true
+    readonly property real maximumPreviewHeight: 420
+    readonly property real pointerGap: 12
+    readonly property real spaceAbove: Math.max(0, anchorY - pointerGap - margins)
+    readonly property real spaceBelow: parent
+        ? Math.max(0, parent.height - margins - anchorY - pointerGap) : maximumPreviewHeight
+    readonly property real availablePreviewHeight: Math.max(0, Math.min(
+        opensBelow ? spaceBelow : spaceAbove,
+        parent ? parent.height - 2 * margins : maximumPreviewHeight))
     signal pointerExited()
     signal pointerEntered()
     parent: Overlay.overlay
@@ -19,8 +28,12 @@ Popup {
     padding: 0
     margins: 12
     closePolicy: Popup.NoAutoClose
-    width: Math.min(340, parent ? parent.width - 24 : 340)
-    height: Math.min(420, contentItem.implicitHeight, parent ? parent.height - 24 : 420)
+    width: Math.max(0, Math.min(340, parent ? parent.width - 2 * margins : 340))
+    height: Math.min(maximumPreviewHeight, contentItem.implicitHeight, availablePreviewHeight)
+    x: Math.max(margins, Math.min(anchorX, parent ? parent.width - width - margins : anchorX))
+    y: Math.max(margins, Math.min(
+        opensBelow ? anchorY + pointerGap : anchorY - pointerGap - height,
+        parent ? parent.height - height - margins : anchorY))
     SystemPalette { id: palette }
     background: Rectangle {
         color: palette.window
@@ -28,20 +41,15 @@ Popup {
         border.color: palette.mid
         border.width: 1
     }
-    function positionPopup() {
-        if (!parent)
-            return
-        const below = anchorY + height + 12 <= parent.height
-        x = Math.max(12, Math.min(anchorX, parent.width - width - 12))
-        y = below ? anchorY + 12 : Math.max(12, anchorY - height - 12)
-    }
-    onAboutToShow: positionPopup()
-    onHeightChanged: {
-        if (visible)
-            positionPopup()
+    onAboutToShow: {
+        // Reserve room for loaded content before opening. Content and thumbnail
+        // changes may resize the card, but must not move it across the pointer.
+        opensBelow = spaceBelow >= maximumPreviewHeight
+            || (spaceAbove < maximumPreviewHeight && spaceBelow >= spaceAbove)
     }
     contentItem: Item {
         implicitHeight: Math.max(140, previewColumn.implicitHeight + 28)
+        clip: true
         HoverHandler {
             onHoveredChanged: {
                 preview.pointerInside = hovered
@@ -70,6 +78,7 @@ Popup {
             Image {
                 objectName: "articlePreviewThumbnail"
                 Layout.fillWidth: true
+                Layout.fillHeight: true
                 Layout.preferredHeight: source.toString().length ? 140 : 0
                 Layout.maximumHeight: 140
                 Layout.minimumHeight: 0
@@ -94,6 +103,7 @@ Popup {
             }
             ScrollView {
                 id: summaryScroll
+                objectName: "articlePreviewSummaryScroll"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.minimumHeight: 0

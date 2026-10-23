@@ -408,13 +408,16 @@ Item {
             const thumbnail = findChild(view, "articlePreviewThumbnail")
             tryCompare(thumbnail, "status", Image.Ready)
             verify(thumbnail.visible, "A valid thumbnail should appear above the summary")
+            popup.close()
+            tryCompare(popup, "visible", false)
             popup.anchorX = popup.parent.width - 1
             popup.anchorY = popup.parent.height - 1
-            popup.positionPopup()
+            popup.open()
+            tryCompare(popup, "opened", true)
             verify(popup.x >= 12 && popup.x + popup.width <= popup.parent.width - 12,
                    "Popup should stay within horizontal window margins")
             verify(popup.y >= 12 && popup.y + popup.height <= popup.parent.height - 12,
-                   "Popup should flip above a link near the bottom edge")
+                   "Popup should open above a link near the bottom edge")
             popup.width = 266
             popup.height = 246
             wait(50)
