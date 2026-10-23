@@ -1,17 +1,19 @@
 # Improvement opportunities
 
-Reviewed: 2026-10-18. Source baseline: `2841adb`.
+Reviewed: 2026-10-23. Source baseline: `a8326a3`.
 
-Entries below describe remaining work based on static inspection. Completed
-home behavior is documented in [the testing guide](full_testing.md).
+Entries below distinguish completed work from remaining opportunities based on
+targeted source, test, and commit-history inspection. This refresh did not rerun
+the test suite. Coverage and test commands are documented in
+[the testing guide](full_testing.md).
 
 ## Remaining priorities
 
 | Priority | Opportunity | Main benefit |
 | --- | --- | --- |
-| High | Add request deadlines and validate API responses | Recover from stalled or invalid responses |
-| Low | Define image-metadata failure semantics and add regression coverage | Make partial gallery results predictable |
-| Medium | Bound article and math-image caches | Control memory usage during long sessions |
+| High | Add transfer timeouts and overall request deadlines | Recover from stalled requests and bound queue/retry waits |
+| Low | Tighten image-metadata validation and add failure/stale-stage coverage | Distinguish invalid metadata from valid missing images |
+| Medium | Budget math-image memory and processing; assess article-cache byte limits | Control memory and processing costs beyond existing count/concurrency limits |
 | Medium | Automate regression checks in CI | Catch failures before merging |
 | Low | Consolidate developer documentation and test tooling | Make setup reproducible and preserve build output |
 | Low | Let QML create independent singleton services | Reduce application startup wiring |
@@ -24,41 +26,113 @@ retention, and snapshot loading share a transaction; state publishes only commit
 results. Failed additions and clears preserve visible entries and support retry.
 The History screen displays live and retained startup errors and an unavailable state.
 
-Validation: `HistoryStateTest`, `HistoryDatabaseTest`, and `QmlTests.tst_history`
+Existing coverage: `HistoryStateTest`, `HistoryDatabaseTest`, and `QmlTests.tst_history`
 cover retention, recreation, deterministic ordering, trigger-injected rollback,
-retry, initialization failure, and UI feedback. The full offscreen CTest suite
-passes all 27 entries. See [the testing guide](full_testing.md) for coverage limits.
+retry, initialization failure, and UI feedback. See
+[the testing guide](full_testing.md) for coverage limits.
 SQLite file compaction and automatic initialization retries remain outside scope.
 
-## 2. Bound requests and distinguish invalid responses from empty results
+## 2. Bound request duration — response validation substantially completed
 
-**Observed:** [The shared network manager](../src/wikipedia_network_access_manager.h) applies the app User-Agent and an HTTP/2 compatibility policy but no request timeout. Clients expose explicit cancellation and reject obsolete generations, but there is still no deadline for an active request. Article completion waits for all requested math images; completed math-image failures retain the original source as a fallback, but a stalled reply can still hold up the article. The news lookback is bounded by request count, not elapsed time.
+**Completed:** The active search, article HTML, gallery-page, and sections handlers
+now reject invalid responses through `errorOccurred` rather than emitting a
+successful empty result:
 
-[WikipediaSearchClient.cpp](../src/wikipedia_search_client.cpp) emits `searchCompleted()` on transport success even when JSON is malformed or the expected response structure is missing. `parseSearchResults()` converts those cases into an empty vector. [WikipediaSearchClientTest.cpp](../tests/WikipediaSearchClientTest.cpp) explicitly expects zero results for malformed JSON and `{}`.
+- Search (`fc8bace`) checks JSON parse status, API error objects, and the required
+  `query.search` array. Valid empty arrays remain successful. The permissive static
+  `parseSearchResults()` helper still returns an empty vector for invalid input;
+  its parser-only tests do not describe the network handler's behavior.
+- Article HTML (`42faa8b`) checks JSON parse status, API errors, and a string
+  `parse.text`; an empty string is valid. Page-ID loading also rejects missing or
+  invalid page identity before requesting HTML (`69ded9b`), and unresolved title
+  lookups report an error (`0a0bb29`).
+- Gallery-page and sections responses (`a8326a3`) check JSON parse status, API
+  errors, and their required page/sections structures. A gallery must contain the
+  requested valid page with a nonblank title. A valid page without images and an
+  empty sections array remain successful.
 
-**Impact:** A stalled request can keep controls busy indefinitely. Invalid JSON or a JSON API error can appear as a successful “no results” search. Similar unchecked parsing patterns occur in other clients. The featured, news, on-this-day, and Did-you-know home pipelines now validate their required structures; broader clients and request deadlines remain outstanding.
+The featured, news, on-this-day, and Did-you-know home pipelines also validate
+their required structures. These checks do not establish strict validation of
+every field in every client; image metadata has specific remaining gaps below.
 
-**Recommended change:** Add a shared transfer timeout and an overall deadline for multi-stage loads. Bound the wait for optional math images and retain fallback content when that budget expires. Validate JSON parse status, API error objects, and required fields before emitting success. Keep valid empty responses distinct from failures, and ensure every request ends with a defined success, failure, or cancellation outcome. Preserve the existing generation checks when adding deadlines or retries.
+**Existing coverage:** [QmlTests.tst_search](../tests/qml/tst_search.qml) covers
+malformed/structurally invalid search responses, API errors, valid empty results,
+and retry recovery. [WikipediaPageClientTest](../tests/WikipediaPageClientTest.cpp)
+covers invalid article HTML, valid empty text, missing page identity, unresolved
+titles, and invalid/valid-empty gallery and section responses.
+[ArticleStateTest](../tests/ArticleStateTest.cpp) verifies that invalid HTML is
+neither cached nor recorded in history and permits retry. QML gallery/section
+tests verify that HTTP-200 API errors stop loading and display feedback.
 
-**Validation:** Cover noncompleting replies, malformed JSON, HTTP-success API errors, missing fields, valid empty results, and retry recovery. Update the tests that currently encode malformed responses as successful emptiness.
+**Remaining issue:** [The shared network manager](../src/wikipedia_network_access_manager.h)
+still sets no transfer timeout. Its [queued GET replies](../src/wikipedia_queued_reply.h)
+limit active downloads to three and retry HTTP 429/503 at most twice, but have no
+overall deadline covering queue waits, Retry-After pauses, and transfers. Clients
+support cancellation and reject obsolete generations. Article completion still
+waits for all requested math images; completed failures retain the original image
+source, but a stalled reply can hold up the article. News lookback is bounded by
+request count rather than elapsed time.
 
-## 3. Define image-metadata failure behavior
+**Recommended change:** Add shared transfer timeouts and overall deadlines for
+queued and multi-stage loads. Bound optional math-image waits and retain fallback
+content when their budget expires. Preserve generation checks and define how
+timeouts terminate each load's busy state.
 
-**Remaining issue:** Metadata-request failure completes successfully with no resolved images and no error or partial-result indication. Unchecked JSON parsing can also silently produce an image-less result.
+**Validation to add:** Noncompleting replies, queue/retry deadline exhaustion,
+multi-stage timeout cleanup, optional math-image fallback, and retry recovery
+after timeout.
 
-**Recommended change:** Define whether metadata failure is a recoverable partial result or a user-visible error, and validate the response accordingly. Retain the asynchronous implementation and fake network seam.
+## 3. Tighten image-metadata validation and coverage
 
-**Validation:** Defer the metadata-stage reply specifically, then switch language or supersede the gallery target and verify no obsolete result. Add explicit failure and empty-image cases; current stale-gallery coverage defers the initial page reply rather than metadata completion.
+**Current behavior:** [fetchImageUrlsFromTitles()](../src/wikipedia_page_client.cpp)
+already emits an error for transport failures, malformed JSON, and API error keys,
+then returns without publishing success. Selected-image detail failures fall back
+to the thumbnail/caption through `ImageSelectionState`. Valid metadata preserves
+requested image order and skips missing files or entries without a usable URL;
+`WikipediaPageClientTest` covers these cases. Initial gallery-page validation and
+valid empty galleries are covered separately, as described above.
 
-## 4. Put budgets on caches and math-image work
+**Remaining issue:** Non-object JSON or missing/incorrectly typed `query.pages`
+can still pass metadata handling as a successful result with no resolved images.
+An API error without `info` can emit an empty error message. Gallery metadata
+failure and metadata-stage stale replies lack dedicated regression coverage.
 
-**Observed:** [ArticleState.h](../src/state/ArticleState.h) holds an unbounded `QMap<int, page>` cache. [WikipediaPageClient](../src/wikipedia_page_client.cpp) caches rasterized math images as base64 data URLs and starts a request for every distinct uncached formula in an article. Individual raster dimensions are capped at 4096, but there is no aggregate cache budget or application-level work queue.
+**Recommended change:** Validate the metadata envelope and provide nonempty error
+fallbacks while preserving legitimate missing-file results and selected-image
+fallback behavior. Retain the asynchronous implementation and fake network seam.
 
-**Opportunity:** Long sessions and formula-heavy articles can accumulate HTML and image data. The extent of the memory and responsiveness cost needs measurement; this review did not profile it.
+**Validation to add:** Defer the gallery metadata-stage reply specifically, then
+switch language or supersede the gallery target and verify no obsolete result.
+Cover metadata transport/API failures, invalid envelopes, valid responses with no
+usable images, and retry recovery. Existing stale-gallery coverage defers the
+initial page reply; selected-image detail staleness is already covered.
 
-**Recommended change:** Add bounded cache eviction, preferably by estimated bytes as well as entry count. Limit concurrent math-image processing and deduplicate in-flight work across article requests. Measure HTML processing and SVG conversion before deciding whether to move CPU work off the GUI thread.
+## 4. Budget math-image memory and processing — article LRU completed
 
-**Validation:** Browse a large fixture set repeatedly and record memory and load latency. Assert eviction, refetch behavior, and the configured concurrency limit.
+**Completed:** [ArticleState](../src/state/ArticleState.h) caps its article cache
+at 20 entries with least-recently-used eviction (`b43af97`). ID and resolved-title
+cache hits refresh recency; language transitions clear both cache and recency.
+[ArticleStateTest](../tests/ArticleStateTest.cpp) covers eviction/refetch, both hit
+paths, and updates to existing entries without consuming additional capacity.
+The shared download queue already limits active GET transfers to three (`e6e8aa5`).
+
+**Remaining issue:** [WikipediaPageClient](../src/wikipedia_page_client.cpp)
+caches rasterized math images as base64 data URLs without a byte or entry budget.
+It creates queued requests for every distinct uncached formula in an article;
+there is no bound on queued formula work or cross-request in-flight deduplication.
+Raster dimensions are capped at 4096 per axis, but synchronous HTML processing and
+SVG conversion still need profiling. The 20-entry article limit does not bound
+total HTML bytes, including embedded math-image data.
+
+**Recommended change:** Measure memory and load latency before selecting math-cache
+budgets and deciding whether article-cache byte accounting is needed. Add bounded
+math-cache eviction and queued-work budgets, and deduplicate in-flight formula
+work across requests. Use profiling to decide whether CPU work should move off
+the GUI thread.
+
+**Validation to add:** Repeated formula-heavy fixture loads with memory/latency
+measurements, math-cache eviction/refetch checks, queued-work and deduplication
+assertions, and coverage of the existing shared transfer concurrency limit.
 
 ## 5. Add reproducible CI around the existing tests
 
@@ -87,6 +161,6 @@ SQLite file compaction and automatic initialization retries remain outside scope
 ## Suggested implementation sequence
 
 1. Completed: persistent history retention, write consistency, and regression coverage.
-2. Add deadlines and response validation, define metadata partial-result semantics, and extend deferred-response coverage across the asynchronous chains.
-3. Establish CI, consolidate setup/test documentation and runners, and profile caches before selecting budgets.
+2. Add request deadlines and tighten image-metadata validation, extending deferred-response coverage at the metadata stage. Search/article HTML/gallery-page/section response validation is already implemented.
+3. Establish CI, consolidate setup/test documentation and runners, and profile math-image memory/processing before selecting further budgets. Article caching already has a 20-entry LRU limit and GET transfers already share a concurrency limit.
 4. Migrate the independent QML singleton services when changing startup wiring.
