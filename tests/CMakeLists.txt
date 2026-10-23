@@ -25,6 +25,8 @@ foreach(state_test HistoryStateTest ArticleStateTest SearchStateTest SettingsSta
     qt_add_executable(${state_test} ${state_test}.cpp)
     target_link_libraries(${state_test} PRIVATE wikipedia_qt_core Qt::Test wikipedia_test_network)
     add_test(NAME ${state_test} COMMAND ${state_test})
+    set_tests_properties(${state_test} PROPERTIES
+        ENVIRONMENT "XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-config/${state_test}")
 endforeach()
 
 qt_add_executable(ConstantsTest ConstantsTest.cpp ${CMAKE_SOURCE_DIR}/src/constants.cpp)
@@ -47,7 +49,8 @@ target_include_directories(ContentDisplayModelTest PRIVATE
 )
 target_link_libraries(ContentDisplayModelTest PRIVATE ContentDisplayModule wikipedia_qt_core Qt::Test)
 add_test(NAME ContentDisplayModelTest COMMAND ContentDisplayModelTest)
-set_tests_properties(ContentDisplayModelTest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+set_tests_properties(ContentDisplayModelTest PROPERTIES ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-config/ContentDisplayModelTest")
 
 qt_add_executable(ArticlePreviewModelTest ArticlePreviewModelTest.cpp)
 target_include_directories(ArticlePreviewModelTest PRIVATE
@@ -57,7 +60,8 @@ target_link_libraries(ArticlePreviewModelTest PRIVATE
     ContentDisplayModule wikipedia_qt_core Qt::Test wikipedia_test_network
 )
 add_test(NAME ArticlePreviewModelTest COMMAND ArticlePreviewModelTest)
-set_tests_properties(ArticlePreviewModelTest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+set_tests_properties(ArticlePreviewModelTest PROPERTIES ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-config/ArticlePreviewModelTest")
 
 # ---------------------------------------------------------------------------
 # test_search_display (network integration test, guarded by RUN_NETWORK_TESTS)
@@ -74,6 +78,8 @@ target_include_directories(test_search_display PRIVATE
 )
 
 add_test(NAME test_search_display COMMAND test_search_display)
+set_tests_properties(test_search_display PROPERTIES ENVIRONMENT
+    "XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-config/test_search_display")
 
 # ---------------------------------------------------------------------------
 # test_sidebar_layout (QML layout test, headless)

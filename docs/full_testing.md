@@ -44,7 +44,11 @@ for the full run supports headless execution. CTest already sets it individually
 for QML tests, `ContentDisplayModelTest`, `ArticlePreviewModelTest`, and `test_sidebar_layout`.
 
 Database-using state tests, `HistoryDatabaseTest`, and the QML harness redirect
-`XDG_DATA_HOME` to their own temporary directories. To also supply a writable
+`XDG_DATA_HOME` to their own temporary directories. The QML harness also
+redirects `XDG_CONFIG_HOME`; state and model C++ tests each receive a dedicated
+build-local config home, and article tests restore link previews to enabled
+before and after each case. `SettingsStateTest` uses a temporary config home to
+verify preference persistence without touching user settings. To also supply a writable
 application-data location for the overall run:
 
 ```bash
@@ -85,7 +89,7 @@ Each named entry below has a matching `.cpp` file under `tests/`.
 | --- | --- |
 | `ArticleStateTest` | Initial state and notifications, HTML loading and caching, history on repeat visits, title resolution/cache hits, clearing old content before title loads, errors/retry, settings at construction, language-driven content/cache clearing, rejection of obsolete article/title replies, cached selections superseding pending loads, and singleton teardown/recreation. |
 | `SearchStateTest` | Blank queries, trimming, pending/completed/reset state, duplicate submission while busy, errors/retry, settings at construction, restarting stored search text once after language changes, blank-query behavior, stale reply rejection, rapid language changes, and teardown/recreation. |
-| `SettingsStateTest` | Default language, change notifications, ignoring an unchanged language, and singleton teardown/recreation. |
+| `SettingsStateTest` | Default language and link-preview preference, language and preference change notifications, ignoring unchanged values, link-preview preference persistence across singleton recreation, and teardown/recreation. |
 | `ImageSelectionStateTest` | URL/caption updated together before notifications, unchanged-selection notification suppression, clearing selection and gallery context on language changes, gallery navigation stopping at either end, safe empty/single-image galleries, standalone selection clearing gallery context, deferred image details with duplicate-selection suppression and mismatched-title rejection, thumbnail/caption fallback on failed or missing details, and teardown/recreation. |
 | `ConstantsTest` | QML singleton reuse within one engine, independent instances across simultaneous engines, engine teardown and recreation, `clearSingletons()` recreation, and all six view-name properties. |
 | `WikipediaRequestIsolationTest` | Obsolete search successes/errors and featured replies are ignored; old page and random-title replies cannot start follow-up HTML or summary requests after a language switch. |
@@ -180,7 +184,7 @@ Each file under `tests/qml/` is registered as `QmlTests.<filename without .qml>`
 | --- | --- |
 | `tst_smoke.qml` | Backend value-type registration, usable state singletons and initial values, and Sidebar creation without requests or QML warnings. |
 | `tst_search.qml` | Blank input, mouse and Enter submission, pending controls, populated/empty responses, and error recovery/retry. |
-| `tst_article.qml` | Search-result selection, deferred loading and rendered HTML, inline image captions/fullscreen selection and Back, load errors without failed history visits, clearing visible and covered article views on language changes without changing stack depth, and article-link navigation preserving the previous view's content on Back. |
+| `tst_article.qml` | Search-result selection, deferred loading and rendered HTML, inline image captions/fullscreen selection and Back, load errors without failed history visits, persistent link-preview toggle behavior while disabled, pending, and visible, narrow action-row bounds, clearing visible and covered article views on language changes without changing stack depth, and article-link navigation preserving the previous view's content on Back. |
 | `tst_article_preview.qml` | Summary loading, formatted and sanitized preview content, thumbnail metadata, and suppression of non-article namespaces. |
 | `tst_inline_images.qml` | Thumbnail-to-original conversion, SVG/lossy thumbnail handling, unchanged non-thumbnail URLs, full-resolution image links, and captions carried into image links. |
 | `tst_images.qml` | Fixture article/gallery loading, SVG preview selection with original fallback, unchanged raster URLs, URL/caption in `ImageSelectionState`, and opening/closing the separate fullscreen window (Close, Escape, and mouse Back) without changing the main window or navigation stack. Saved viewer choice across gallery recreation, embedded viewing and Back, arrow-key navigation in both viewers with endpoint bounds and caption updates, covered/standalone viewer shortcut isolation, stale image-detail rejection, and gallery Back through its owning StackView are also covered. See the regression notes below. |

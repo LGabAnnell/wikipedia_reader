@@ -137,6 +137,7 @@ Item {
         }
 
         function resetState() {
+            SettingsState.setLinkPreviewsEnabled(true)
             while (stackView.depth > 1)
                 stackView.pop()
             wait(250)
@@ -160,6 +161,7 @@ Item {
         function cleanup() {
             while (networkFixtures.pendingReplyCount > 0)
                 networkFixtures.completeNextReply()
+            root.width = 800
             resetState()
             compare(testSupport.qmlWarningCount, 0, testSupport.qmlWarnings.join("\n"))
         }
@@ -312,6 +314,20 @@ Item {
             tryVerify(function() { return body.text.indexOf("Preview target") >= 0 })
             const popup = findChild(view, "articlePreviewPopup")
             verify(popup !== null)
+            const previewToggle = child("linkPreviewsToggle")
+            root.width = 480
+            wait(50)
+            const toggleBounds = previewToggle.mapToItem(root, 0, 0)
+            const galleryBounds = child("galleryButton").mapToItem(root, 0, 0)
+            const copyBounds = child("copyHtmlButton").mapToItem(root, 0, 0)
+            verify(toggleBounds.x >= 0 && toggleBounds.x + previewToggle.width <= root.width,
+                   "Link preview toggle should fit within a narrow article action row")
+            verify(galleryBounds.x >= 0 && galleryBounds.x + child("galleryButton").width <= root.width,
+                   "Gallery button should fit within a narrow article action row")
+            verify(copyBounds.x >= 0 && copyBounds.x + child("copyHtmlButton").width <= root.width,
+                   "Copy HTML button should fit within a narrow article action row")
+            root.width = 800
+            wait(50)
 
             let linkX = -1
             let linkY = -1
@@ -328,19 +344,63 @@ Item {
             const blankX = body.width - 4
             const blankY = linkY + 50
             const initialRequests = networkFixtures.requestCount
+            mouseClick(previewToggle)
+            verify(!previewToggle.checked)
+            mouseMove(body, linkX, linkY)
+            wait(450)
+            compare(networkFixtures.requestCount, initialRequests,
+                    "Disabled link previews must not request summaries")
+            mouseClick(previewToggle)
+            verify(previewToggle.checked)
+            mouseMove(body, blankX, blankY)
+            wait(100)
             mouseMove(body, linkX, linkY)
             wait(180)
+            SettingsState.setLinkPreviewsEnabled(false)
+            verify(!previewToggle.checked)
+            wait(400)
             compare(networkFixtures.requestCount, initialRequests,
+                    "Disabling during the hover delay must cancel the request")
+            SettingsState.setLinkPreviewsEnabled(true)
+            mouseMove(body, blankX, blankY)
+            wait(100)
+            networkFixtures.deferNextReply(true)
+            mouseMove(body, linkX, linkY)
+            tryCompare(networkFixtures, "requestCount", initialRequests + 1, 1000)
+            verify(popup.visible, "Loading preview should open after the hover delay")
+            SettingsState.setLinkPreviewsEnabled(false)
+            verify(!previewToggle.checked)
+            tryVerify(function() { return !popup.visible })
+            networkFixtures.completeNextReply()
+            wait(100)
+            compare(networkFixtures.requestCount, initialRequests + 1,
+                    "Disabling a loading preview must reject its late reply")
+            verify(!popup.visible)
+            const previewRequestBaseline = networkFixtures.requestCount
+            SettingsState.setLinkPreviewsEnabled(true)
+            mouseMove(body, blankX, blankY)
+            wait(100)
+            mouseMove(body, linkX, linkY)
+            wait(180)
+            compare(networkFixtures.requestCount, previewRequestBaseline,
                     "Preview requests must wait for the hover delay")
             const scrollView = findChild(view, "articleScrollView")
             scrollView.contentItem.contentY = 20
             wait(400)
-            compare(networkFixtures.requestCount, initialRequests,
+            compare(networkFixtures.requestCount, previewRequestBaseline,
                     "Scrolling must cancel a pending preview request")
             mouseMove(body, blankX, blankY)
             wait(100)
             mouseMove(body, linkX, linkY)
-            tryCompare(networkFixtures, "requestCount", initialRequests + 2, 1000)
+            tryCompare(networkFixtures, "requestCount", previewRequestBaseline + 2, 1000)
+            tryVerify(function() { return popup.visible })
+            SettingsState.setLinkPreviewsEnabled(false)
+            verify(!previewToggle.checked)
+            tryVerify(function() { return !popup.visible })
+            SettingsState.setLinkPreviewsEnabled(true)
+            mouseMove(body, blankX, blankY)
+            wait(100)
+            mouseMove(body, linkX, linkY)
             tryVerify(function() { return popup.visible })
             const summary = findChild(view, "articlePreviewSummary")
             verify(summary.implicitHeight > summary.font.pixelSize,
@@ -377,7 +437,7 @@ Item {
             verify(testSupport.sendKeyClick(root.Window.window, Qt.Key_Escape))
             tryVerify(function() { return !popup.visible })
             wait(400)
-            compare(networkFixtures.requestCount, initialRequests + 2,
+            compare(networkFixtures.requestCount, previewRequestBaseline + 2,
                     "Escape must close the preview without reopening under a stationary pointer")
             mouseMove(body, blankX, blankY)
             wait(100)
@@ -397,7 +457,7 @@ Item {
             addArticleFixtures(806, target, "<p>Preview target article body.</p>")
             mouseMove(body, linkX, linkY)
             tryVerify(function() { return popup.visible })
-            compare(networkFixtures.requestCount, initialRequests + 2)
+            compare(networkFixtures.requestCount, previewRequestBaseline + 2)
             compare(stackView.depth, depthBeforePreview)
             mouseClick(openButton)
             tryCompare(stackView, "depth", depthBeforePreview + 1)
@@ -518,7 +578,9 @@ Item {
                 {tag: "plain", firstId: 811, title: "Second article fixture", link: "/wiki/Second_article_fixture"},
                 {tag: "unicode", firstId: 813, title: "São Paulo", link: "/wiki/S%C3%A3o_Paulo"},
                 {tag: "percent", firstId: 815, title: "100% coverage", link: "/wiki/100%25_coverage"},
-                {tag: "encoded_underscore", firstId: 817, title: "Encoded space", link: "/wiki/Encoded%5Fspace"}
+                {tag: "encoded_underscore", firstId: 817, title: "Encoded space", link: "/wiki/Encoded%5Fspace"},
+                {tag: "previews_disabled", firstId: 819, title: "Disabled preview target",
+                 link: "/wiki/Disabled_preview_target", previewsDisabled: true}
             ]
         }
 
@@ -528,6 +590,8 @@ Item {
             const secondId = firstId + 1
             const secondTitle = data.title
             const secondLink = data.link
+            if (data.previewsDisabled)
+                SettingsState.setLinkPreviewsEnabled(false)
 
             addArticleFixtures(firstId, firstTitle,
                                "<p>First article body.</p>"
@@ -546,6 +610,9 @@ Item {
             tryCompare(stackView, "depth", 2)
             tryVerify(function() { return !stackView.busy })
             const firstView = stackView.currentItem
+            if (data.previewsDisabled)
+                verify(!findChild(firstView, "linkPreviewsToggle").checked,
+                       "Checkbox must reflect a programmatic settings change")
             const firstBody = findChild(firstView, "articleBody")
             verify(firstBody !== null, "First article view must have a body")
             tryVerify(function() { return firstBody.text.indexOf("First article body") >= 0 })

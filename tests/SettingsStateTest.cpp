@@ -1,11 +1,19 @@
 #include "SettingsState.h"
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QtTest/QTest>
 
 class SettingsStateTest : public QObject {
     Q_OBJECT
 
+    QTemporaryDir m_configDirectory;
+
   private slots:
+    void initTestCase() {
+        QVERIFY(m_configDirectory.isValid());
+        qputenv("XDG_CONFIG_HOME", m_configDirectory.path().toUtf8());
+    }
+
     void languageNotifications() {
         SettingsState settings;
         QCOMPARE(SettingsState::instance().data(), &settings);
@@ -28,6 +36,23 @@ class SettingsStateTest : public QObject {
         SettingsState settings;
         QCOMPARE(SettingsState::instance().data(), &settings);
         QCOMPARE(settings.language(), QString("en"));
+    }
+
+    void linkPreviewPreferencePersists() {
+        QVERIFY(SettingsState::instance().isNull());
+        {
+            SettingsState settings;
+            QVERIFY(settings.linkPreviewsEnabled());
+            QSignalSpy spy(&settings, &SettingsState::linkPreviewsEnabledChanged);
+            settings.setLinkPreviewsEnabled(false);
+            QVERIFY(!settings.linkPreviewsEnabled());
+            QCOMPARE(spy.count(), 1);
+            settings.setLinkPreviewsEnabled(false);
+            QCOMPARE(spy.count(), 1);
+        }
+        SettingsState restored;
+        QVERIFY(!restored.linkPreviewsEnabled());
+        restored.setLinkPreviewsEnabled(true);
     }
 };
 

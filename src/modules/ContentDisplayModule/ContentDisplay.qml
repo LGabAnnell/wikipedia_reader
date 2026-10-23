@@ -96,6 +96,10 @@ Item {
     }
 
     function updatePreviewLink(link) {
+        if (!SettingsState.linkPreviewsEnabled) {
+            dismissPreview(true);
+            return;
+        }
         if (!link) {
             articleLinkHovered = false;
             if (previewPopup.visible) {
@@ -381,6 +385,13 @@ Item {
                 Layout.rightMargin: 10
                 spacing: 10
 
+                CheckBox {
+                    id: linkPreviewsToggle
+                    objectName: "linkPreviewsToggle"
+                    text: qsTr("Show link previews")
+                    checked: SettingsState.linkPreviewsEnabled
+                    onToggled: SettingsState.setLinkPreviewsEnabled(checked)
+                }
                 Item { Layout.fillWidth: true }
                 Button {
                     id: galleryButton
@@ -395,6 +406,7 @@ Item {
                 }
                 Button {
                     id: copyHtmlButton
+                    objectName: "copyHtmlButton"
 
                     text: qsTr("Copy HTML")
                     visible: mainContent.articleTitle.length > 0 && mainContent.articleText.length > 0
@@ -628,6 +640,10 @@ Item {
         }
         Connections {
             target: SettingsState
+            function onLinkPreviewsEnabledChanged() {
+                if (!SettingsState.linkPreviewsEnabled)
+                    mainContent.dismissPreview(true);
+            }
             function onLanguageTransitionStarted() {
                 mainContent.dismissPreview(true);
             }
@@ -637,7 +653,8 @@ Item {
             interval: mainContent.previewDelayMs
             repeat: false
             onTriggered: {
-                if (!mainContent.previewSuppressed && mainContent.previewLink) {
+                if (SettingsState.linkPreviewsEnabled
+                        && !mainContent.previewSuppressed && mainContent.previewLink) {
                     previewModel.requestPreview(mainContent.previewLink);
                     previewPopup.open();
                 }
