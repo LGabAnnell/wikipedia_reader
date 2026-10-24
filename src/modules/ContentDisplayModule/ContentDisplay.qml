@@ -20,6 +20,8 @@ Item {
     property bool isLoading: ArticleState.isLoading
     property bool followsArticleState: true
     property string previewLink: ""
+    property string initialFragmentAnchor: ""
+    property string fragmentAnchorError: ""
     property bool previewSuppressed: false
     property bool articleLinkHovered: false
     property real lastPointerSceneX: -1
@@ -41,6 +43,7 @@ Item {
         if (!managedByStack)
             return;
         if (stackStatus === StackView.Inactive) {
+            fragmentAnchorTimer.stop();
             dismissPreview(true);
             freezeIfCovered();
         } else if (stackStatus === StackView.Active) {
@@ -48,10 +51,17 @@ Item {
             // article changes; rebuild it from this view's own content when
             // it becomes the visible view again.
             updateSectionTracking();
+            applyInitialFragmentAnchor();
         }
     }
 
-    onIsLoadingChanged: freezeIfCovered()
+    onIsLoadingChanged: {
+        freezeIfCovered();
+        if (!isLoading && errorMessage.length > 0)
+            initialFragmentAnchor = "";
+        else
+            applyInitialFragmentAnchor();
+    }
     onWidthChanged: dismissPreview(true)
     onHeightChanged: dismissPreview(true)
     function freezeIfCovered() {
@@ -65,24 +75,33 @@ Item {
     // values removes the bindings to ArticleState, so the view keeps showing
     // its own article even after the global state loads another page.
     function freezeArticleContent() {
-        articleTitle = articleTitle;
-        articleText = articleText;
-        articlePageId = articlePageId;
-        errorMessage = errorMessage;
-        isLoading = isLoading;
+        if (followsArticleState) {
+            articleTitle = ArticleState.currentPageTitle;
+            articleText = ArticleState.currentPageExtract;
+            articlePageId = ArticleState.currentPageId;
+            errorMessage = ArticleState.errorMessage;
+            isLoading = ArticleState.isLoading;
+        }
         followsArticleState = false;
     }
 
-    function articleTitleFromLink(link) {
-        if (!link.startsWith("/wiki/"))
-            return "";
-        let path = link.substring(6).split("#")[0];
-        try {
-            path = decodeURIComponent(path);
-        } catch (error) {
-            return "";
-        }
-        return path.replace(/_/g, " ").trim();
+    function scrollToArticleAnchor(anchor) {
+        if (!anchor)
+            return false;
+        const cursorPos = contentDisplay.findSectionPosition(articleSection.text, anchor);
+        if (cursorPos < 0)
+            return false;
+        articleSection.cursorPosition = cursorPos;
+        articleSection.select(cursorPos, cursorPos);
+        scrollView.scrollToCursor(scrollView.height / 2);
+        return true;
+    }
+
+    function applyInitialFragmentAnchor() {
+        if (!initialFragmentAnchor || isLoading || !articleText || !managedByStack
+                || stackStatus !== StackView.Active)
+            return;
+        fragmentAnchorTimer.restart();
     }
 
     function dismissPreview(suppressUntilMove) {
@@ -113,7 +132,8 @@ Item {
         }
         if (previewSuppressed)
             return;
-        const title = articleTitleFromLink(link);
+        const parsedLink = contentDisplay.parseArticleLink(link);
+        const title = parsedLink.title || "";
         if (!title) {
             updatePreviewLink("");
             return;
@@ -217,6 +237,26 @@ Item {
         onTriggered: contentDisplay.performSearch(searchField.text, articleSection.getText(0, articleSection.text.length))
     }
 
+    // Let the rich-text document finish laying out before reading its cursor
+    // rectangle. A later article-text change restarts this one-shot attempt.
+    Timer {
+        id: fragmentAnchorTimer
+        interval: 16
+        repeat: false
+        onTriggered: {
+            const anchor = mainContent.initialFragmentAnchor;
+            if (!anchor || mainContent.isLoading || !mainContent.articleText
+                    || (mainContent.managedByStack && mainContent.stackStatus !== StackView.Active))
+                return;
+            if (mainContent.scrollToArticleAnchor(anchor)) {
+                mainContent.initialFragmentAnchor = "";
+                mainContent.fragmentAnchorError = "";
+            } else {
+                mainContent.fragmentAnchorError = qsTr("The requested section could not be found in this article.");
+            }
+        }
+    }
+
     // Debounces the scroll-tracking lookup so rapid contentY changes don't
     // flood positionAt() calls during momentum scrolling.
     Timer {
@@ -261,6 +301,8 @@ Item {
     Connections {
         target: SettingsState
         function onLanguageTransitionStarted() {
+            mainContent.initialFragmentAnchor = "";
+            mainContent.fragmentAnchorError = "";
             sectionTrackTimer.stop();
             sectionResizeSettleTimer.stop();
             searchField.clear();
@@ -288,6 +330,14 @@ Item {
         scrollView.ScrollBar.vertical.position = 0;
         contentDisplay.resetSectionTracking();
         updateSectionTracking();
+        applyInitialFragmentAnchor();
+    }
+
+    onErrorMessageChanged: {
+        if (errorMessage.length > 0) {
+            initialFragmentAnchor = "";
+            fragmentAnchorError = "";
+        }
     }
 
     BusyIndicator {
@@ -496,6 +546,14 @@ Item {
                         width: parent.width
                         wrapMode: TextEdit.Wrap
                     }
+                    Text {
+                        objectName: "articleFragmentErrorMessage"
+                        color: articleDisplay.systemPalette.negativeText || articleDisplay.systemPalette.text
+                        text: mainContent.fragmentAnchorError
+                        visible: text.length > 0
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                    }
                     TextEdit {
                         id: articleSection
                         objectName: "articleBody"
@@ -520,6 +578,16 @@ Item {
                         }
 
                         onLinkActivated: function (link) {
+                            if (link.startsWith("#")) {
+                                const localLink = contentDisplay.parseArticleLink(link);
+                                if (!localLink || localLink.fragment === undefined) {
+                                    console.warn("Unable to decode article fragment", link);
+                                    return;
+                                }
+                                mainContent.scrollToArticleAnchor(localLink.fragment);
+                                return;
+                            }
+
                             const imageLinkPrefix = "wikipedia-image:";
                             if (link.startsWith(imageLinkPrefix)) {
                                 let image = null;
@@ -538,17 +606,30 @@ Item {
                             }
 
                             if (link.startsWith("/wiki/")) {
-                                const title = mainContent.articleTitleFromLink(link);
+                                const parsedLink = contentDisplay.parseArticleLink(link);
+                                const title = parsedLink.title || "";
                                 if (!title) {
                                     console.warn("Unable to decode article link", link);
                                     return;
                                 }
                                 mainContent.dismissPreview(true);
+                                const normalizedTitle = title.replace(/_/g, " ").trim();
+                                const currentTitle = mainContent.articleTitle.replace(/_/g, " ").trim();
+                                const normalizedTitleCharacters = Array.from(normalizedTitle);
+                                const currentTitleCharacters = Array.from(currentTitle);
+                                const samePage = normalizedTitleCharacters.length > 0
+                                        && normalizedTitleCharacters.length === currentTitleCharacters.length
+                                        && normalizedTitleCharacters[0].toLowerCase() === currentTitleCharacters[0].toLowerCase()
+                                        && normalizedTitle.substring(normalizedTitleCharacters[0].length) === currentTitle.substring(currentTitleCharacters[0].length);
+                                if (samePage) {
+                                    mainContent.scrollToArticleAnchor(parsedLink.fragment);
+                                    return;
+                                }
                                 // Keep this view on its article, then push a new
                                 // article view so the back button returns here.
                                 freezeArticleContent();
                                 ArticleState.loadArticleByTitle(title);
-                                NavigationState.navigateToContent();
+                                NavigationState.navigateToContent(parsedLink.fragment || "");
                             } else {
                                 contentDisplay.openExternalLink(link, SettingsState.language);
                             }

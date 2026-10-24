@@ -31,6 +31,11 @@ class ImageSelectionState : public QObject {
     /** @brief Select an image from an ordered article gallery. */
     Q_INVOKABLE void selectGalleryImage(const QStringList &urls, const QStringList &descriptions,
                                         const QStringList &titles, int index);
+    Q_INVOKABLE void selectGalleryImageForPage(const QStringList &urls, const QStringList &descriptions,
+                                               const QStringList &titles, int index, int pageId);
+    /** @brief Refresh an active gallery's navigation data without changing its selected image. */
+    void refreshGalleryImages(int pageId, const QStringList &urls, const QStringList &descriptions,
+                              const QStringList &titles);
     /** @brief Select the next image when a gallery image is active. */
     Q_INVOKABLE void selectNextImage();
     /** @brief Select the previous image when a gallery image is active. */
@@ -49,6 +54,7 @@ class ImageSelectionState : public QObject {
     QStringList m_galleryTitles;
     QString m_pendingDetailsTitle;
     int m_galleryIndex = -1;
+    int m_galleryPageId = 0;
     WikipediaPageClient *m_pageClient = nullptr;
     void updateSelection(const QString &url, const QString &description);
     void fetchDetailsForCurrentImage();

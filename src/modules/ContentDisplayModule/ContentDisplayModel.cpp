@@ -7,6 +7,7 @@
 #include <QTextCharFormat>
 #include <QDesktopServices>
 #include <QUrl>
+#include <QStringDecoder>
 
 ContentDisplayModel::ContentDisplayModel(QObject *parent) : QObject(parent), m_article(ArticleState::instance()) {
     if (m_article) {
@@ -23,6 +24,62 @@ void ContentDisplayModel::openExternalLink(const QString &link, const QString &l
 
     const QUrl baseUrl(QStringLiteral("https://%1.wikipedia.org/").arg(language));
     QDesktopServices::openUrl(baseUrl.resolved(QUrl(link)));
+}
+
+QVariantMap ContentDisplayModel::parseArticleLink(const QString &link) const {
+    const bool fragmentOnly = link.startsWith(QLatin1Char('#'));
+    if (!fragmentOnly && !link.startsWith(QStringLiteral("/wiki/")))
+        return {};
+
+    QString target = fragmentOnly ? QString() : link.mid(6);
+    const qsizetype fragmentIndex = fragmentOnly ? -1 : target.indexOf(QLatin1Char('#'));
+    const QString encodedFragment = fragmentOnly ? link.mid(1)
+        : fragmentIndex < 0 ? QString() : target.mid(fragmentIndex + 1);
+    if (fragmentIndex >= 0)
+        target.truncate(fragmentIndex);
+    const qsizetype queryIndex = target.indexOf(QLatin1Char('?'));
+    if (queryIndex >= 0)
+        target.truncate(queryIndex);
+
+    const auto decodeComponent = [](const QString &encoded, QString *decoded) {
+        QByteArray bytes;
+        for (qsizetype i = 0; i < encoded.size(); ++i) {
+            if (encoded.at(i) != QLatin1Char('%')) {
+                const bool hasPair = encoded.at(i).isHighSurrogate() && i + 1 < encoded.size()
+                    && encoded.at(i + 1).isLowSurrogate();
+                bytes += encoded.mid(i, hasPair ? 2 : 1).toUtf8();
+                if (hasPair)
+                    ++i;
+                continue;
+            }
+            const auto isHex = [](QChar character) {
+                return (character >= QLatin1Char('0') && character <= QLatin1Char('9'))
+                    || (character >= QLatin1Char('a') && character <= QLatin1Char('f'))
+                    || (character >= QLatin1Char('A') && character <= QLatin1Char('F'));
+            };
+            if (i + 2 >= encoded.size() || !isHex(encoded.at(i + 1)) || !isHex(encoded.at(i + 2)))
+                return false;
+            bool ok = false;
+            const auto value = encoded.mid(i + 1, 2).toUShort(&ok, 16);
+            if (!ok)
+                return false;
+            bytes.append(char(value));
+            i += 2;
+        }
+        QStringDecoder decoder(QStringDecoder::Utf8);
+        *decoded = decoder(bytes);
+        return !decoder.hasError();
+    };
+
+    QString title;
+    QString fragment;
+    if (!decodeComponent(target, &title) || !decodeComponent(encodedFragment, &fragment))
+        return {};
+    title.replace(QLatin1Char('_'), QLatin1Char(' '));
+    title = title.trimmed();
+    if (title.isEmpty() && !fragmentOnly)
+        return {};
+    return {{QStringLiteral("title"), title}, {QStringLiteral("fragment"), fragment}};
 }
 
 void ContentDisplayModel::setCurrentSectionIndex(int index) {

@@ -1,20 +1,15 @@
 # Improvement opportunities
 
-Reviewed: 2026-10-23. Source baseline: `a8326a3`.
-
-Entries below distinguish completed work from remaining opportunities based on
-targeted source, test, and commit-history inspection. This refresh did not rerun
-the test suite. Coverage and test commands are documented in
-[the testing guide](full_testing.md).
+Updated: 2026-10-24, after implementation of GitHub issue #17. The formula
+workload tests, full CTest suite, and relocated-install smoke passed. Of 32 CTest
+entries, 31 passed and the opt-in `WikipediaFeedLiveTest` was skipped. The
+GitHub Actions workflow has not been run remotely.
+Coverage and test commands are documented in [the testing guide](full_testing.md).
 
 ## Remaining priorities
 
 | Priority | Opportunity | Main benefit |
 | --- | --- | --- |
-| High | Add transfer timeouts and overall request deadlines | Recover from stalled requests and bound queue/retry waits |
-| Low | Tighten image-metadata validation and add failure/stale-stage coverage | Distinguish invalid metadata from valid missing images |
-| Medium | Budget math-image memory and processing; assess article-cache byte limits | Control memory and processing costs beyond existing count/concurrency limits |
-| Medium | Automate regression checks in CI | Catch failures before merging |
 | Low | Consolidate developer documentation and test tooling | Make setup reproducible and preserve build output |
 | Low | Let QML create independent singleton services | Reduce application startup wiring |
 
@@ -32,7 +27,7 @@ retry, initialization failure, and UI feedback. See
 [the testing guide](full_testing.md) for coverage limits.
 SQLite file compaction and automatic initialization retries remain outside scope.
 
-## 2. Bound request duration — response validation substantially completed
+## 2. Bound request duration and validate responses — implemented
 
 **Completed:** The active search, article HTML, gallery-page, and sections handlers
 now reject invalid responses through `errorOccurred` rather than emitting a
@@ -53,7 +48,7 @@ successful empty result:
 
 The featured, news, on-this-day, and Did-you-know home pipelines also validate
 their required structures. These checks do not establish strict validation of
-every field in every client; image metadata has specific remaining gaps below.
+every field in every client; image metadata handling is described below.
 
 **Existing coverage:** [QmlTests.tst_search](../tests/qml/tst_search.qml) covers
 malformed/structurally invalid search responses, API errors, valid empty results,
@@ -64,25 +59,17 @@ titles, and invalid/valid-empty gallery and section responses.
 neither cached nor recorded in history and permits retry. QML gallery/section
 tests verify that HTTP-200 API errors stop loading and display feedback.
 
-**Remaining issue:** [The shared network manager](../src/wikipedia_network_access_manager.h)
-still sets no transfer timeout. Its [queued GET replies](../src/wikipedia_queued_reply.h)
-limit active downloads to three and retry HTTP 429/503 at most twice, but have no
-overall deadline covering queue waits, Retry-After pauses, and transfers. Clients
-support cancellation and reject obsolete generations. Article completion still
-waits for all requested math images; completed failures retain the original image
-source, but a stalled reply can hold up the article. News lookback is bounded by
-request count rather than elapsed time.
+**Completed:** Production GETs use a 15-second inactivity timeout and a 45-second
+monotonic operation deadline, including queue, retry, and follow-up stages. The
+summary preview keeps its 10-second budget. HTTP cooldowns are scoped to the
+scheme/host/port origin. Optional formula enrichment stops after three seconds
+and publishes article fallback content. A deterministic local HTTP server covers
+timeouts, queue deadlines, cooldowns, retries, concurrency, abort cleanup, and
+slot recovery. Article metadata-to-HTML requests are asserted to share one
+deadline. These changes do not establish deadline assertions for every client
+follow-up chain.
 
-**Recommended change:** Add shared transfer timeouts and overall deadlines for
-queued and multi-stage loads. Bound optional math-image waits and retain fallback
-content when their budget expires. Preserve generation checks and define how
-timeouts terminate each load's busy state.
-
-**Validation to add:** Noncompleting replies, queue/retry deadline exhaustion,
-multi-stage timeout cleanup, optional math-image fallback, and retry recovery
-after timeout.
-
-## 3. Tighten image-metadata validation and coverage
+## 3. Validate image metadata and preserve missing-file behavior — implemented
 
 **Current behavior:** [fetchImageUrlsFromTitles()](../src/wikipedia_page_client.cpp)
 already emits an error for transport failures, malformed JSON, and API error keys,
@@ -92,55 +79,35 @@ requested image order and skips missing files or entries without a usable URL;
 `WikipediaPageClientTest` covers these cases. Initial gallery-page validation and
 valid empty galleries are covered separately, as described above.
 
-**Remaining issue:** Non-object JSON or missing/incorrectly typed `query.pages`
-can still pass metadata handling as a successful result with no resolved images.
-An API error without `info` can emit an empty error message. Gallery metadata
-failure and metadata-stage stale replies lack dedicated regression coverage.
+**Completed:** The metadata envelope and returned page/image-info objects are
+validated, API errors have nonempty fallbacks, and entries with no usable URL or
+legitimate missing files are skipped. Tests cover invalid envelopes, missing
+files, no-usable-image results, metadata retry, and stale metadata replies.
+Selected-image detail failures continue to fall back to the thumbnail/caption.
 
-**Recommended change:** Validate the metadata envelope and provide nonempty error
-fallbacks while preserving legitimate missing-file results and selected-image
-fallback behavior. Retain the asynchronous implementation and fake network seam.
+## 4. Budget math-image work and cache payloads — implemented
 
-**Validation to add:** Defer the gallery metadata-stage reply specifically, then
-switch language or supersede the gallery target and verify no obsolete result.
-Cover metadata transport/API failures, invalid envelopes, valid responses with no
-usable images, and retry recovery. Existing stale-gallery coverage defers the
-initial page reply; selected-image detail staleness is already covered.
+**Completed:** Formula enrichment is limited to 128 distinct uncached formulas
+per article, two concurrent downloads, a three-second budget, 1 MiB per response,
+and four million raster pixels. The formula LRU holds at most 256 entries / 16 MiB.
+The article LRU holds at most 20 entries / 32 MiB payload. Four formula workload
+tests verified entry and byte eviction, fanout, and timeout fallback. Across four
+loads, the cache settled at 256 entries / 72,704 bytes with no pending replies;
+an 853-byte injected budget retained three entries / 852 bytes. The tiny 2×2
+formula fixture used 41,232 KiB maximum process RSS and has no pre-change baseline.
+See [measured limits](full_testing.md#runtime-request-and-gallery-limits).
 
-## 4. Budget math-image memory and processing — article LRU completed
+**Limit:** These fixture results verify bounded work and cached payload bytes;
+they do not establish general process RSS or navigation-retained content bounds.
 
-**Completed:** [ArticleState](../src/state/ArticleState.h) caps its article cache
-at 20 entries with least-recently-used eviction (`b43af97`). ID and resolved-title
-cache hits refresh recency; language transitions clear both cache and recency.
-[ArticleStateTest](../tests/ArticleStateTest.cpp) covers eviction/refetch, both hit
-paths, and updates to existing entries without consuming additional capacity.
-The shared download queue already limits active GET transfers to three (`e6e8aa5`).
+## 5. Add reproducible CI around the existing tests — implemented
 
-**Remaining issue:** [WikipediaPageClient](../src/wikipedia_page_client.cpp)
-caches rasterized math images as base64 data URLs without a byte or entry budget.
-It creates queued requests for every distinct uncached formula in an article;
-there is no bound on queued formula work or cross-request in-flight deduplication.
-Raster dimensions are capped at 4096 per axis, but synchronous HTML processing and
-SVG conversion still need profiling. The 20-entry article limit does not bound
-total HTML bytes, including embedded math-image data.
-
-**Recommended change:** Measure memory and load latency before selecting math-cache
-budgets and deciding whether article-cache byte accounting is needed. Add bounded
-math-cache eviction and queued-work budgets, and deduplicate in-flight formula
-work across requests. Use profiling to decide whether CPU work should move off
-the GUI thread.
-
-**Validation to add:** Repeated formula-heavy fixture loads with memory/latency
-measurements, math-cache eviction/refetch checks, queued-work and deduplication
-assertions, and coverage of the existing shared transfer concurrency limit.
-
-## 5. Add reproducible CI around the existing tests
-
-**Observed:** No tracked `.github/workflows` configuration is present. [tests/CMakeLists.txt](../tests/CMakeLists.txt) already registers backend and QML tests, and the fixture transport provides a foundation for deterministic network behavior. This observation does not rule out externally configured CI.
-
-**Recommended change:** Add a Linux job that provisions Qt, tinyxml2, and Lexbor, configures with `BUILD_TESTING=ON`, builds, and runs `ctest --test-dir build --output-on-failure` with an offscreen platform available. Account for GUI-backed C++ tests as well as QML tests. Keep live-network tests separate and opt-in. Upload failure logs; consider relocated-install and Flatpak smoke tests because deployment rules, a shared core library, and local Flatpak packaging are already present. Packaging support does not establish automated CI coverage.
-
-**Validation:** Demonstrate a clean checkout build and a failing-test run that fails the job and preserves useful diagnostics. Document the supported dependency baseline, then expand platform coverage as needed.
+**Completed:** A Linux workflow provisions the documented dependencies, configures
+and builds tests, runs offscreen CTest, and performs an isolated relocated-install
+startup smoke test. The relocated smoke passed without `LD_LIBRARY_PATH`. The
+production queue tests use a deterministic loopback HTTP server. Local final
+verification passed 31 of 32 CTest entries, with the opt-in live feed test skipped.
+The workflow itself has not yet run remotely.
 
 ## 6. Refresh documentation and make test execution less disruptive
 
@@ -161,6 +128,6 @@ assertions, and coverage of the existing shared transfer concurrency limit.
 ## Suggested implementation sequence
 
 1. Completed: persistent history retention, write consistency, and regression coverage.
-2. Add request deadlines and tighten image-metadata validation, extending deferred-response coverage at the metadata stage. Search/article HTML/gallery-page/section response validation is already implemented.
-3. Establish CI, consolidate setup/test documentation and runners, and profile math-image memory/processing before selecting further budgets. Article caching already has a 20-entry LRU limit and GET transfers already share a concurrency limit.
+2. Completed: shared request deadlines, strict metadata handling, bounded math enrichment and caches, gallery pagination, and Linux CI with relocated-install smoke coverage.
+3. Consolidate setup/test documentation and runners.
 4. Migrate the independent QML singleton services when changing startup wiring.

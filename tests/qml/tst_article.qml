@@ -53,8 +53,8 @@ Item {
 
     Connections {
         target: NavigationState
-        function onPushView(view) {
-            stackView.push(view)
+        function onPushView(view, initialProperties) {
+            stackView.push(view, initialProperties)
         }
     }
 
@@ -257,8 +257,11 @@ Item {
         function test_fragment_link_preserves_article_state() {
             const pageId = 804
             const title = "Fragment link fixture"
-            addArticleFixtures(pageId, title,
-                               "<p><a href='#Details'>Jump to details</a></p><h2 id='Details'>Details</h2><p>Article body remains here.</p>")
+            let html = "<p><a href='#Details'>Jump to details</a></p>"
+            for (let i = 0; i < 20; ++i)
+                html += "<p>Content before the section anchor.</p>"
+            html += "<h2 id='Details'>Details</h2><p>Article body remains here.</p>"
+            addArticleFixtures(pageId, title, html)
             ArticleState.loadArticleByPageId(pageId)
             tryCompare(ArticleState, "isLoading", false)
             NavigationState.navigateToContent()
@@ -274,11 +277,19 @@ Item {
             const previousHistory = HistoryState.history.length
             const previousDepth = stackView.depth
             const previousRequests = networkFixtures.requestCount
+            const scrollView = findChild(view, "articleScrollView")
+            verify(scrollView !== null)
+            scrollView.contentItem.contentY = 0
             const fragmentLink = body.text.match(/href="(#Details)"/)
             verify(fragmentLink !== null, "The article fragment link must be rendered")
 
             body.linkActivated(fragmentLink[1])
+            tryVerify(function() { return scrollView.contentItem.contentY > 0 })
+            const anchorScrollY = scrollView.contentItem.contentY
+            body.linkActivated("#No_such_section")
             wait(50)
+            compare(scrollView.contentItem.contentY, anchorScrollY,
+                    "Unknown same-page anchors must leave the viewport unchanged")
 
             compare(stackView.currentItem, view)
             compare(stackView.depth, previousDepth)
@@ -288,6 +299,183 @@ Item {
             compare(ArticleState.currentPageTitle, title)
             compare(ArticleState.currentPageExtract, previousExtract)
             compare(body.text, previousText)
+        }
+
+        function test_cross_article_fragment_strips_query_and_scrolls_after_load() {
+            const firstId = 853
+            const targetId = 854
+            const firstTitle = "Anchor source"
+            const targetTitle = "Target?Title"
+            const targetLink = "/wiki/Target%3FTitle?oldid=123#Deep_section"
+            addArticleFixtures(firstId, firstTitle, "<p>Read <a href='" + targetLink + "'>the target</a></p>")
+            const targetPages = {}
+            targetPages[targetId] = {pageid: targetId, title: targetTitle}
+            networkFixtures.addFixture("GET", resolveUrl(targetTitle),
+                                       JSON.stringify({query: {pages: targetPages}}))
+            let targetHtml = "<p>Target introduction.</p>"
+            for (let i = 0; i < 24; ++i)
+                targetHtml += "<p>Reading before the requested section.</p>"
+            targetHtml += "<h2 id='Deep_section'>Deep section</h2><p>Target section content.</p>"
+            addArticleFixtures(targetId, targetTitle, targetHtml)
+
+            ArticleState.loadArticleByPageId(firstId)
+            tryCompare(ArticleState, "isLoading", false)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            const sourceView = stackView.currentItem
+            const sourceBody = findChild(sourceView, "articleBody")
+            sourceBody.linkActivated(targetLink)
+            tryCompare(stackView, "depth", 3)
+            tryVerify(function() { return !stackView.busy })
+
+            const resolveRequest = networkFixtures.requests.find(function(request) {
+                return request.path === "/w/api.php" && request.query.indexOf("titles=Target?Title") >= 0
+            })
+            verify(resolveRequest !== undefined,
+                   "Title resolution must receive the path title without query or fragment")
+            const targetView = stackView.currentItem
+            tryCompare(ArticleState, "currentPageTitle", targetTitle)
+            tryCompare(ArticleState, "isLoading", false)
+            tryVerify(function() {
+                return findChild(targetView, "articleBody").text.indexOf("Target section content") >= 0
+            })
+            const targetScroll = findChild(targetView, "articleScrollView")
+            tryVerify(function() { return targetScroll.contentItem.contentY > 0 })
+
+            stackView.pop()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            compare(stackView.currentItem, sourceView)
+            verify(findChild(sourceView, "articleBody").text.indexOf("the target") >= 0)
+        }
+
+        function test_cached_article_fragment_scrolls_when_destination_is_shown() {
+            const sourceId = 857
+            const targetId = 858
+            const sourceTitle = "Cached anchor source"
+            const targetTitle = "Cached anchor target"
+            const targetLink = "/wiki/Cached_anchor_target#Cached_section"
+            let targetHtml = "<p>Start of cached page.</p>"
+            for (let i = 0; i < 24; ++i)
+                targetHtml += "<p>Some content before the cached anchor.</p>"
+            targetHtml += "<h2 id='Cached_section'>Cached section</h2><p>Cached target content.</p>"
+            addArticleFixtures(targetId, targetTitle, targetHtml)
+            addArticleFixtures(sourceId, sourceTitle,
+                               "<p><a href='" + targetLink + "'>Open cached target section</a></p>")
+            const targetPages = {}
+            targetPages[targetId] = {pageid: targetId, title: targetTitle}
+            networkFixtures.addFixture("GET", resolveUrl(targetTitle),
+                                       JSON.stringify({query: {pages: targetPages}}))
+
+            ArticleState.loadArticleByPageId(targetId)
+            tryCompare(ArticleState, "isLoading", false)
+            ArticleState.loadArticleByPageId(sourceId)
+            tryCompare(ArticleState, "isLoading", false)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            const sourceView = stackView.currentItem
+
+            findChild(sourceView, "articleBody").linkActivated(targetLink)
+            tryCompare(stackView, "depth", 3)
+            tryVerify(function() { return !stackView.busy })
+            const targetView = stackView.currentItem
+            tryVerify(function() {
+                return findChild(targetView, "articleBody").text.indexOf("Cached target content") >= 0
+            })
+            const targetScroll = findChild(targetView, "articleScrollView")
+            tryVerify(function() { return targetScroll.contentItem.contentY > 0 })
+            compare(ArticleState.currentPageTitle, targetTitle)
+        }
+
+        function test_missing_initial_fragment_is_reported_and_retried_when_text_changes() {
+            const sourceId = 862
+            const targetId = 863
+            const sourceTitle = "Missing fragment source"
+            const targetTitle = "Missing fragment target"
+            addArticleFixtures(sourceId, sourceTitle,
+                "<p><a href='/wiki/Missing_fragment_target#Later_section'>Open section</a></p>")
+            const targetPages = {}
+            targetPages[targetId] = {pageid: targetId, title: targetTitle}
+            networkFixtures.addFixture("GET", resolveUrl(targetTitle),
+                                       JSON.stringify({query: {pages: targetPages}}))
+            addArticleFixtures(targetId, targetTitle, "<p>Section content is not available yet.</p>")
+
+            ArticleState.loadArticleByPageId(sourceId)
+            tryCompare(ArticleState, "isLoading", false)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            findChild(stackView.currentItem, "articleBody").linkActivated(
+                "/wiki/Missing_fragment_target#Later_section")
+            tryCompare(stackView, "depth", 3)
+            tryVerify(function() { return !stackView.busy })
+            tryCompare(ArticleState, "isLoading", false)
+
+            const targetView = stackView.currentItem
+            const fragmentError = findChild(targetView, "articleFragmentErrorMessage")
+            tryCompare(fragmentError, "visible", true)
+            compare(targetView.initialFragmentAnchor, "Later_section")
+
+            let updatedText = "<p>Text before the section.</p>"
+            for (let i = 0; i < 100; ++i)
+                updatedText += "<p>More text before the section.</p>"
+            updatedText += "<h2 id='Later_section'>Later section</h2><p>Found section.</p>"
+            targetView.articleText = updatedText
+            tryCompare(fragmentError, "visible", false)
+            compare(targetView.initialFragmentAnchor, "")
+            const scrollView = findChild(targetView, "articleScrollView")
+            tryVerify(function() { return scrollView.contentItem.contentY > 0 })
+        }
+
+        function test_title_case_difference_does_not_treat_article_as_same_page() {
+            const sourceId = 859
+            const targetId = 860
+            const sourceTitle = "Us"
+            const targetTitle = "US"
+            addArticleFixtures(sourceId, sourceTitle, "<p><a href='/wiki/US'>United States</a></p>")
+            addArticleFixtures(targetId, targetTitle, "<p>Different title case article.</p>")
+            const targetPages = {}
+            targetPages[targetId] = {pageid: targetId, title: targetTitle}
+            networkFixtures.addFixture("GET", resolveUrl(targetTitle),
+                                       JSON.stringify({query: {pages: targetPages}}))
+
+            ArticleState.loadArticleByPageId(sourceId)
+            tryCompare(ArticleState, "isLoading", false)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            const sourceView = stackView.currentItem
+            findChild(sourceView, "articleBody").linkActivated("/wiki/US")
+            tryCompare(stackView, "depth", 3)
+            tryVerify(function() { return !stackView.busy })
+            tryCompare(ArticleState, "currentPageTitle", targetTitle)
+        }
+
+        function test_first_letter_case_difference_is_same_article() {
+            const pageId = 861
+            let html = "<p><a href='/wiki/us#Details'>Us</a></p>"
+            for (let i = 0; i < 30; ++i)
+                html += "<p>Text before the same-page section anchor.</p>"
+            html += "<h2 id='Details'>Details</h2><p>The same article section.</p>"
+            addArticleFixtures(pageId, "Us", html)
+            ArticleState.loadArticleByPageId(pageId)
+            tryCompare(ArticleState, "isLoading", false)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+
+            const view = stackView.currentItem
+            const requestsBefore = networkFixtures.requestCount
+            findChild(view, "articleBody").linkActivated("/wiki/us#Details")
+            compare(stackView.depth, 2)
+            compare(stackView.currentItem, view)
+            compare(ArticleState.currentPageId, pageId)
+            compare(ArticleState.currentPageTitle, "Us")
+            compare(networkFixtures.requestCount, requestsBefore)
+            const scrollView = findChild(view, "articleScrollView")
+            tryVerify(function() { return scrollView.contentItem.contentY > 0 })
         }
 
         function test_article_link_hover_opens_preview_and_closes_after_leaving_card_and_link() {
@@ -538,6 +726,64 @@ Item {
             compare(child("articleLoadingIndicator").visible, false)
             compare(HistoryState.history.length, 0)
             compare(testSupport.requestCount, 2)
+        }
+
+        function test_article_success_finishing_behind_search_is_rendered_after_back() {
+            const pageId = 855
+            const title = "Covered success fixture"
+            addArticleFixtures(pageId, title, "<p>Completed while covered.</p>")
+            networkFixtures.deferNextReply()
+            ArticleState.loadArticleByPageId(pageId)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryCompare(networkFixtures, "pendingReplyCount", 1)
+            const articleView = stackView.currentItem
+
+            networkFixtures.deferNextReply()
+            stackView.push(searchScreenComponent)
+            tryCompare(stackView, "depth", 3)
+            networkFixtures.completeNextReply()
+            tryCompare(networkFixtures, "requestCount", 2)
+            tryCompare(networkFixtures, "pendingReplyCount", 1)
+            networkFixtures.completeNextReply()
+            tryCompare(ArticleState, "isLoading", false)
+            tryCompare(ArticleState, "currentPageTitle", title)
+
+            stackView.pop()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            compare(stackView.currentItem, articleView)
+            tryVerify(function() {
+                return findChild(articleView, "articleBody").text.indexOf("Completed while covered") >= 0
+            })
+            compare(findChild(articleView, "articleLoadingIndicator").visible, false)
+            compare(findChild(articleView, "articleErrorMessage").visible, false)
+        }
+
+        function test_article_error_finishing_behind_search_is_shown_after_back() {
+            const pageId = 856
+            networkFixtures.addFixture("GET", pageQueryUrl(pageId), "failure", "text/plain", 500)
+            networkFixtures.deferNextReply()
+            ArticleState.loadArticleByPageId(pageId)
+            NavigationState.navigateToContent()
+            tryCompare(stackView, "depth", 2)
+            tryCompare(networkFixtures, "pendingReplyCount", 1)
+            const articleView = stackView.currentItem
+
+            stackView.push(searchScreenComponent)
+            tryCompare(stackView, "depth", 3)
+            networkFixtures.completeNextReply()
+            tryCompare(ArticleState, "isLoading", false)
+            tryCompare(ArticleState, "errorMessage", "HTTP 500")
+
+            stackView.pop()
+            tryCompare(stackView, "depth", 2)
+            tryVerify(function() { return !stackView.busy })
+            compare(stackView.currentItem, articleView)
+            const error = findChild(articleView, "articleErrorMessage")
+            tryCompare(error, "visible", true)
+            compare(error.text, "HTTP 500")
+            compare(findChild(articleView, "articleLoadingIndicator").visible, false)
         }
 
         function test_language_change_clears_covered_article_views_without_navigation() {

@@ -33,14 +33,22 @@ bool NavigationState::eventFilter(QObject *obj, QEvent *event) {
     return QObject::eventFilter(obj, event);
 }
 
-void NavigationState::navigateToContent() {
+void NavigationState::navigateToContent(const QString &initialFragment) {
     if (!m_stackView) {
         qWarning() << "StackView is not set!";
         return;
     }
 
     // Emit signal to indicate navigation to content
-    navigateToView(Constants::contentView());
+    const auto it = views.find(Constants::contentView());
+    if (it == views.end()) {
+        qWarning() << "Cannot navigate to unregistered view:" << Constants::contentView();
+        return;
+    }
+    QVariantMap properties;
+    if (!initialFragment.isEmpty())
+        properties.insert(QStringLiteral("initialFragmentAnchor"), initialFragment);
+    emit pushView(it->second, properties);
 }
 
 void NavigationState::navigateToHistory() {
@@ -90,7 +98,7 @@ void NavigationState::navigateToView(const QString &view) {
         }
     }
 
-    emit pushView(it->second);
+    emit pushView(it->second, {});
 }
 
 void NavigationState::addView(QString view, QQmlComponent *component) { views.emplace(view, component); }

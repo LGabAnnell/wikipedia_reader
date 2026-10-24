@@ -75,6 +75,7 @@ class WikipediaHomeClientTest : public QObject {
         connect(&m_network, &NetworkFixtureController::unexpectedRequest, this,
                 [](const QString &request) { qFatal("%s", qPrintable(request)); });
         WikipediaNetwork::installNetworkAccessManagerFactory(&m_network);
+        QVERIFY(metaObject()->indexOfSlot("testParseArticleContentMalformedJson()") >= 0);
     }
 
     void cleanupTestCase() { WikipediaNetwork::installNetworkAccessManagerFactory(nullptr); }
@@ -119,6 +120,25 @@ class WikipediaHomeClientTest : public QObject {
             QCOMPARE(items.size(), 2);
             QCOMPARE(items.first().title, QString("Article 1"));
         }
+    }
+
+    void testDidYouKnowSummaryTitleIsEncodedAsPathComponent() {
+        const QString title = QString::fromUtf8("Café? A#B 100%/X");
+        const QUrl randomUrl("https://en.wikipedia.org/api/rest_v1/page/random/title");
+        const QUrl summaryUrl(QStringLiteral("https://en.wikipedia.org/api/rest_v1/page/summary/%1")
+                                  .arg(QString::fromLatin1(QUrl::toPercentEncoding(title))));
+        m_network.addFixture("GET", randomUrl,
+            QJsonDocument(QJsonObject{{"items", QJsonArray{QJsonObject{{"title", title}}}}}).toJson());
+        m_network.addFixture("GET", summaryUrl,
+            R"({"extract":"Summary","pageid":78,"content_urls":{"desktop":{"page":"https:\/\/en.wikipedia.org/wiki/Example"}}})");
+        WikipediaHomeClient client;
+        QSignalSpy received(&client, &WikipediaHomeClient::didYouKnowItemsReceived);
+        QSignalSpy errors(&client, &WikipediaHomeClient::errorOccurred);
+        client.getDidYouKnowItems();
+        QTRY_COMPARE(received.count(), 1);
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(m_network.requestCount(), 2);
+        QCOMPARE(m_network.requests().last().toMap().value("url").toString(), summaryUrl.toString());
     }
 
     void testRecordedMostreadNeedsNoLookback_data() {

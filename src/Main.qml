@@ -136,8 +136,8 @@ ApplicationWindow {
             }
         });
 
-        NavigationState.pushView.connect(view => {
-            stackView.push(view);
+        NavigationState.pushView.connect((view, initialProperties) => {
+            stackView.push(view, initialProperties);
         });
     }
 }

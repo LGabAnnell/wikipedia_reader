@@ -24,6 +24,12 @@ class NetworkAccessManager final : public QNetworkAccessManager {
     QNetworkReply *createRequest(Operation operation, const QNetworkRequest &request,
                                 QIODevice *outgoingData = nullptr) override {
         QNetworkRequest compatibleRequest(request);
+        if (operation == GetOperation) {
+            const int requestedTimeout = compatibleRequest.transferTimeout();
+            if (requestedTimeout <= 0 || requestedTimeout == QNetworkRequest::DefaultTransferTimeoutConstant
+                || requestedTimeout > 15'000)
+                compatibleRequest.setTransferTimeout(15'000);
+        }
         // Wikimedia expects an app name/version and a contact URL, followed by
         // the framework version: https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy
         compatibleRequest.setRawHeader("User-Agent",

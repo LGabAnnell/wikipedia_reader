@@ -27,6 +27,7 @@ void WikipediaFeaturedClient::fetchFeaturedArticle(const WikipediaRequestContext
     const QUrl url(endpoint.arg(context.language, date.toString("yyyy/MM/dd")));
 
     QNetworkRequest request(url);
+    applyRequestDeadline(request, context);
     if (alternate)
         request.setRawHeader("Cache-Control", "no-cache");
     QNetworkReply *reply = networkManager->get(request);

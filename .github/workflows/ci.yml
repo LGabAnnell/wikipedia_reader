@@ -1,0 +1,139 @@
+name: Linux CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      live_network:
+        description: Run the opt-in live Wikipedia integration checks
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build and headless runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            build-essential cmake ninja-build pkg-config git ca-certificates \
+            libgl1-mesa-dev libxkbcommon-dev libxkbcommon-x11-0 libxcb-cursor0 \
+            libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+            libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libx11-xcb1 \
+            libtinyxml2-dev patchelf xvfb
+
+      - name: Install Qt 6.8.3
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.8.3
+          host: linux
+          target: desktop
+          arch: gcc_64
+          archives: qtbase qtdeclarative qtsvg qtshadertools
+          cache: true
+
+      - name: Build and install Lexbor 3.0.0
+        run: |
+          git clone --depth 1 --branch v3.0.0 https://github.com/lexbor/lexbor.git "$RUNNER_TEMP/lexbor-src"
+          cmake -S "$RUNNER_TEMP/lexbor-src" -B "$RUNNER_TEMP/lexbor-build" \
+            -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/lexbor-install" \
+            -DLEXBOR_BUILD_TESTS=OFF
+          cmake --build "$RUNNER_TEMP/lexbor-build" --parallel 2
+          cmake --install "$RUNNER_TEMP/lexbor-build"
+
+      - name: Configure
+        run: |
+          mkdir -p build
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_TESTING=ON \
+            -DWIKIPEDIA_BUNDLE_QT=ON \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/lexbor-install" 2>&1 | tee build/configure.log
+
+      - name: Build
+        run: cmake --build build --parallel 2 2>&1 | tee build/build.log
+
+      - name: Run offscreen test suite
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          ctest --test-dir build --output-on-failure \
+            --output-junit build/test-results.xml 2>&1 | tee build/ctest.log
+
+      - name: Relocated install smoke test
+        run: ./scripts/run_install_smoke.sh build build/install-smoke-logs
+
+      - name: Upload diagnostics when a check fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-ci-failure-logs
+          if-no-files-found: warn
+          path: |
+            build/configure.log
+            build/build.log
+            build/ctest.log
+            build/test-results.xml
+            build/Testing/Temporary/LastTest.log
+            build/install-smoke-logs/**
+
+  live-network:
+    if: github.event_name == 'workflow_dispatch' && inputs.live_network
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            build-essential cmake ninja-build pkg-config git ca-certificates \
+            libgl1-mesa-dev libxkbcommon-dev libxkbcommon-x11-0 libxcb-cursor0 \
+            libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+            libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libx11-xcb1 \
+            libtinyxml2-dev xvfb
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.8.3
+          host: linux
+          target: desktop
+          arch: gcc_64
+          archives: qtbase qtdeclarative qtsvg qtshadertools
+          cache: true
+      - name: Build Lexbor 3.0.0
+        run: |
+          git clone --depth 1 --branch v3.0.0 https://github.com/lexbor/lexbor.git "$RUNNER_TEMP/lexbor-src"
+          cmake -S "$RUNNER_TEMP/lexbor-src" -B "$RUNNER_TEMP/lexbor-build" -G Ninja \
+            -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/lexbor-install" -DLEXBOR_BUILD_TESTS=OFF
+          cmake --build "$RUNNER_TEMP/lexbor-build" --parallel 2
+          cmake --install "$RUNNER_TEMP/lexbor-build"
+      - name: Configure and build
+        run: |
+          mkdir -p build
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_TESTING=ON \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/lexbor-install" \
+            2>&1 | tee build/live-configure.log
+          cmake --build build --parallel 2 2>&1 | tee build/live-build.log
+      - name: Run opt-in live feed tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+          RUN_NETWORK_TESTS: 1
+        run: ctest --test-dir build -R '^(WikipediaFeedLiveTest|test_search_display)$' --output-on-failure 2>&1 | tee build/live-ctest.log
+      - name: Upload live-test diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-network-failure-logs
+          if-no-files-found: warn
+          path: |
+            build/live-configure.log
+            build/live-build.log
+            build/live-ctest.log
+            build/Testing/Temporary/LastTest.log

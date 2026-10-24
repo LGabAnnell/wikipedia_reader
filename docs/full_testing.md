@@ -36,6 +36,11 @@ QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
 ```
 
 Use the prefix option above when Lexbor is installed locally.
+
+The relocated install smoke check validates a self-contained Linux package.
+Configure that packaging build explicitly with
+`-DWIKIPEDIA_BUNDLE_QT=ON`; it requires `patchelf`. Normal development and test
+builds leave Qt deployment off and do not require `patchelf`.
 `HistoryStateTest`, `HistoryDatabaseTest`, `WikipediaSearchClientTest`,
 `WikipediaFeaturedClientTest`, and `WikipediaHomeClientTest` use
 `QTEST_GUILESS_MAIN` and run without a display or GUI platform plugin.
@@ -81,6 +86,15 @@ The current source configuration registers **32 CTest entries: 20 C++ and
 data rows. The inventory below reflects the current source configuration; it
 is not a record of a passing test run.
 
+## Verification record
+
+On 2026-10-24 with Qt 6.11.2, the final build passed and the full offscreen CTest
+run passed 31 of 32 entries; `WikipediaFeedLiveTest` was skipped because live
+network tests were not enabled. The relocated-install startup smoke also passed
+after clearing inherited `LD_LIBRARY_PATH` and QML/plugin path overrides. The
+GitHub Actions workflow is present in the source tree but has not been run
+remotely. No live Wikipedia integration was run.
+
 ## C++ coverage
 
 Each named entry below has a matching `.cpp` file under `tests/`.
@@ -90,16 +104,16 @@ Each named entry below has a matching `.cpp` file under `tests/`.
 | `ArticleStateTest` | Initial state and notifications, HTML loading and caching, history on repeat visits, title resolution/cache hits, clearing old content before title loads, errors/retry, settings at construction, language-driven content/cache clearing, rejection of obsolete article/title replies, cached selections superseding pending loads, and singleton teardown/recreation. |
 | `SearchStateTest` | Blank queries, trimming, pending/completed/reset state, duplicate submission while busy, errors/retry, settings at construction, restarting stored search text once after language changes, blank-query behavior, stale reply rejection, rapid language changes, and teardown/recreation. |
 | `SettingsStateTest` | Default language and link-preview preference, language and preference change notifications, ignoring unchanged values, link-preview preference persistence across singleton recreation, and teardown/recreation. |
-| `ImageSelectionStateTest` | URL/caption updated together before notifications, unchanged-selection notification suppression, clearing selection and gallery context on language changes, gallery navigation stopping at either end, safe empty/single-image galleries, standalone selection clearing gallery context, deferred image details with duplicate-selection suppression and mismatched-title rejection, thumbnail/caption fallback on failed or missing details, and teardown/recreation. |
+| `ImageSelectionStateTest` | URL/caption updated together before notifications, unchanged-selection notification suppression, clearing selection and gallery context on language changes, gallery navigation stopping at either end, safe empty/single-image galleries, page-owned gallery refresh after pagination, ignoring unrelated-page refreshes, standalone selection clearing gallery context, deferred image details with duplicate-selection suppression and mismatched-title rejection, thumbnail/caption fallback on failed or missing details, and teardown/recreation. |
 | `ConstantsTest` | QML singleton reuse within one engine, independent instances across simultaneous engines, engine teardown and recreation, `clearSingletons()` recreation, and all six view-name properties. |
 | `WikipediaRequestIsolationTest` | Obsolete search successes/errors and featured replies are ignored; old page and random-title replies cannot start follow-up HTML or summary requests after a language switch. |
-| `WikipediaNetworkAccessManagerTest` | Both API-client and QML-image managers apply the runtime HTTP/2 policy: disabled for Qt 6.11.2, otherwise left at its default. Uses a temporary local file, not a live HTTP server. |
+| `WikipediaNetworkAccessManagerTest` | Production networking against a deterministic local HTTP server, covering request timeout overrides, response body caps, retries, origin-specific cooldowns, concurrency limits, and terminal completion behavior. |
 | `ContentDisplayModelTest` | Per-view section state, section-position/highlight resets, article-driven search/section resets, and case-insensitive text-search navigation wrapping. |
 | `HtmlProcessorTest` | Lexbor-based cleanup and repaired HTML, style/script/link removal, legacy colors, figure/thumbnail conversion, captions and fallback descriptions, preserved surrounding text, inline/table/multiple images, math accessibility cleanup, entities, and URL normalization. |
 | `HistoryStateTest` | Global 50-row retention and state recreation, startup pruning including legacy entries, identical-timestamp ordering, edition identity and revisits, trigger-injected insertion/pruning/clear rollback, unchanged memory and notifications on failure, retry recovery, unsupported-schema/startup-pruning errors, and checked-load/output preservation. |
 | `HistoryDatabaseTest` | Database opens, add/load/clear, edition-aware identity and uniqueness across database reopen, legacy-schema migration and idempotence, migration-failure rollback and blocked operations, explicit pruning, load limits, and timestamp ordering. The separate generic error-signal test only checks that no error was emitted; migration tests do inject a failure. |
 | `WikipediaSearchClientTest` | Search-result fields/counts, empty responses, missing keys, and malformed JSON. |
-| `WikipediaPageClientTest` | Page fields, title/ID mismatch, image titles, sections, empty/missing sections, and malformed JSON. Fixture requests cover successful metadata-to-HTML loading and missing/invalid page responses emitting an error without a follow-up HTML request. |
+| `WikipediaPageClientTest` | Page fields, title/ID mismatch, image titles, sections, empty/missing sections, and malformed JSON. Fixture requests cover successful metadata-to-HTML loading and missing/invalid page responses emitting an error without a follow-up HTML request; formula work limits, cache entry/byte eviction, timeout fallback, metadata validation, pagination continuation, retry, and stale-response handling. |
 | `WikipediaFeaturedClientTest` | Recorded English featured/French unavailable responses, featured parsing, feed thumbnail, missing `tfa`, invalid page IDs, malformed JSON, API errors, and unavailable versus invalid outcomes. |
 | `WikipediaHomeClientTest` | Recorded English/French most-read responses, news parsing and thumbnails, current most-read feeds without lookback, bounded lookback, news fallback after older-feed failures, typed section failures, invalid current feeds, on-this-day validation, and Did-you-know summary parsing. |
 | `WikipediaSummaryClientTest` | Valid and malformed summary responses, namespace metadata, thumbnail extraction, Unicode and reserved-character path encoding, HTTP failures, a deferred-request timeout, and cancellation of obsolete successes and errors. |
@@ -176,6 +190,44 @@ assertion that a response arrived or that search succeeded, so a passing CTest
 result is not proof of a successful live search. Apart from `WikipediaFeedLiveTest`, the remaining tests use
 fixtures, in-memory inputs, or local files rather than live Wikipedia requests.
 
+## Runtime request and gallery limits
+
+Production GET requests use a 15-second transfer inactivity timeout and a
+45-second deadline that begins when the queued reply is created. Queue waits,
+rate-limit cooldowns, retries, and follow-up requests for a captured request
+context consume that same deadline. The summary preview retains its stricter
+10-second limit. HTTP 429/503 cooldowns apply to the response origin, so one
+host does not pause unrelated Wikimedia hosts.
+
+Formula rendering is optional: after article HTML arrives, the client waits at
+most three seconds, runs up to two formula downloads at once, and considers at
+most 128 distinct uncached formulas per article. Each formula response is
+limited to 1 MiB and rasterization to four million pixels. The formula cache
+uses an LRU of 256 entries / 16 MiB; the existing 20-entry article LRU also has
+a 32 MiB payload limit. These are cache and work limits; they do not measure
+total process memory or content retained by navigation views.
+
+Four formula workload tests passed on Qt 6.11.2. Across four article loads, the
+cache held 128 entries / 36,352 payload bytes after load one, then reached and
+remained at 256 entries / 72,704 bytes with no pending replies. A separate
+injected 853-byte cache limit retained three entries / 852 bytes. The workload
+used tiny 2×2 formula rasters; `/usr/bin/time` reported 41,232 KiB maximum RSS
+(about 40.3 MiB) for the test process. There is no pre-change RSS baseline, and
+this small fixture does not establish a general process-memory bound.
+
+Image galleries request 50 file titles per page and expose a Load more action
+when the API returns a continuation token. Tests cover later-page failure
+retention and retry, repeated-token rejection, duplicate-image deduplication,
+and double-click suppression. Valid missing-file metadata is skipped. Selection
+displays the thumbnail and caption immediately and accepts a larger preview only
+for the current selection.
+
+`WikipediaNetworkAccessManagerTest` exercises the production manager and queue
+against a deterministic local HTTP server for stalled transfers, concurrency,
+cooldown/retry behavior, abort cleanup, and slot recovery. It requires permission
+to bind a loopback socket. Live Wikipedia tests are separately opt-in and do not
+replace the deterministic local server checks.
+
 ## QML coverage
 
 Each file under `tests/qml/` is registered as `QmlTests.<filename without .qml>`.
@@ -187,7 +239,7 @@ Each file under `tests/qml/` is registered as `QmlTests.<filename without .qml>`
 | `tst_article.qml` | Search-result selection, deferred loading and rendered HTML, inline image captions/fullscreen selection and Back, load errors without failed history visits, persistent link-preview toggle behavior while disabled, pending, and visible, narrow action-row bounds, clearing visible and covered article views on language changes without changing stack depth, and article-link navigation preserving the previous view's content on Back. |
 | `tst_article_preview.qml` | Summary loading, formatted and sanitized preview content, thumbnail metadata, suppression of non-article namespaces, and stable popup placement across deferred summary/thumbnail loading, edge anchors, constrained windows, resizing, and reopening. |
 | `tst_inline_images.qml` | Thumbnail-to-original conversion, SVG/lossy thumbnail handling, unchanged non-thumbnail URLs, full-resolution image links, and captions carried into image links. |
-| `tst_images.qml` | Fixture article/gallery loading, SVG preview selection with original fallback, unchanged raster URLs, URL/caption in `ImageSelectionState`, and opening/closing the separate fullscreen window (Close, Escape, and mouse Back) without changing the main window or navigation stack. Saved viewer choice across gallery recreation, embedded viewing and Back, arrow-key navigation in both viewers with endpoint bounds and caption updates, covered/standalone viewer shortcut isolation, stale image-detail rejection, and gallery Back through its owning StackView are also covered. See the regression notes below. |
+| `tst_images.qml` | Fixture article/gallery loading, continuation loading, later-page failure retention and retry, repeated-token rejection, duplicate-image deduplication, Load more double-click suppression, SVG preview selection with original fallback, unchanged raster URLs, URL/caption in `ImageSelectionState`, and opening/closing the separate fullscreen window (Close, Escape, and mouse Back) without changing the main window or navigation stack. Saved viewer choice across gallery recreation, embedded viewing and Back, arrow-key navigation in both viewers with endpoint bounds and caption updates, covered/standalone viewer shortcut isolation, stale image-detail rejection, and gallery Back through its owning StackView are also covered. See the regression notes below. |
 | `tst_history.qml` | Article visits through `ArticleState`, newest-first order, revisiting an article without duplicating its history entry, visible but disabled unknown-edition entries, failed-clear feedback with retained entries and enabled Clear, errors predating view creation, and unavailable-state text. |
 | `tst_navigation.qml` | Real Main window: Search/History push, toolbar and mouse Back pop, Home returns to the original root and is idempotent. Language changes retain that root, clear home news, and request/refill data for the selected edition. Featured article navigation and Back, edition-restoring history navigation, cached history selection, duplicate-history-view prevention, and rendering recent most-read fallback content are covered. Empty/unknown view names emit the expected warning, preserve stack depth/current item, and allow subsequent registered-view navigation. |
 | `tst_home.qml` | Featured/news/on-this-day/did-you-know pending, ready, empty, error, and retry states; partial failures; duplicate-retry suppression; delayed refresh and language-transition rejection across the Did-you-know summary stage; featured thumbnails, image failure independence, article navigation, URL encoding, narrow/normal viewport width, and article/history isolation. |
@@ -280,7 +332,9 @@ request counts. Prefer deferred replies over timing sleeps for pending states.
   after repair; automatic initialization retries and unsaved memory history are
   outside scope.
 - Request-isolation tests cover selected stale-reply paths, not every stage of
-  the HTML/math-image/metadata chains. They do not test request deadlines.
+  the HTML/math-image/metadata chains. Deadline propagation is verified across
+  the article metadata-to-HTML stages; not every client follow-up chain has an
+  independent deadline assertion.
 - Headless fixture tests do not establish live API compatibility or validate
   installed/packaged application deployment. `WikipediaFeedLiveTest` checks the
   production English/French featured-feed integration when explicitly enabled;

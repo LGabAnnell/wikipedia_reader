@@ -15,12 +15,18 @@
 #include <QUrl>
 #include <QUrlQuery>
 #include <algorithm>
+#include <cmath>
 
 namespace {
 struct MathImageRequest {
     QString htmlContent;
     QHash<QString, QString> dataUrls;
-    int pendingRequests = 0;
+    QStringList sources;
+    int nextSource = 0;
+    int activeRequests = 0;
+    bool completed = false;
+    QVector<QPointer<QNetworkReply>> replies;
+    QPointer<QTimer> deadlineTimer;
     std::function<void(const QString &)> completion;
 };
 
@@ -64,6 +70,13 @@ QString rasterizeSvg(const QByteArray &svgData) {
 
     imageSize.setWidth(std::min(imageSize.width(), 4096));
     imageSize.setHeight(std::min(imageSize.height(), 4096));
+    constexpr qint64 maxRasterPixels = 4'000'000;
+    const qint64 pixels = qint64(imageSize.width()) * imageSize.height();
+    if (pixels > maxRasterPixels) {
+        const double scale = std::sqrt(double(maxRasterPixels) / double(pixels));
+        imageSize = QSize(qMax(1, qFloor(imageSize.width() * scale)),
+                          qMax(1, qFloor(imageSize.height() * scale)));
+    }
     QImage image(imageSize, QImage::Format_ARGB32_Premultiplied);
     image.fill(Qt::transparent);
 
@@ -82,7 +95,10 @@ QString rasterizeSvg(const QByteArray &svgData) {
 } // namespace
 
 WikipediaPageClient::WikipediaPageClient(QObject *parent)
-    : QObject(parent), networkManager(WikipediaNetwork::createNetworkAccessManager(this)) {
+    : WikipediaPageClient(parent, WikipediaPageClientLimits{}) {}
+
+WikipediaPageClient::WikipediaPageClient(QObject *parent, const WikipediaPageClientLimits &limits)
+    : QObject(parent), networkManager(WikipediaNetwork::createNetworkAccessManager(this)), m_limits(limits) {
     setLanguage("en");
 }
 
@@ -106,7 +122,9 @@ void WikipediaPageClient::getPage(const QString &title) {
     url.setQuery(urlQuery);
 
     const auto context = m_requests.context();
-    QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    QNetworkRequest request(url);
+    applyRequestDeadline(request, context);
+    QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this, [this, reply, title, context]() { this->onPageReply(reply, title, context); });
 }
@@ -142,6 +160,10 @@ page WikipediaPageClient::parsePage(const QByteArray &responseData, const QStrin
 }
 
 void WikipediaPageClient::getPageById(int pageid) {
+    getPageById(pageid, m_requests.context());
+}
+
+void WikipediaPageClient::getPageById(int pageid, const WikipediaRequestContext &context) {
     QUrl url(baseUrl);
     QUrlQuery urlQuery;
     urlQuery.addQueryItem("action", "query");
@@ -149,8 +171,9 @@ void WikipediaPageClient::getPageById(int pageid) {
     urlQuery.addQueryItem("pageids", QString::number(pageid));
     url.setQuery(urlQuery);
 
-    const auto context = m_requests.context();
-    QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    QNetworkRequest request(url);
+    applyRequestDeadline(request, context);
+    QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this, [this, reply, pageid, context]() {
         if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
@@ -186,7 +209,7 @@ void WikipediaPageClient::getPageById(int pageid) {
     });
 }
 
-void WikipediaPageClient::getPageWithImages(int pageid) {
+void WikipediaPageClient::getPageWithImages(int pageid, const QVariantMap &continuation) {
     QUrl url(baseUrl);
     QUrlQuery urlQuery;
     urlQuery.addQueryItem("action", "query");
@@ -195,10 +218,14 @@ void WikipediaPageClient::getPageWithImages(int pageid) {
     urlQuery.addQueryItem("pageids", QString::number(pageid));
     urlQuery.addQueryItem("explaintext", "1");
     urlQuery.addQueryItem("imlimit", "50");
+    for (auto it = continuation.cbegin(); it != continuation.cend(); ++it)
+        urlQuery.addQueryItem(it.key(), it.value().toString());
     url.setQuery(urlQuery);
 
     const auto context = m_requests.context();
-    QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    QNetworkRequest request(url);
+    applyRequestDeadline(request, context);
+    QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this,
             [this, reply, pageid, context]() { this->onPageWithImagesReply(reply, pageid, context); });
@@ -214,7 +241,9 @@ void WikipediaPageClient::resolveTitleToPageId(const QString &title) {
     url.setQuery(urlQuery);
 
     const auto context = m_requests.context();
-    QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    QNetworkRequest request(url);
+    applyRequestDeadline(request, context);
+    QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this, [this, reply, context]() {
         if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
@@ -229,6 +258,7 @@ void WikipediaPageClient::resolveTitleToPageId(const QString &title) {
                 int pageid = it.value().toObject()["pageid"].toInt();
                 if (pageid > 0) {
                     emit pageIdResolved(pageid);
+                    emit pageIdResolvedWithContext(pageid, context);
                     resolved = true;
                     break;
                 }
@@ -274,7 +304,37 @@ void WikipediaPageClient::onPageWithImagesReply(QNetworkReply *reply, int pageid
             return;
         }
 
+        const QJsonValue continueValue = root.value("continue");
+        if (!continueValue.isUndefined() && !continueValue.isObject()) {
+            emit errorOccurred(tr("Invalid gallery response."));
+            reply->deleteLater();
+            return;
+        }
+        const QJsonObject continueObject = continueValue.toObject();
+        for (auto it = continueObject.constBegin(); it != continueObject.constEnd(); ++it) {
+            if (!it.value().isString()) {
+                emit errorOccurred(tr("Invalid gallery response."));
+                reply->deleteLater();
+                return;
+            }
+        }
+        if (pageObject.contains("images") && !pageObject.value("images").isArray()) {
+            emit errorOccurred(tr("Invalid gallery response."));
+            reply->deleteLater();
+            return;
+        }
+        for (const QJsonValue &imageValue : pageObject.value("images").toArray()) {
+            if (!imageValue.isObject() || !imageValue.toObject().value("title").isString()
+                || imageValue.toObject().value("title").toString().trimmed().isEmpty()) {
+                emit errorOccurred(tr("Invalid gallery response."));
+                reply->deleteLater();
+                return;
+            }
+        }
+
         page p = parsePageWithImages(responseData, pageid);
+        for (auto it = continueObject.constBegin(); it != continueObject.constEnd(); ++it)
+            p.imageContinuation.insert(it.key(), it.value().toVariant());
 
         // parsePageWithImages stores the requested file titles in imageTitles;
         // clear them before metadata lookup so completion contains only usable images.
@@ -347,7 +407,9 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
     urlQuery.addQueryItem("titles", imageTitles.join("|"));
     url.setQuery(urlQuery);
 
-    QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    QNetworkRequest request(url);
+    applyRequestDeadline(request, context);
+    QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this,
             [this, reply, imageTitles, pageData = std::move(pageData), context, completion = std::move(completion)]() mutable {
@@ -356,23 +418,97 @@ void WikipediaPageClient::fetchImageUrlsFromTitles(const QStringList &imageTitle
         QByteArray response = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
         QJsonObject jsonObj = jsonDoc.object();
-        if (jsonDoc.isNull() || jsonObj.contains("error")) {
-            emit errorOccurred(jsonObj.contains("error")
-                ? jsonObj["error"].toObject()["info"].toString()
-                : tr("Invalid image metadata response."));
+        if (jsonDoc.isNull() || !jsonDoc.isObject() || jsonObj.contains("error")) {
+            const QJsonObject apiError = jsonObj.value("error").toObject();
+            QString message = apiError.value("info").toString();
+            if (message.isEmpty()) message = apiError.value("code").toString();
+            if (message.isEmpty()) message = tr("Invalid image metadata response.");
+            emit errorOccurred(message);
             reply->deleteLater();
             return;
         }
-        QJsonObject pages = jsonObj["query"].toObject()["pages"].toObject();
+        const QJsonValue queryValue = jsonObj.value("query");
+        const QJsonValue pagesValue = queryValue.toObject().value("pages");
+        if (!queryValue.isObject() || !pagesValue.isObject() || pagesValue.toObject().isEmpty()) {
+            emit errorOccurred(tr("Invalid image metadata response."));
+            reply->deleteLater();
+            return;
+        }
+        const QJsonObject pages = pagesValue.toObject();
+        QHash<QString, QString> normalizedTitles;
+        const QJsonValue normalizedValue = jsonObj.value("query").toObject().value("normalized");
+        if (!normalizedValue.isUndefined() && !normalizedValue.isArray()) {
+            emit errorOccurred(tr("Invalid image metadata response."));
+            reply->deleteLater();
+            return;
+        }
+        for (const QJsonValue &normalized : normalizedValue.toArray()) {
+            if (!normalized.isObject() || !normalized.toObject().value("from").isString()
+                || !normalized.toObject().value("to").isString()) {
+                emit errorOccurred(tr("Invalid image metadata response."));
+                reply->deleteLater();
+                return;
+            }
+            const QJsonObject alias = normalized.toObject();
+            normalizedTitles.insert(alias.value("from").toString(), alias.value("to").toString());
+        }
         QHash<QString, QJsonObject> pagesByTitle;
         for (auto it = pages.constBegin(); it != pages.constEnd(); ++it) {
+            if (!it.value().isObject()) {
+                emit errorOccurred(tr("Invalid image metadata response."));
+                reply->deleteLater();
+                return;
+            }
             const QJsonObject pageObj = it.value().toObject();
-            pagesByTitle.insert(pageObj["title"].toString(), pageObj);
+            const QJsonValue responseTitle = pageObj.value("title");
+            const bool missingFile = pageObj.contains("missing") || pageObj.contains("invalid");
+            if ((!responseTitle.isString() || responseTitle.toString().trimmed().isEmpty()) && !missingFile) {
+                emit errorOccurred(tr("Invalid image metadata response."));
+                reply->deleteLater();
+                return;
+            }
+            if (pageObj.contains("imageinfo") && !pageObj.value("imageinfo").isArray()) {
+                emit errorOccurred(tr("Invalid image metadata response."));
+                reply->deleteLater();
+                return;
+            }
+            for (const QJsonValue &infoValue : pageObj.value("imageinfo").toArray()) {
+                if (!infoValue.isObject()) {
+                    emit errorOccurred(tr("Invalid image metadata response."));
+                    reply->deleteLater();
+                    return;
+                }
+                const QJsonObject info = infoValue.toObject();
+                if ((info.contains("url") && !info.value("url").isString())
+                    || (info.contains("thumburl") && !info.value("thumburl").isString())
+                    || (info.contains("extmetadata") && !info.value("extmetadata").isObject())) {
+                    emit errorOccurred(tr("Invalid image metadata response."));
+                    reply->deleteLater();
+                    return;
+                }
+                const QJsonValue metadataValue = info.value("extmetadata");
+                if (metadataValue.isObject() && metadataValue.toObject().contains("ImageDescription")) {
+                    const QJsonValue description = metadataValue.toObject().value("ImageDescription");
+                    if (!description.isObject() || !description.toObject().value("value").isString()) {
+                        emit errorOccurred(tr("Invalid image metadata response."));
+                        reply->deleteLater();
+                        return;
+                    }
+                }
+            }
+            const QString pageTitle = responseTitle.toString();
+            pagesByTitle.insert(pageTitle.isEmpty() && imageTitles.size() == 1 ? imageTitles.first() : pageTitle,
+                                pageObj);
         }
 
         // Response page IDs do not preserve the requested gallery sequence.
         for (const QString &title : imageTitles) {
-            const QJsonObject pageObj = pagesByTitle.value(title);
+            const QString responseTitle = normalizedTitles.value(title, title);
+            // Some valid responses omit missing files entirely. Other missing
+            // files are represented explicitly with a "missing" page object.
+            if (!pagesByTitle.contains(responseTitle))
+                continue;
+            const QJsonObject pageObj = pagesByTitle.value(responseTitle);
             if (pageObj.contains("imageinfo")) {
                 QJsonArray imageInfo = pageObj["imageinfo"].toArray();
                 if (!imageInfo.isEmpty()) {
@@ -420,7 +556,9 @@ void WikipediaPageClient::fetchPageContentWithImages(int pageid, const page &pag
     urlQuery.addQueryItem("pageid", QString::number(pageid));
     url.setQuery(urlQuery);
 
-    QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    QNetworkRequest request(url);
+    applyRequestDeadline(request, context);
+    QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this, [this, reply, pageData, context] {
         if (!m_requests.isCurrent(context)) { reply->deleteLater(); return; }
@@ -496,49 +634,111 @@ void WikipediaPageClient::fetchMathImageDataUrls(const QString &htmlContent,
         const QString source = sourceMatch.captured(2);
         if (mathImageDataUrls.contains(source)) {
             request->dataUrls.insert(source, mathImageDataUrls.value(source));
+            mathImageRecency.removeAll(source);
+            mathImageRecency.append(source);
             continue;
         }
         if (request->dataUrls.contains(source)) {
             continue;
         }
 
+        if (request->sources.size() >= 128)
+            continue;
         request->dataUrls.insert(source, {});
-        ++request->pendingRequests;
-
-        QNetworkReply *mathReply = networkManager->get(QNetworkRequest(QUrl(source)));
-        m_requests.track(mathReply, context);
-        connect(mathReply, &QNetworkReply::finished, this, [this, mathReply, request, source, context] {
-            if (!m_requests.isCurrent(context)) { mathReply->deleteLater(); return; }
-            if (mathReply->error() == QNetworkReply::NoError) {
-                const QString dataUrl = rasterizeSvg(mathReply->readAll());
-                if (!dataUrl.isEmpty()) {
-                    mathImageDataUrls.insert(source, dataUrl);
-                    request->dataUrls[source] = dataUrl;
-                }
-            }
-            mathReply->deleteLater();
-
-            if (--request->pendingRequests != 0) {
-                return;
-            }
-
-            for (auto it = request->dataUrls.cbegin(); it != request->dataUrls.cend(); ++it) {
-                if (!it.value().isEmpty()) {
-                    request->htmlContent.replace(it.key(), it.value());
-                }
-            }
-            request->completion(request->htmlContent);
-        });
+        request->sources.append(source);
     }
 
-    if (request->pendingRequests == 0) {
+    auto complete = [request] {
+        if (request->completed)
+            return;
+        request->completed = true;
+        if (request->deadlineTimer) {
+            request->deadlineTimer->stop();
+            request->deadlineTimer->deleteLater();
+        }
         for (auto it = request->dataUrls.cbegin(); it != request->dataUrls.cend(); ++it) {
             if (!it.value().isEmpty()) {
                 request->htmlContent.replace(it.key(), it.value());
             }
         }
         request->completion(request->htmlContent);
+    };
+    if (request->sources.isEmpty()) {
+        complete();
+        return;
     }
+
+    auto *deadlineTimer = new QTimer(this);
+    deadlineTimer->setSingleShot(true);
+    request->deadlineTimer = deadlineTimer;
+    connect(deadlineTimer, &QTimer::timeout, this, [this, request, complete] {
+        if (request->completed)
+            return;
+        complete();
+        for (const auto &reply : std::as_const(request->replies)) {
+            if (reply && !reply->isFinished())
+                reply->abort();
+        }
+    });
+    deadlineTimer->start(int(qMax(qint64(1), qMin(qint64(m_limits.formulaEnrichmentTimeoutMs),
+        context.deadlineMs - wikipediaMonotonicNowMs()))));
+
+    auto startMore = QSharedPointer<std::function<void()>>::create();
+    const QWeakPointer<std::function<void()>> weakStartMore(startMore);
+    *startMore = [this, request, context, complete, weakStartMore] {
+        if (request->completed || !m_requests.isCurrent(context))
+            return;
+        while (request->activeRequests < 2 && request->nextSource < request->sources.size()) {
+            const QString source = request->sources.at(request->nextSource++);
+            QNetworkRequest mathRequest{QUrl(source)};
+            applyRequestDeadline(mathRequest, context);
+            mathRequest.setAttribute(static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 2), 1024 * 1024);
+            QNetworkReply *mathReply = networkManager->get(mathRequest);
+            request->replies.append(mathReply);
+            ++request->activeRequests;
+            m_requests.track(mathReply, context);
+            const auto keepStartMoreAlive = weakStartMore.toStrongRef();
+            connect(mathReply, &QNetworkReply::finished, this,
+                    [this, mathReply, request, source, context, complete, keepStartMoreAlive] {
+                if (!request->completed && m_requests.isCurrent(context)
+                    && mathReply->error() == QNetworkReply::NoError) {
+                    const QString dataUrl = rasterizeSvg(mathReply->readAll());
+                    if (!dataUrl.isEmpty()) {
+                        const qsizetype bytes = dataUrl.size() * qsizetype(sizeof(QChar));
+                        if (mathImageDataUrls.contains(source))
+                            mathImageCacheBytes -= mathImageDataUrls.value(source).size() * qsizetype(sizeof(QChar));
+                        mathImageDataUrls.insert(source, dataUrl);
+                        mathImageRecency.removeAll(source);
+                        mathImageRecency.append(source);
+                        mathImageCacheBytes += bytes;
+                        while (mathImageDataUrls.size() > m_limits.formulaCacheEntries
+                               || mathImageCacheBytes > m_limits.formulaCacheBytes) {
+                            const QString oldest = mathImageRecency.takeFirst();
+                            mathImageCacheBytes -= mathImageDataUrls.take(oldest).size() * qsizetype(sizeof(QChar));
+                        }
+                        request->dataUrls[source] = dataUrl;
+                    }
+                }
+                mathReply->deleteLater();
+                --request->activeRequests;
+                if (request->completed)
+                    return;
+                if (!m_requests.isCurrent(context)) {
+                    complete();
+                    return;
+                }
+                if (request->nextSource == request->sources.size() && request->activeRequests == 0) {
+                    complete();
+                    return;
+                }
+                if (keepStartMoreAlive)
+                    (*keepStartMoreAlive)();
+            });
+        }
+        if (request->nextSource == request->sources.size() && request->activeRequests == 0)
+            complete();
+    };
+    (*startMore)();
 }
 
 void WikipediaPageClient::getSections(const QString &title) {
@@ -551,7 +751,9 @@ void WikipediaPageClient::getSections(const QString &title) {
     url.setQuery(urlQuery);
 
     const auto context = m_requests.context();
-    QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    QNetworkRequest request(url);
+    applyRequestDeadline(request, context);
+    QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this, [this, reply, context]() { this->onSectionsReply(reply, context); });
 }

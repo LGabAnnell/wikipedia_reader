@@ -86,6 +86,28 @@ class ImageSelectionStateTest : public QObject {
         QCOMPARE(selection.currentGalleryIndex(), 0);
     }
 
+    void galleryRefreshOnlyExtendsTheOwningPage() {
+        SettingsState settings;
+        ImageSelectionState selection(settings);
+        selection.selectGalleryImageForPage({"one.png", "two.png"}, {"one", "two"}, {}, 1, 100);
+        QCOMPARE(selection.currentImageUrl(), QString("two.png"));
+
+        selection.refreshGalleryImages(200, {"other.png", "other-two.png", "other-three.png"},
+                                       {"other", "other two", "other three"}, {});
+        QCOMPARE(selection.galleryImageCount(), 2);
+        QCOMPARE(selection.currentImageUrl(), QString("two.png"));
+        QCOMPARE(selection.currentGalleryIndex(), 1);
+
+        selection.refreshGalleryImages(100, {"one.png", "two.png", "three.png"}, {"one", "two", "three"}, {});
+        QCOMPARE(selection.galleryImageCount(), 3);
+        QCOMPARE(selection.currentImageUrl(), QString("two.png"));
+        QCOMPARE(selection.currentImageDescription(), QString("two"));
+        QCOMPARE(selection.currentGalleryIndex(), 1);
+        selection.selectNextImage();
+        QCOMPARE(selection.currentImageUrl(), QString("three.png"));
+        QCOMPARE(selection.currentGalleryIndex(), 2);
+    }
+
     void waitsForDetailsAndSkipsIdenticalSelection() {
         NetworkFixtureController network;
         connect(&network, &NetworkFixtureController::unexpectedRequest, this,
@@ -112,20 +134,20 @@ class ImageSelectionStateTest : public QObject {
         QSignalSpy urlSpy(&selection, &ImageSelectionState::currentImageUrlChanged);
         network.deferNextReply();
         selection.selectGalleryImage({"https://upload.wikimedia.org/thumb.jpg"}, {"Thumbnail caption"}, {title}, 0);
-        QCOMPARE(selection.currentImageUrl(), QString("previous.jpg"));
-        QCOMPARE(selection.currentImageDescription(), QString("Previous caption"));
-        QCOMPARE(urlSpy.count(), 0);
+        QCOMPARE(selection.currentImageUrl(), QString("https://upload.wikimedia.org/thumb.jpg"));
+        QCOMPARE(selection.currentImageDescription(), QString("Thumbnail caption"));
+        QCOMPARE(urlSpy.count(), 1);
         QCOMPARE(network.requestCount(), 1);
         auto *client = selection.findChild<WikipediaPageClient *>();
         QVERIFY(client);
         emit client->imageDetailsReceived("File:Stale.jpg", "stale.jpg", "stale caption");
-        QCOMPARE(selection.currentImageUrl(), QString("previous.jpg"));
+        QCOMPARE(selection.currentImageUrl(), QString("https://upload.wikimedia.org/thumb.jpg"));
         selection.selectGalleryImage({"https://upload.wikimedia.org/thumb.jpg"}, {"Thumbnail caption"}, {title}, 0);
         QCOMPARE(network.requestCount(), 1);
         network.completeNextReply();
         QTRY_COMPARE(selection.currentImageUrl(), QString("https://upload.wikimedia.org/full.jpg"));
         QCOMPARE(selection.currentImageDescription(), QString("Full caption"));
-        QCOMPARE(urlSpy.count(), 1);
+        QCOMPARE(urlSpy.count(), 2);
     }
 
     void detailsFailureFallsBackToThumbnail() {

@@ -7,6 +7,7 @@
 #include <QQmlEngine>
 #include <QString>
 #include <QVector>
+#include <QVariantMap>
 
 // Data structure for search results
 class search_result {
@@ -37,6 +38,7 @@ class page {
     QStringList imageUrls;
     QStringList imageTitles; // Parallel file titles for deferred metadata lookup
     QStringList imageDescriptions; // Parallel to imageUrls; plain-text caption per image
+    QVariantMap imageContinuation;
 };
 
 // Data structure for a featured article

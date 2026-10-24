@@ -57,7 +57,7 @@ class ArticleState : public QObject {
 
   private slots:
     void handleArticleLoadError(const QString &error);
-    void continueResolvedArticleLoad(int pageId);
+    void continueResolvedArticleLoad(int pageId, const WikipediaRequestContext &context);
 
   private:
     static QPointer<ArticleState> m_instance;
@@ -67,7 +67,10 @@ class ArticleState : public QObject {
     page m_currentPage{};
     QMap<int, page> m_articleCache;
     QList<int> m_articleCacheRecency;
+    QMap<int, qsizetype> m_articleCacheBytes;
+    qsizetype m_articleCacheByteCount = 0;
     static constexpr qsizetype ArticleCacheCapacity = 20;
+    static constexpr qsizetype ArticleCacheByteCapacity = 32 * 1024 * 1024;
     bool m_isLoading = false;
     QString m_errorMessage;
 };

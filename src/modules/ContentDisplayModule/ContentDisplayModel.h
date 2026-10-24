@@ -5,6 +5,7 @@
 #include "ArticleState.h"
 #include <QList>
 #include <QVector>
+#include <QVariantMap>
 
 struct search_indices {
     Q_GADGET
@@ -33,6 +34,10 @@ public:
      * @param language The selected Wikipedia language code.
      */
     Q_INVOKABLE void openExternalLink(const QString &link, const QString &language);
+    /** @brief Parse a local article link into its decoded title and section anchor.
+     * Returns an empty map for non-article links or malformed percent encoding.
+     */
+    Q_INVOKABLE QVariantMap parseArticleLink(const QString &link) const;
     int currentSectionIndex() const { return m_currentSectionIndex; }
     void setCurrentSectionIndex(int index);
     /** @brief Discard per-view section positions and highlighting. */

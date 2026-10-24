@@ -132,6 +132,21 @@ class ContentDisplayModelTest : public QObject {
         model.openExternalLink("#Section", "en");
         QVERIFY(s_handledUrl.isEmpty());
     }
+
+    void articleLinksSplitQueryAndFragmentBeforeDecoding() {
+        ContentDisplayModel model;
+        const QVariantMap parsed = model.parseArticleLink(QStringLiteral("/wiki/Example_page%3Fpart?oldid=123#Details%20section"));
+        QCOMPARE(parsed.value(QStringLiteral("title")).toString(), QStringLiteral("Example page?part"));
+        QCOMPARE(parsed.value(QStringLiteral("fragment")).toString(), QStringLiteral("Details section"));
+        QCOMPARE(model.parseArticleLink(QStringLiteral("#Details%20section"))
+                     .value(QStringLiteral("fragment")).toString(), QStringLiteral("Details section"));
+        const QVariantMap unicode = model.parseArticleLink(QStringLiteral("/wiki/%E6%9D%B1%E4%BA%AC#%E7%9B%AE%E6%AC%A1"));
+        QCOMPARE(unicode.value(QStringLiteral("title")).toString(), QStringLiteral("東京"));
+        QCOMPARE(unicode.value(QStringLiteral("fragment")).toString(), QStringLiteral("目次"));
+        QVERIFY(model.parseArticleLink(QStringLiteral("/wiki/Example%ZZ#Details")).isEmpty());
+        QVERIFY(model.parseArticleLink(QStringLiteral("/wiki/Example%E2%28%A1")).isEmpty());
+        QVERIFY(model.parseArticleLink(QStringLiteral("https://en.wikipedia.org/wiki/Example")).isEmpty());
+    }
 };
 
 QTEST_MAIN(ContentDisplayModelTest)

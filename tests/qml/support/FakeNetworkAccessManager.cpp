@@ -170,6 +170,8 @@ FakeNetworkReply *NetworkFixtureController::handleRequest(QNetworkAccessManager:
         record.insert(QStringLiteral("path"), request.url().path());
         record.insert(QStringLiteral("query"), QUrlQuery(request.url()).query(QUrl::FullyDecoded));
         record.insert(QStringLiteral("url"), request.url().toString());
+        record.insert(QStringLiteral("deadline"), request.attribute(
+            static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 1)));
         record.insert(QStringLiteral("matched"), matched);
         m_requests.append(record);
     }

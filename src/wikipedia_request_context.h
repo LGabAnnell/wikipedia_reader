@@ -4,16 +4,33 @@
 #include <QNetworkReply>
 #include <QSet>
 #include <QString>
+#include <QElapsedTimer>
+#include <QNetworkRequest>
 
 struct WikipediaRequestContext {
     QString language;
     quint64 generation = 0;
+    qint64 deadlineMs = 0;
 };
+
+inline constexpr qint64 WikipediaOperationTimeoutMs = 45'000;
+
+inline qint64 wikipediaMonotonicNowMs() {
+    static const QElapsedTimer clock = [] { QElapsedTimer timer; timer.start(); return timer; }();
+    return clock.elapsed();
+}
+
+inline void applyRequestDeadline(QNetworkRequest &request, const WikipediaRequestContext &context) {
+    request.setAttribute(static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 1), context.deadlineMs);
+    request.setTransferTimeout(15'000);
+}
 
 /** @brief Captures edition and generation and invalidates outstanding replies. */
 class WikipediaRequestTracker : public QObject {
   public:
-    WikipediaRequestContext context() const { return {m_language, m_generation}; }
+    WikipediaRequestContext context() const {
+        return {m_language, m_generation, wikipediaMonotonicNowMs() + WikipediaOperationTimeoutMs};
+    }
     bool isCurrent(const WikipediaRequestContext &context) const {
         return context.language == m_language && context.generation == m_generation;
     }

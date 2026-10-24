@@ -181,6 +181,20 @@ class ArticleStateTest : public QObject {
         QCOMPARE(article.currentPageTitle(), QString("Article 2"));
     }
 
+    void articleCacheEvictsByPayloadBytes() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        for (int id = 1; id <= 9; ++id) {
+            page large = articleWithId(id);
+            large.extract = QString(4 * 1024 * 1024, QLatin1Char('x'));
+            article.setCurrentPage(large);
+        }
+        addArticle(1);
+        article.loadArticleByPageId(1);
+        QTRY_COMPARE(article.currentPageTitle(), QString("Article 1"));
+        QCOMPARE(m_network.requestCount(), 2);
+    }
+
     void titleCacheHitRefreshesRecency() {
         SettingsState settings;
         ArticleState article(*m_history, settings);
@@ -400,6 +414,48 @@ class ArticleStateTest : public QObject {
         m_network.completeNextReply();
         QTRY_VERIFY(!article.isLoading());
         QCOMPARE(article.currentPageId(), 42);
+    }
+
+    void completionSignalsExposeFinalContentAndError() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        addArticle();
+        bool sawCompletedContent = false;
+        connect(&article, &ArticleState::isLoadingChanged, &article, [&] {
+            if (!article.isLoading())
+                sawCompletedContent = article.currentPageTitle() == "Article"
+                    && article.currentPageExtract().contains("Article HTML");
+        });
+        article.loadArticleByPageId(42);
+        QTRY_VERIFY(sawCompletedContent);
+
+        m_network.addFixture("GET",
+            QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json&pageids=43"),
+            "failure", "text/plain", 500);
+        bool sawCompletedError = false;
+        connect(&article, &ArticleState::isLoadingChanged, &article, [&] {
+            if (!article.isLoading())
+                sawCompletedError = !article.errorMessage().isEmpty();
+        });
+        article.loadArticleByPageId(43);
+        QTRY_VERIFY(sawCompletedError);
+    }
+
+    void articleStagesShareOneOperationDeadline() {
+        SettingsState settings;
+        ArticleState article(*m_history, settings);
+        m_network.clearRequests();
+        addArticle(42);
+
+        article.loadArticleByPageId(42);
+        QTRY_VERIFY(!article.isLoading());
+
+        const QVariantList requests = m_network.requests();
+        QCOMPARE(requests.size(), 2);
+        const qint64 metadataDeadline = requests.at(0).toMap().value("deadline").toLongLong();
+        const qint64 htmlDeadline = requests.at(1).toMap().value("deadline").toLongLong();
+        QVERIFY(metadataDeadline > 0);
+        QCOMPARE(htmlDeadline, metadataDeadline);
     }
 
     void failedUncachedSelectionClearsPreviousArticleAndCanRetry() {

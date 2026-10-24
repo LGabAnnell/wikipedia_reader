@@ -85,6 +85,15 @@ Item {
             visible: text.length > 0
         }
 
+        Button {
+            objectName: "galleryRetryButton"
+            Layout.alignment: Qt.AlignHCenter
+            text: qsTr("Retry")
+            visible: imageModel.errorMessage.length > 0 && imageModel.imageUrls.length === 0
+            enabled: !imageModel.isLoading
+            onClicked: imageModel.loadImagesForPage(pageId)
+        }
+
         // Scrollable grid view for images
         ScrollView {
             Layout.fillWidth: true
@@ -193,6 +202,16 @@ Item {
                     }
                 }
             }
+        }
+
+        Button {
+            objectName: "galleryLoadMoreButton"
+            Layout.alignment: Qt.AlignHCenter
+            text: imageModel.isLoadingMore ? qsTr("Loading more…")
+                  : imageModel.errorMessage.length > 0 ? qsTr("Retry loading more") : qsTr("Load more")
+            visible: imageModel.hasMore
+            enabled: !imageModel.isLoadingMore && !imageModel.isLoading
+            onClicked: imageModel.loadMore()
         }
     }
 

@@ -3,6 +3,8 @@
 #include <QDebug>
 #include <QIcon>
 #include <QLoggingCategory>
+#include <QTimer>
+#include <cstdio>
 #include "ArticleState.h"
 #include "SearchState.h"
 #include "SettingsState.h"
@@ -48,5 +50,15 @@ int main(int argc, char *argv[]) {
     engine.loadFromModule("wikipedia_qt", "Main");
     if (engine.rootObjects().isEmpty())
         return -1;
+
+    // The installed-bundle smoke test only needs to prove that the relocated
+    // executable can load its root QML object and deployed imports. The home
+    // screen may start network requests during construction; do not wait for
+    // those requests in this mode.
+    if (app.arguments().contains(QStringLiteral("--smoke-test"))) {
+        std::fputs("Wikipedia Reader startup smoke test passed\n", stderr);
+        std::fflush(stderr);
+        QTimer::singleShot(0, &app, &QCoreApplication::quit);
+    }
     return app.exec();
 }

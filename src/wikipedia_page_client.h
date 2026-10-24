@@ -8,28 +8,40 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QHash>
+#include <QList>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QObject>
 #include <QString>
 #include <QVector>
+#include <QVariantMap>
 #include <functional>
+
+struct WikipediaPageClientLimits {
+    qsizetype formulaCacheEntries = 256;
+    qsizetype formulaCacheBytes = 16 * 1024 * 1024;
+    int formulaEnrichmentTimeoutMs = 3'000;
+};
 
 class WikipediaPageClient : public QObject {
     Q_OBJECT
   public:
     explicit WikipediaPageClient(QObject *parent = nullptr);
+    WikipediaPageClient(QObject *parent, const WikipediaPageClientLimits &limits);
     ~WikipediaPageClient();
 
     void getPage(const QString &title);
     void getPageById(int pageid);
-    void getPageWithImages(int pageid);
+    void getPageById(int pageid, const WikipediaRequestContext &context);
+    void getPageWithImages(int pageid, const QVariantMap &continuation = {});
     /** @brief Fetch a larger preview and caption for a selected file. */
     void getImageDetails(const QString &title);
     void resolveTitleToPageId(const QString &title);
     void getSections(const QString &title);
     void setLanguage(const QString &langCode);
     void cancelPendingRequests();
+    qsizetype mathImageCacheEntryCount() const { return mathImageDataUrls.size(); }
+    qsizetype mathImageCachePayloadBytes() const { return mathImageCacheBytes; }
 
     static page parsePage(const QByteArray &responseData, const QString &title);
     static page parsePageWithImages(const QByteArray &responseData, int pageid);
@@ -40,6 +52,7 @@ class WikipediaPageClient : public QObject {
     void pageWithImagesReceived(const page &page);
     void imageDetailsReceived(const QString &title, const QString &url, const QString &description);
     void pageIdResolved(int pageid);
+    void pageIdResolvedWithContext(int pageid, const WikipediaRequestContext &context);
     void sectionsReceived(const QVector<section> &sections);
     void errorOccurred(const QString &error);
 
@@ -53,6 +66,9 @@ class WikipediaPageClient : public QObject {
     QString baseUrl;
     WikipediaRequestTracker m_requests;
     QHash<QString, QString> mathImageDataUrls;
+    WikipediaPageClientLimits m_limits;
+    QList<QString> mathImageRecency;
+    qsizetype mathImageCacheBytes = 0;
     void fetchImageUrlsFromTitles(const QStringList &imageTitles, page pageData,
                                   const WikipediaRequestContext &context,
                                   std::function<void(page)> completion, bool details = false);

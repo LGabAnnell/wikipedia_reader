@@ -21,6 +21,7 @@ class WikipediaPageClientTest : public QObject {
         connect(&m_network, &NetworkFixtureController::unexpectedRequest, this,
                 [](const QString &request) { qFatal("%s", qPrintable(request)); });
         WikipediaNetwork::installNetworkAccessManagerFactory(&m_network);
+        QVERIFY(metaObject()->indexOfSlot("testParseSectionsMalformedJson()") >= 0);
     }
 
     void cleanupTestCase() { WikipediaNetwork::installNetworkAccessManagerFactory(nullptr); }
@@ -197,6 +198,172 @@ class WikipediaPageClientTest : public QObject {
         QCOMPARE(m_network.requestCount(), 2);
     }
 
+    void testFormulaWorkAndCacheBudgetsAcrossRepeatedLoads() {
+        QString html;
+        constexpr int formulaCount = 257;
+        const QByteArray svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"2\" height=\"2\"></svg>";
+        for (int i = 0; i < formulaCount; ++i) {
+            const QString url = QString("https://math.example/formula-%1.svg").arg(i);
+            html += QString("<img class=\"mwe-math-fallback-image-inline\" src=\"%1\">").arg(url);
+            m_network.addFixture("GET", QUrl(url), svg, "image/svg+xml");
+        }
+        m_network.addFixture("GET", m_pageUrl,
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Formula article"}}}})");
+        const QUrl parseUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&disableeditsection=true&formatversion=2&pageid=736");
+        m_network.addFixture("GET", parseUrl,
+            QJsonDocument(QJsonObject{{"parse", QJsonObject{{"text", html}}}}).toJson());
+
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageReceived);
+        client.getPageById(736);
+        QTRY_COMPARE_WITH_TIMEOUT(pages.count(), 1, 10'000);
+        QCOMPARE(m_network.requestCount(), 130); // page, HTML, and the 128-source per-load cap
+        QCOMPARE(client.mathImageCacheEntryCount(), 128);
+        QVERIFY(client.mathImageCachePayloadBytes() <= 16 * 1024 * 1024);
+        qInfo() << "Formula cache after load 1:" << client.mathImageCacheEntryCount()
+                << "entries," << client.mathImageCachePayloadBytes() << "payload bytes; pending replies:"
+                << m_network.pendingReplyCount();
+
+        client.getPageById(736);
+        QTRY_COMPARE_WITH_TIMEOUT(pages.count(), 2, 10'000);
+        QCOMPARE(m_network.requestCount(), 260); // The next 128 uncached formulas are fetched.
+        QCOMPARE(client.mathImageCacheEntryCount(), 256);
+        QVERIFY(client.mathImageCachePayloadBytes() <= 16 * 1024 * 1024);
+        qInfo() << "Formula cache after load 2:" << client.mathImageCacheEntryCount()
+                << "entries," << client.mathImageCachePayloadBytes() << "payload bytes; pending replies:"
+                << m_network.pendingReplyCount();
+
+        client.getPageById(736);
+        QTRY_COMPARE_WITH_TIMEOUT(pages.count(), 3, 10'000);
+        QCOMPARE(m_network.requestCount(), 263); // Formula 256 is fetched and evicts least-recently used 0.
+        QCOMPARE(client.mathImageCacheEntryCount(), 256);
+        qInfo() << "Formula cache after load 3:" << client.mathImageCacheEntryCount()
+                << "entries," << client.mathImageCachePayloadBytes() << "payload bytes; pending replies:"
+                << m_network.pendingReplyCount();
+
+        client.getPageById(736);
+        QTRY_COMPARE_WITH_TIMEOUT(pages.count(), 4, 10'000);
+        QCOMPARE(m_network.requestCount(), 266); // Formula 0 was evicted and must be fetched again.
+        QCOMPARE(client.mathImageCacheEntryCount(), 256);
+        QVERIFY(client.mathImageCachePayloadBytes() <= 16 * 1024 * 1024);
+        qInfo() << "Formula cache after load 4:" << client.mathImageCacheEntryCount()
+                << "entries," << client.mathImageCachePayloadBytes() << "payload bytes; pending replies:"
+                << m_network.pendingReplyCount();
+    }
+
+    void testFormulaCacheEvictsByPayloadBytes() {
+        const QByteArray svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"2\" height=\"2\"></svg>";
+        const QUrl parseUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&disableeditsection=true&formatversion=2&pageid=736");
+        const QString oneFormulaUrl = QStringLiteral("https://math.example/byte-probe.svg");
+        m_network.addFixture("GET", m_pageUrl,
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Formula byte probe"}}}})");
+        m_network.addFixture("GET", parseUrl,
+            QJsonDocument(QJsonObject{{"parse", QJsonObject{{"text", QStringLiteral("<img class=\"mwe-math-fallback-image-inline\" src=\"%1\">").arg(oneFormulaUrl)}}}}).toJson());
+        m_network.addFixture("GET", QUrl(oneFormulaUrl), svg, "image/svg+xml");
+        WikipediaPageClient probe;
+        QSignalSpy probePages(&probe, &WikipediaPageClient::pageReceived);
+        probe.getPageById(736);
+        QTRY_COMPARE_WITH_TIMEOUT(probePages.count(), 1, 1000);
+        const qsizetype oneEntryBytes = probe.mathImageCachePayloadBytes();
+        QVERIFY(oneEntryBytes > 0);
+
+        m_network.clearRequests();
+        QString html;
+        constexpr int formulaCount = 8;
+        for (int i = 0; i < formulaCount; ++i) {
+            const QString url = QString("https://math.example/byte-budget-%1.svg").arg(i);
+            html += QString("<img class=\"mwe-math-fallback-image-inline\" src=\"%1\">").arg(url);
+            m_network.addFixture("GET", QUrl(url), svg, "image/svg+xml");
+        }
+        m_network.addFixture("GET", parseUrl,
+            QJsonDocument(QJsonObject{{"parse", QJsonObject{{"text", html}}}}).toJson());
+        WikipediaPageClientLimits limits;
+        limits.formulaCacheEntries = 64;
+        limits.formulaCacheBytes = oneEntryBytes * 3 + 1;
+        WikipediaPageClient client(nullptr, limits);
+        QSignalSpy pages(&client, &WikipediaPageClient::pageReceived);
+        client.getPageById(736);
+        QTRY_COMPARE_WITH_TIMEOUT(pages.count(), 1, 2000);
+        QCOMPARE(m_network.requestCount(), formulaCount + 2);
+        QCOMPARE(client.mathImageCacheEntryCount(), 3);
+        QCOMPARE(client.mathImageCachePayloadBytes(), oneEntryBytes * 3);
+        QVERIFY(client.mathImageCachePayloadBytes() <= limits.formulaCacheBytes);
+        qInfo() << "Formula byte-limit eviction:" << client.mathImageCacheEntryCount()
+                << "entries," << client.mathImageCachePayloadBytes() << "of" << limits.formulaCacheBytes
+                << "payload bytes; pending replies:" << m_network.pendingReplyCount();
+    }
+
+    void testFormulaEnrichmentDeadlinePublishesArticleFallback() {
+        const QUrl parseUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&disableeditsection=true&formatversion=2&pageid=736");
+        m_network.addFixture("GET", m_pageUrl,
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Formula article"}}}})");
+        const QString stalledHtml = QStringLiteral("<p>Text<img class=\"mwe-math-fallback-image-inline\" src=\"https://math.example/stalled.svg\"></p>");
+        const QByteArray parseResponse = QJsonDocument(QJsonObject{{"parse", QJsonObject{{"text", stalledHtml}}}}).toJson();
+        m_network.addFixture("GET", parseUrl, parseResponse);
+        m_network.addFixture("GET", QUrl("https://math.example/stalled.svg"), "<svg/>", "image/svg+xml");
+        WikipediaPageClientLimits limits;
+        limits.formulaEnrichmentTimeoutMs = 40;
+        WikipediaPageClient client(nullptr, limits);
+        QSignalSpy pages(&client, &WikipediaPageClient::pageReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+
+        m_network.deferNextReply(true);
+        client.getPageById(736);
+        m_network.deferNextReply(true);
+        m_network.completeNextReply();
+        QCOMPARE(m_network.pendingReplyCount(), 1); // HTML stage
+        m_network.deferNextReply(true);
+        m_network.completeNextReply();
+        QCOMPARE(m_network.pendingReplyCount(), 1); // Optional formula stage
+
+        QTRY_COMPARE_WITH_TIMEOUT(pages.count(), 1, 1000);
+        QVERIFY(pages.first().first().value<page>().extract.contains("stalled.svg"));
+        QCOMPARE(errors.count(), 0);
+        m_network.completeNextReply(); // Late optional response must not republish the article.
+        QTest::qWait(25);
+        QCOMPARE(pages.count(), 1);
+        QCOMPARE(m_network.pendingReplyCount(), 0);
+    }
+
+    void testFormulaFanoutStopsAtTwoAndCanceledWorkDoesNotContinue() {
+        const QUrl parseUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&disableeditsection=true&formatversion=2&pageid=736");
+        m_network.addFixture("GET", m_pageUrl,
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Canceled formula article"}}}})");
+        QString html;
+        constexpr int formulaCount = 12;
+        for (int i = 0; i < formulaCount; ++i) {
+            const QString url = QString("https://math.example/canceled-%1.svg").arg(i);
+            html += QString("<img class=\"mwe-math-fallback-image-inline\" src=\"%1\">").arg(url);
+            m_network.addFixture("GET", QUrl(url), "<svg/>", "image/svg+xml");
+        }
+        m_network.addFixture("GET", parseUrl,
+            QJsonDocument(QJsonObject{{"parse", QJsonObject{{"text", html}}}}).toJson());
+
+        WikipediaPageClientLimits limits;
+        limits.formulaEnrichmentTimeoutMs = 60;
+        WikipediaPageClient client(nullptr, limits);
+        QSignalSpy pages(&client, &WikipediaPageClient::pageReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+
+        m_network.deferNextReply(true);
+        client.getPageById(736);
+        m_network.deferNextReply(true);
+        m_network.completeNextReply(); // Page metadata starts the HTML request.
+        QCOMPARE(m_network.pendingReplyCount(), 1);
+        m_network.deferNextReply(true);
+        m_network.completeNextReply(); // HTML starts exactly two formula requests.
+        QCOMPARE(m_network.requestCount(), 4);
+        QCOMPARE(m_network.pendingReplyCount(), 1);
+
+        client.cancelPendingRequests();
+        m_network.completeNextReply(); // A response allowed to finish after abort must remain stale.
+        QTRY_COMPARE_WITH_TIMEOUT(m_network.pendingReplyCount(), 0, 1000);
+        QTest::qWait(100);
+        QCOMPARE(m_network.requestCount(), 4);
+        QCOMPARE(pages.count(), 0);
+        QCOMPARE(errors.count(), 0);
+    }
+
     void testParsePage() {
         QByteArray json = R"({"query":{"pages":{"736":{
             "title":"Albert Einstein",
@@ -371,6 +538,126 @@ class WikipediaPageClientTest : public QObject {
         QCOMPARE(pages.first().first().value<page>().title, QString("Gallery without image list"));
         QCOMPARE(errors.count(), 0);
         QCOMPARE(m_network.requestCount(), 1);
+    }
+
+    void testGalleryFollowsContinuationAcrossPages() {
+        QUrl firstUrl("https://en.wikipedia.org/w/api.php");
+        QUrlQuery firstQuery;
+        firstQuery.addQueryItem("action", "query");
+        firstQuery.addQueryItem("format", "json");
+        firstQuery.addQueryItem("prop", "extracts|images");
+        firstQuery.addQueryItem("pageids", "736");
+        firstQuery.addQueryItem("explaintext", "1");
+        firstQuery.addQueryItem("imlimit", "50");
+        firstUrl.setQuery(firstQuery);
+        m_network.addFixture("GET", firstUrl,
+            R"({"continue":{"continue":"||","imcontinue":"736|B"},"query":{"pages":{"736":{"pageid":736,"title":"Gallery article","images":[{"title":"File:A.jpg"}]}}}})");
+        QUrl secondUrl("https://en.wikipedia.org/w/api.php");
+        firstQuery.addQueryItem("continue", "||");
+        firstQuery.addQueryItem("imcontinue", "736|B");
+        secondUrl.setQuery(firstQuery);
+        m_network.addFixture("GET", secondUrl,
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Gallery article","images":[{"title":"File:B.jpg"}]}}}})");
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=imageinfo&iiprop=url|extmetadata|mime&iiurlheight=330&iiurlwidth=330&titles=File:A.jpg"),
+            R"({"query":{"pages":{"1":{"title":"File:A.jpg","imageinfo":[{"url":"https:\/\/img.example/a.jpg"}]}}}})");
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=imageinfo&iiprop=url|extmetadata|mime&iiurlheight=330&iiurlwidth=330&titles=File:B.jpg"),
+            R"({"query":{"pages":{"2":{"title":"File:B.jpg","imageinfo":[{"url":"https:\/\/img.example/b.jpg"}]}}}})");
+
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageWithImagesReceived);
+        client.getPageWithImages(736);
+        QTRY_COMPARE(pages.count(), 1);
+        const page first = pages.takeFirst().first().value<page>();
+        QCOMPARE(first.imageContinuation.value("imcontinue").toString(), QString("736|B"));
+        client.getPageWithImages(736, first.imageContinuation);
+        QTRY_COMPARE(pages.count(), 1);
+        const page second = pages.first().first().value<page>();
+        QCOMPARE(second.imageTitles, QStringList({"File:B.jpg"}));
+        QCOMPARE(second.imageUrls, QStringList({"https://img.example/b.jpg"}));
+        QVERIFY(second.imageContinuation.isEmpty());
+    }
+
+    void testImageMetadataRejectsInvalidEnvelope_data() {
+        QTest::addColumn<QByteArray>("metadata");
+        QTest::newRow("empty object") << QByteArray("{}");
+        QTest::newRow("array") << QByteArray("[]");
+        QTest::newRow("missing pages") << QByteArray(R"({"query":{}})");
+        QTest::newRow("wrong pages type") << QByteArray(R"({"query":{"pages":[]}})");
+        QTest::newRow("wrong page value") << QByteArray(R"({"query":{"pages":{"1":[]}}})");
+        QTest::newRow("empty page object") << QByteArray(R"({"query":{"pages":{"1":{}}}})");
+        QTest::newRow("wrong image info type") << QByteArray(R"({"query":{"pages":{"1":{"title":"File:A.jpg","imageinfo":[[]]}}}})");
+        QTest::newRow("empty API error") << QByteArray(R"({"error":{}})");
+    }
+
+    void testImageMetadataRejectsInvalidEnvelope() {
+        QFETCH(QByteArray, metadata);
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=extracts|images&pageids=736&explaintext=1&imlimit=50"),
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Gallery","images":[{"title":"File:A.jpg"}]}}}})");
+        m_network.addFixture("GET", QUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=imageinfo&iiprop=url|extmetadata|mime&iiurlheight=330&iiurlwidth=330&titles=File:A.jpg"), metadata);
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageWithImagesReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+        client.getPageWithImages(736);
+        QTRY_COMPARE(errors.count(), 1);
+        QVERIFY(!errors.first().first().toString().isEmpty());
+        QCOMPARE(pages.count(), 0);
+    }
+
+    void testGalleryMetadataFailureCanRetry() {
+        const QUrl pageUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=extracts|images&pageids=736&explaintext=1&imlimit=50");
+        const QUrl metadataUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=imageinfo&iiprop=url|extmetadata|mime&iiurlheight=330&iiurlwidth=330&titles=File:A.jpg");
+        m_network.addFixture("GET", pageUrl,
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Gallery","images":[{"title":"File:A.jpg"}]}}}})");
+        m_network.addFixture("GET", metadataUrl, "failure", "application/json", 500);
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageWithImagesReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+        client.getPageWithImages(736);
+        QTRY_COMPARE(errors.count(), 1);
+        QCOMPARE(pages.count(), 0);
+
+        m_network.addFixture("GET", metadataUrl,
+            R"({"query":{"pages":{"1":{"title":"File:A.jpg","imageinfo":[{"url":"https:\/\/img.example/a.jpg"}]}}}})");
+        client.getPageWithImages(736);
+        QTRY_COMPARE(pages.count(), 1);
+        QCOMPARE(errors.count(), 1);
+        QCOMPARE(pages.first().first().value<page>().imageUrls, QStringList({"https://img.example/a.jpg"}));
+    }
+
+    void testObsoleteGalleryMetadataReplyIsIgnoredAndCanRecover() {
+        const QUrl pageUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=extracts|images&pageids=736&explaintext=1&imlimit=50");
+        const QUrl metadataUrl("https://en.wikipedia.org/w/api.php?action=query&format=json"
+            "&prop=imageinfo&iiprop=url|extmetadata|mime&iiurlheight=330&iiurlwidth=330&titles=File:A.jpg");
+        m_network.addFixture("GET", pageUrl,
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Gallery","images":[{"title":"File:A.jpg"}]}}}})");
+        m_network.addFixture("GET", metadataUrl,
+            R"({"query":{"pages":{"1":{"title":"File:A.jpg","imageinfo":[{"url":"https:\/\/img.example/a.jpg"}]}}}})");
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageWithImagesReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+        m_network.deferNextReply(true);
+        client.getPageWithImages(736);
+        m_network.deferNextReply(true);
+        m_network.completeNextReply();
+        QTRY_COMPARE(m_network.requestCount(), 2);
+        QCOMPARE(m_network.pendingReplyCount(), 1);
+        client.cancelPendingRequests();
+        m_network.completeNextReply(); // Complete the one outstanding stale metadata response.
+        QTRY_COMPARE(m_network.pendingReplyCount(), 0);
+        QCOMPARE(pages.count(), 0);
+        QCOMPARE(errors.count(), 0);
+
+        client.getPageWithImages(736);
+        QTRY_COMPARE(pages.count(), 1);
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(pages.first().first().value<page>().imageUrls, QStringList({"https://img.example/a.jpg"}));
     }
 
     void testSectionsRejectInvalidResponse_data() {

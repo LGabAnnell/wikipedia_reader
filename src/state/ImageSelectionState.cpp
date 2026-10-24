@@ -36,6 +36,7 @@ void ImageSelectionState::selectImage(const QString &url, const QString &descrip
     m_galleryUrls.clear();
     m_galleryDescriptions.clear();
     m_galleryTitles.clear();
+    m_galleryPageId = 0;
     const bool hadGallery = m_galleryIndex != -1;
     m_galleryIndex = -1;
     if (hadGallery)
@@ -56,6 +57,11 @@ void ImageSelectionState::updateSelection(const QString &url, const QString &des
 
 void ImageSelectionState::selectGalleryImage(const QStringList &urls, const QStringList &descriptions,
                                              const QStringList &titles, int index) {
+    selectGalleryImageForPage(urls, descriptions, titles, index, 0);
+}
+
+void ImageSelectionState::selectGalleryImageForPage(const QStringList &urls, const QStringList &descriptions,
+                                                     const QStringList &titles, int index, int pageId) {
     if (index < 0 || index >= urls.size())
         return;
     const bool changedGallery = m_galleryUrls != urls || m_galleryTitles != titles
@@ -64,16 +70,19 @@ void ImageSelectionState::selectGalleryImage(const QStringList &urls, const QStr
     m_galleryDescriptions = descriptions;
     m_galleryTitles = titles;
     const bool indexChanged = m_galleryIndex != index;
+    const bool ownerChanged = m_galleryPageId != pageId;
     m_galleryIndex = index;
-    if (!changedGallery && !indexChanged)
+    m_galleryPageId = pageId;
+    if (!changedGallery && !indexChanged && !ownerChanged)
         return;
     m_pageClient->cancelPendingRequests();
     m_pendingDetailsTitle.clear();
     if (changedGallery || indexChanged)
         emit gallerySelectionChanged();
     const QString title = titles.value(index);
+    updateSelection(urls.at(index), descriptions.value(index));
     if (title.isEmpty())
-        updateSelection(urls.at(index), descriptions.value(index));
+        m_pendingDetailsTitle.clear();
     else
         m_pendingDetailsTitle = title;
     fetchDetailsForCurrentImage();
@@ -81,12 +90,32 @@ void ImageSelectionState::selectGalleryImage(const QStringList &urls, const QStr
 
 void ImageSelectionState::selectNextImage() {
     if (m_galleryIndex >= 0 && m_galleryIndex + 1 < m_galleryUrls.size())
-        selectGalleryImage(m_galleryUrls, m_galleryDescriptions, m_galleryTitles, m_galleryIndex + 1);
+        selectGalleryImageForPage(m_galleryUrls, m_galleryDescriptions, m_galleryTitles,
+                                  m_galleryIndex + 1, m_galleryPageId);
+}
+
+void ImageSelectionState::refreshGalleryImages(int pageId, const QStringList &urls, const QStringList &descriptions,
+                                                const QStringList &titles) {
+    if (m_galleryIndex < 0 || pageId != m_galleryPageId || urls.size() == m_galleryUrls.size())
+        return;
+    const QString selectedTitle = m_galleryTitles.value(m_galleryIndex);
+    m_galleryUrls = urls;
+    m_galleryDescriptions = descriptions;
+    m_galleryTitles = titles;
+    if (m_galleryIndex >= m_galleryUrls.size())
+        m_galleryIndex = m_galleryUrls.size() - 1;
+    if (!selectedTitle.isEmpty()) {
+        const int refreshedIndex = m_galleryTitles.indexOf(selectedTitle);
+        if (refreshedIndex >= 0)
+            m_galleryIndex = refreshedIndex;
+    }
+    emit gallerySelectionChanged();
 }
 
 void ImageSelectionState::selectPreviousImage() {
     if (m_galleryIndex > 0)
-        selectGalleryImage(m_galleryUrls, m_galleryDescriptions, m_galleryTitles, m_galleryIndex - 1);
+        selectGalleryImageForPage(m_galleryUrls, m_galleryDescriptions, m_galleryTitles,
+                                  m_galleryIndex - 1, m_galleryPageId);
 }
 
 void ImageSelectionState::fetchDetailsForCurrentImage() {

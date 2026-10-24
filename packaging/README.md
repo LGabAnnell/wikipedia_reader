@@ -37,8 +37,19 @@ host-side SDK discovery, so user-installed runtimes can be found.
 
 CMake's `WIKIPEDIA_FLATPAK=ON` option installs this project's QML modules,
 plugins and backing libraries. The sandbox uses Qt, its QML modules, platform
-plugins and SQLite driver from the KDE runtime. Other Linux installations keep
-the existing full Qt deployment behavior.
+plugins and SQLite driver from the KDE runtime.
+
+Native Linux development builds use the system Qt and do not require packaging
+tools. To create a self-contained install that deploys Qt libraries and
+platform plugins, configure with `-DWIKIPEDIA_BUNDLE_QT=ON`; that packaging
+mode requires `patchelf`. The relocated install smoke script also requires
+this option:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DWIKIPEDIA_BUNDLE_QT=ON
+cmake --build build
+./scripts/run_install_smoke.sh build
+```
 
 ## Run without installing
 

@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QQuickItem>
+#include <QVariantMap>
 
 #include <map>
 
@@ -26,7 +27,7 @@ class NavigationState : public QObject {
     Q_INVOKABLE void installEventFilter(QObject *obj);
 
     // Methods to handle navigation
-    Q_INVOKABLE void navigateToContent();
+    Q_INVOKABLE void navigateToContent(const QString &initialFragment = {});
     Q_INVOKABLE void navigateToHistory();
     Q_INVOKABLE void navigateToSearch();
     Q_INVOKABLE void navigateToImageGallery();
@@ -36,7 +37,7 @@ class NavigationState : public QObject {
 
   signals:
     void stackViewChanged();
-    void pushView(const QQmlComponent *view);
+    void pushView(const QQmlComponent *view, const QVariantMap &initialProperties);
     void backButtonPressed(); // Emitted when the mouse back button is pressed
 
   public slots:

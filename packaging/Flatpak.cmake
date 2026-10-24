@@ -1,5 +1,6 @@
-# Qt is supplied by org.kde.Platform. Install only this project's QML modules,
-# their backing libraries and plugins, without copying the runtime's Qt stack.
+# Install only this project's QML modules, backing libraries and plugins.
+# Flatpak supplies Qt from org.kde.Platform; ordinary non-bundled Linux installs
+# use the same app-only layout and require Qt on the target system.
 foreach(module IN ITEMS
     wikipedia_qt
     SearchBarModule

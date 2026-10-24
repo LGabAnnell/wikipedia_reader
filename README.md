@@ -7,6 +7,9 @@ exploring article sections and images, and keeping browsing history.
 
 Requires CMake, a C++20 compiler, Qt 6.8 or newer (Quick, Core, Network, Sql,
 Gui, Svg, Widgets and SvgWidgets), tinyxml2, and Lexbor 3.0 or newer.
+Linux development builds use the system Qt without packaging tools. To create
+a self-contained Linux install, opt in with `-DWIKIPEDIA_BUNDLE_QT=ON`; this
+packaging mode requires `patchelf`.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release

@@ -20,6 +20,9 @@ void WikipediaSummaryClient::fetchSummary(const QString &title) {
     const QUrl url(QStringLiteral("https://%1.wikipedia.org/api/rest_v1/page/summary/%2")
                        .arg(context.language, encoded));
     QNetworkRequest request(url);
+    auto summaryContext = context;
+    summaryContext.deadlineMs = wikipediaMonotonicNowMs() + RequestTimeoutMs;
+    applyRequestDeadline(request, summaryContext);
     QNetworkReply *reply = m_network->get(request);
     m_requests.track(reply, context);
     auto *timeout = new QTimer(reply);

@@ -4,6 +4,7 @@ project(wikipedia_qt VERSION 0.1 LANGUAGES CXX)
 
 option(BUILD_TESTING "Build tests" OFF)
 option(WIKIPEDIA_FLATPAK "Install app modules using Qt from the Flatpak runtime" OFF)
+option(WIKIPEDIA_BUNDLE_QT "Deploy Qt libraries and plugins into Linux installs" OFF)
 
 set(WIKIPEDIA_APP_ID "io.github.lgabannell.wikipedia_reader")
 
@@ -179,12 +180,91 @@ install(TARGETS appwikipedia_qt wikipedia_qt_core
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     if (WIKIPEDIA_FLATPAK)
         include(packaging/Flatpak.cmake)
-    else()
+    elseif (WIKIPEDIA_BUNDLE_QT)
+        # The Linux Qt deployment helper needs patchelf to set RPATH entries
+        # on copied Qt plugins that were built without an existing RPATH.
+        find_program(QT_DEPLOY_PATCHELF_EXECUTABLE patchelf)
+        if (NOT QT_DEPLOY_PATCHELF_EXECUTABLE)
+            message(FATAL_ERROR "patchelf is required for Linux Qt deployment")
+        endif()
+        set(QT_DEPLOY_USE_PATCHELF ON)
         qt_generate_deploy_qml_app_script(
             TARGET appwikipedia_qt
             OUTPUT_SCRIPT wikipedia_deploy_script
         )
         install(SCRIPT ${wikipedia_deploy_script})
+
+        # Qt's deployment helper finds QML plugins from imports, but it cannot
+        # infer the platform integration plugin that QGuiApplication loads
+        # before QML starts. Deploy XCB for normal desktop sessions and the
+        # offscreen integration used by headless smoke tests. Scan each plugin
+        # and its dependencies through Qt's deployment helper, then place the
+        # plugins beneath the directory written into the installed qt.conf.
+        if (IS_ABSOLUTE "${QT6_INSTALL_PLUGINS}")
+            set(wikipedia_qt_plugins_dir "${QT6_INSTALL_PLUGINS}")
+        else()
+            set(wikipedia_qt_plugins_dir "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_PLUGINS}")
+        endif()
+        if (NOT IS_DIRECTORY "${wikipedia_qt_plugins_dir}")
+            message(FATAL_ERROR "Unable to locate the Qt platform plugin directory")
+        endif()
+        if (QT_DEPLOY_PLUGINS_DIR)
+            set(wikipedia_deploy_plugins_dir "${QT_DEPLOY_PLUGINS_DIR}")
+        elseif (IS_ABSOLUTE "${QT6_INSTALL_PLUGINS}")
+            file(RELATIVE_PATH wikipedia_deploy_plugins_dir
+                "${QT6_INSTALL_PREFIX}" "${QT6_INSTALL_PLUGINS}")
+        else()
+            set(wikipedia_deploy_plugins_dir "${QT6_INSTALL_PLUGINS}")
+        endif()
+        if (QT_DEPLOY_LIB_DIR)
+            set(wikipedia_deploy_lib_dir "${QT_DEPLOY_LIB_DIR}")
+        else()
+            set(wikipedia_deploy_lib_dir "${CMAKE_INSTALL_LIBDIR}")
+        endif()
+        file(RELATIVE_PATH wikipedia_qpa_rel_lib
+            "/${wikipedia_deploy_plugins_dir}/platforms"
+            "/${wikipedia_deploy_lib_dir}")
+        set(wikipedia_qpa_plugins "")
+        foreach (plugin_name IN ITEMS libqxcb.so libqoffscreen.so)
+            set(plugin_path "${wikipedia_qt_plugins_dir}/platforms/${plugin_name}")
+            if (EXISTS "${plugin_path}")
+                list(APPEND wikipedia_qpa_plugins "${plugin_path}")
+            endif()
+        endforeach()
+        if (NOT EXISTS "${wikipedia_qt_plugins_dir}/platforms/libqxcb.so"
+            OR NOT EXISTS "${wikipedia_qt_plugins_dir}/platforms/libqoffscreen.so")
+            message(FATAL_ERROR "Qt must provide the XCB and offscreen platform plugins")
+        endif()
+        string(REPLACE ";" "\" \"" wikipedia_qpa_plugins_for_script "${wikipedia_qpa_plugins}")
+        set(wikipedia_qpa_install_code [=[
+include("@CMAKE_BINARY_DIR@/.qt/QtDeploySupport.cmake")
+set(wikipedia_qpa_plugins "@wikipedia_qpa_plugins_for_script@")
+qt6_deploy_runtime_dependencies(
+    EXECUTABLE "${QT_DEPLOY_PREFIX}/${QT_DEPLOY_BIN_DIR}/appwikipedia_qt"
+    ADDITIONAL_MODULES ${wikipedia_qpa_plugins}
+)
+set(wikipedia_qpa_destination "${QT_DEPLOY_PREFIX}/${QT_DEPLOY_PLUGINS_DIR}/platforms")
+file(MAKE_DIRECTORY "${wikipedia_qpa_destination}")
+foreach(wikipedia_qpa_plugin IN LISTS wikipedia_qpa_plugins)
+    get_filename_component(wikipedia_qpa_filename "${wikipedia_qpa_plugin}" NAME)
+    file(INSTALL DESTINATION "${wikipedia_qpa_destination}"
+        TYPE SHARED_LIBRARY FILES "${wikipedia_qpa_plugin}")
+    execute_process(
+        COMMAND "@QT_DEPLOY_PATCHELF_EXECUTABLE@" --set-rpath
+            "$ORIGIN/@wikipedia_qpa_rel_lib@"
+            "${wikipedia_qpa_destination}/${wikipedia_qpa_filename}"
+        RESULT_VARIABLE wikipedia_qpa_patch_result
+    )
+    if (NOT wikipedia_qpa_patch_result EQUAL 0)
+        message(FATAL_ERROR "Unable to set the relocated RPATH for ${wikipedia_qpa_filename}")
+    endif()
+endforeach()
+]=])
+        string(CONFIGURE "${wikipedia_qpa_install_code}" wikipedia_qpa_install_code @ONLY)
+        install(CODE "${wikipedia_qpa_install_code}")
+    else()
+        # Install only app modules and libraries; the target system supplies Qt.
+        include(packaging/Flatpak.cmake)
     endif()
 
     install(FILES icons/app_icon.svg

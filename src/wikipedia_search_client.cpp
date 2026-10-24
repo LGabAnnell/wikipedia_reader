@@ -30,7 +30,8 @@ void WikipediaSearchClient::search(const QString &query, int limit) {
     url.setQuery(urlQuery);
 
     const auto context = m_requests.context();
-    QNetworkReply *reply = networkManager->get(QNetworkRequest(url));
+    QNetworkRequest request(url); applyRequestDeadline(request, context);
+    QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this, [this, reply, context]() { this->onSearchReply(reply, context); });
 }

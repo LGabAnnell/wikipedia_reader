@@ -54,8 +54,8 @@ Item {
 
     Connections {
         target: NavigationState
-        function onPushView(view) {
-            stackView.push(view)
+        function onPushView(view, initialProperties) {
+            stackView.push(view, initialProperties)
         }
     }
 
@@ -215,6 +215,119 @@ Item {
             }).length
         }
 
+        function test_gallery_retries_initial_failure_and_loads_more_once() {
+            const pageId = 309
+            const titleA = "File:Page A.png"
+            const titleB = "File:Page B.png"
+            const base = pageQueryUrl(pageId)
+            const second = base + "&continue=%7C%7C&imcontinue=309%7CB"
+            networkFixtures.addFixture("GET", base, "failure", "application/json", 500)
+            gallery = galleryModelComponent.createObject(root)
+            verify(gallery !== null)
+            gallery.loadImagesForPage(pageId)
+            tryCompare(gallery, "isLoading", false)
+            verify(gallery.errorMessage.length > 0)
+            verify(gallery.imageUrls.length === 0)
+
+            function page(title, continuation) {
+                return pageBatch([title], continuation)
+            }
+            function pageBatch(titles, continuation) {
+                const response = {query: {pages: {"309": {pageid: pageId, title: "Paged gallery",
+                    images: titles.map(function(title) { return {title: title} })}}}}
+                if (continuation)
+                    response["continue"] = {"continue": "||", imcontinue: "309|B"}
+                return JSON.stringify(response)
+            }
+            function metadata(title, url) {
+                return JSON.stringify({query: {pages: {"42": {title: title,
+                    imageinfo: [{url: url}]}}}})
+            }
+            networkFixtures.addFixture("GET", base, page(titleA, true))
+            networkFixtures.addFixture("GET", second, "failure", "application/json", 500)
+            networkFixtures.addFixture("GET", imageInfoUrl(titleA), metadata(titleA, "https://img.example/a.png"))
+            networkFixtures.addFixture("GET", imageInfoUrl(titleB), metadata(titleB, "https://img.example/b.png"))
+            gallery.loadImagesForPage(pageId)
+            tryCompare(gallery, "hasMore", true)
+            compare(gallery.imageUrls, ["https://img.example/a.png"])
+            const requestsBeforeLoadMore = networkFixtures.requestCount
+            networkFixtures.deferNextReply()
+            gallery.loadMore()
+            gallery.loadMore()
+            tryCompare(networkFixtures, "requestCount", requestsBeforeLoadMore + 1)
+            verify(gallery.isLoadingMore)
+            networkFixtures.completeNextReply()
+            tryCompare(gallery, "isLoadingMore", false)
+
+            compare(gallery.imageUrls, ["https://img.example/a.png"])
+            verify(gallery.hasMore)
+            verify(gallery.errorMessage.length > 0)
+
+            // A repeated continuation token is terminal while preserving the first batch.
+            networkFixtures.addFixture("GET", second, page(titleB, true))
+            gallery.loadMore()
+            tryCompare(gallery, "isLoadingMore", false)
+            compare(gallery.imageUrls, ["https://img.example/a.png"])
+            verify(!gallery.hasMore)
+            verify(gallery.errorMessage.indexOf("repeated a gallery page") >= 0)
+            const requestsAtTerminalError = networkFixtures.requestCount
+            gallery.loadMore()
+            compare(networkFixtures.requestCount, requestsAtTerminalError)
+            verify(!gallery.hasMore)
+        }
+
+        function test_gallery_load_more_retries_transient_failure_and_deduplicates() {
+            const pageId = 310
+            const titleA = "File:Page A.png"
+            const titleB = "File:Page B.png"
+            const duplicateTitle = "file:page A.png"
+            const base = pageQueryUrl(pageId)
+            const second = base + "&continue=%7C%7C&imcontinue=310%7CB"
+
+            function pageBatch(titles, continuation) {
+                const response = {query: {pages: {"310": {pageid: pageId, title: "Retry gallery",
+                    images: titles.map(function(title) { return {title: title} })}}}}
+                if (continuation)
+                    response["continue"] = {"continue": "||", imcontinue: "310|B"}
+                return JSON.stringify(response)
+            }
+            function metadata(title, url) {
+                return JSON.stringify({query: {pages: {"42": {title: title,
+                    imageinfo: [{url: url}]}}}})
+            }
+
+            networkFixtures.addFixture("GET", base, pageBatch([titleA], true))
+            networkFixtures.addFixture("GET", second, "failure", "application/json", 500)
+            networkFixtures.addFixture("GET", imageInfoUrl(titleA), metadata(titleA, "https://img.example/a.png"))
+            networkFixtures.addFixture("GET", imageInfoUrl(titleA + "|" + duplicateTitle + "|" + titleB),
+                JSON.stringify({query: {
+                    normalized: [{from: duplicateTitle, to: titleA}],
+                    pages: {
+                        "42": {title: titleA, imageinfo: [{url: "https://img.example/a.png"}]},
+                        "43": {title: titleB, imageinfo: [{url: "https://img.example/b.png"}]}
+                    }
+                }}))
+
+            gallery = galleryModelComponent.createObject(root)
+            verify(gallery !== null)
+            gallery.loadImagesForPage(pageId)
+            tryCompare(gallery, "hasMore", true)
+            tryVerify(function() { return gallery.imageUrls.length === 1 })
+
+            gallery.loadMore()
+            tryCompare(gallery, "isLoadingMore", false)
+            verify(gallery.hasMore)
+            verify(gallery.errorMessage.length > 0)
+
+            networkFixtures.addFixture("GET", second, pageBatch([titleA, duplicateTitle, titleB], false))
+            gallery.loadMore()
+            tryCompare(gallery, "isLoadingMore", false)
+            tryVerify(function() { return gallery.imageUrls.length === 2 })
+            compare(gallery.imageUrls, ["https://img.example/a.png", "https://img.example/b.png"])
+            verify(!gallery.hasMore)
+            compare(gallery.errorMessage, "")
+        }
+
         function test_api_error_stops_gallery_loading_and_shows_error() {
             networkFixtures.addFixture("GET", pageQueryUrl(articleId),
                                        JSON.stringify({error: {code: "badvalue", info: "Invalid page"}}))
@@ -252,7 +365,18 @@ Item {
             if (data.initialDepth >= 0)
                 ownerStack.push(gallery, StackView.Immediate)
 
-            mouseClick(child("imageGalleryBackButton"))
+            if (data.initialDepth >= 0)
+                tryVerify(function() { return gallery.StackView.view === ownerStack })
+            const backButton = findChild(gallery, "imageGalleryBackButton")
+            verify(backButton !== null, "Missing Back button in the active gallery")
+            verify(waitForRendering(gallery))
+            verify(waitForRendering(backButton))
+            tryVerify(function() { return backButton.visible && backButton.enabled
+                                      && backButton.width > 0 && backButton.height > 0 })
+            let backClicked = false
+            backButton.clicked.connect(function() { backClicked = true })
+            mouseClick(backButton)
+            tryVerify(function() { return backClicked })
             tryCompare(ownerStack, "busy", false)
             compare(ownerStack.depth, data.initialDepth < 0 ? 0 : 1)
             if (previousItem)

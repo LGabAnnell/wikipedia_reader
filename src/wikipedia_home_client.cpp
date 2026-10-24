@@ -26,6 +26,7 @@ void WikipediaHomeClient::fetchNewsItems(const QDate &date, const WikipediaReque
         : "https://api.wikimedia.org/feed/v1/wikipedia/%1/featured/%2";
     const QUrl url(endpoint.arg(context.language, dateString));
     QNetworkRequest request(url);
+    applyRequestDeadline(request, context);
     if (alternate)
         request.setRawHeader("Cache-Control", "no-cache");
     QNetworkReply *reply = networkManager->get(request);
@@ -42,6 +43,7 @@ void WikipediaHomeClient::getOnThisDayEvents(int month, int day) {
                  .arg(month, 2, 10, QLatin1Char('0'))
                  .arg(day, 2, 10, QLatin1Char('0')));
     QNetworkRequest request(url);
+    applyRequestDeadline(request, context);
     QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this,
@@ -52,6 +54,7 @@ void WikipediaHomeClient::getDidYouKnowItems() {
     const auto context = m_requests.context();
     QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/page/random/title").arg(context.language));
     QNetworkRequest request(url);
+    applyRequestDeadline(request, context);
     QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this,
@@ -333,8 +336,10 @@ void WikipediaHomeClient::onRandomArticleTitleReply(QNetworkReply *reply, const 
 void WikipediaHomeClient::fetchArticleContent(const QString &title, const WikipediaRequestContext &context) {
     if (!m_requests.isCurrent(context))
         return;
-    QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/page/summary/%2").arg(context.language, title));
+    const QString encodedTitle = QString::fromLatin1(QUrl::toPercentEncoding(title));
+    QUrl url(QString("https://%1.wikipedia.org/api/rest_v1/page/summary/%2").arg(context.language, encodedTitle));
     QNetworkRequest request(url);
+    applyRequestDeadline(request, context);
     QNetworkReply *reply = networkManager->get(request);
     m_requests.track(reply, context);
     connect(reply, &QNetworkReply::finished, this,

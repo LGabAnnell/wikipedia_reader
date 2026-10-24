@@ -1,5 +1,15 @@
 #include "ArticleState.h"
 
+namespace {
+qsizetype pagePayloadBytes(const page &article) {
+    qsizetype characters = article.title.size() + article.extract.size();
+    for (const QString &value : article.imageUrls) characters += value.size();
+    for (const QString &value : article.imageTitles) characters += value.size();
+    for (const QString &value : article.imageDescriptions) characters += value.size();
+    return characters * qsizetype(sizeof(QChar));
+}
+}
+
 QPointer<ArticleState> ArticleState::m_instance;
 
 ArticleState::ArticleState(HistoryState &history, SettingsState &settings, QObject *parent)
@@ -11,37 +21,54 @@ ArticleState::ArticleState(HistoryState &history, SettingsState &settings, QObje
         m_pageClient->setLanguage(m_settings->language());
         m_articleCache.clear();
         m_articleCacheRecency.clear();
+        m_articleCacheBytes.clear();
+        m_articleCacheByteCount = 0;
     });
     connect(&settings, &SettingsState::languageTransitionStarted, this, [this]() {
         m_pageClient->cancelPendingRequests();
         m_articleCache.clear();
         m_articleCacheRecency.clear();
+        m_articleCacheBytes.clear();
+        m_articleCacheByteCount = 0;
         m_currentPage = page{};
-        setIsLoading(false);
         clearErrorMessage();
         emit currentPageChanged();
+        setIsLoading(false);
     });
     connect(m_pageClient, &WikipediaPageClient::pageReceived, this, &ArticleState::setCurrentPage);
     connect(m_pageClient, &WikipediaPageClient::errorOccurred, this, &ArticleState::handleArticleLoadError);
-    connect(m_pageClient, &WikipediaPageClient::pageIdResolved, this, &ArticleState::continueResolvedArticleLoad);
+    connect(m_pageClient, &WikipediaPageClient::pageIdResolvedWithContext, this, &ArticleState::continueResolvedArticleLoad);
 }
 
 void ArticleState::setCurrentPage(const page &article) {
     const QString language = m_settings ? m_settings->language() : QString();
     m_currentPage = article;
     if (article.pageid > 0 && !article.title.isEmpty()) {
-        m_articleCache[article.pageid] = article;
-        m_articleCacheRecency.removeAll(article.pageid);
-        m_articleCacheRecency.append(article.pageid);
-        if (m_articleCache.size() > ArticleCacheCapacity) {
+        const qsizetype articleBytes = pagePayloadBytes(article);
+        if (articleBytes <= ArticleCacheByteCapacity) {
+            if (m_articleCacheBytes.contains(article.pageid))
+                m_articleCacheByteCount -= m_articleCacheBytes.value(article.pageid);
+            m_articleCache[article.pageid] = article;
+            m_articleCacheBytes[article.pageid] = articleBytes;
+            m_articleCacheByteCount += articleBytes;
+            m_articleCacheRecency.removeAll(article.pageid);
+            m_articleCacheRecency.append(article.pageid);
+        } else {
+            m_articleCache.remove(article.pageid);
+            m_articleCacheRecency.removeAll(article.pageid);
+            if (m_articleCacheBytes.contains(article.pageid))
+                m_articleCacheByteCount -= m_articleCacheBytes.take(article.pageid);
+        }
+        while (m_articleCache.size() > ArticleCacheCapacity || m_articleCacheByteCount > ArticleCacheByteCapacity) {
             const int leastRecentlyUsed = m_articleCacheRecency.takeFirst();
             m_articleCache.remove(leastRecentlyUsed);
+            m_articleCacheByteCount -= m_articleCacheBytes.take(leastRecentlyUsed);
         }
         if (m_history)
             m_history->addToHistory(article.title, article.pageid, language);
     }
-    setIsLoading(false);
     emit currentPageChanged();
+    setIsLoading(false);
 }
 
 bool ArticleState::loadArticleFromHistory(const QString &language, int pageId) {
@@ -76,7 +103,7 @@ void ArticleState::loadArticleByPageId(int pageId) {
     m_pageClient->getPageById(pageId);
 }
 
-void ArticleState::continueResolvedArticleLoad(int pageId) {
+void ArticleState::continueResolvedArticleLoad(int pageId, const WikipediaRequestContext &context) {
     if (pageId <= 0) {
         setIsLoading(false);
         return;
@@ -85,7 +112,7 @@ void ArticleState::continueResolvedArticleLoad(int pageId) {
         setCurrentPage(m_articleCache.value(pageId));
         return;
     }
-    m_pageClient->getPageById(pageId);
+    m_pageClient->getPageById(pageId, context);
 }
 
 void ArticleState::loadArticleByTitle(const QString &title) {
@@ -118,6 +145,6 @@ void ArticleState::clearErrorMessage() {
 }
 
 void ArticleState::handleArticleLoadError(const QString &error) {
-    setIsLoading(false);
     setErrorMessage(error);
+    setIsLoading(false);
 }
