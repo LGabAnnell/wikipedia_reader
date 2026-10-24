@@ -47,6 +47,8 @@ class NavigationState : public QObject {
     bool eventFilter(QObject *obj, QEvent *event) override;
 
   private:
+    void pushRegisteredView(const QString &view, const QVariantMap &properties);
+
     QPointer<QQuickItem> m_stackView;
     std::map<QString, QQmlComponent *> views;
 };

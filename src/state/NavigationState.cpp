@@ -39,16 +39,10 @@ void NavigationState::navigateToContent(const QString &initialFragment) {
         return;
     }
 
-    // Emit signal to indicate navigation to content
-    const auto it = views.find(Constants::contentView());
-    if (it == views.end()) {
-        qWarning() << "Cannot navigate to unregistered view:" << Constants::contentView();
-        return;
-    }
     QVariantMap properties;
     if (!initialFragment.isEmpty())
         properties.insert(QStringLiteral("initialFragmentAnchor"), initialFragment);
-    emit pushView(it->second, properties);
+    pushRegisteredView(Constants::contentView(), properties);
 }
 
 void NavigationState::navigateToHistory() {
@@ -82,6 +76,10 @@ void NavigationState::navigateToImageGallery() {
 }
 
 void NavigationState::navigateToView(const QString &view) {
+    pushRegisteredView(view, {});
+}
+
+void NavigationState::pushRegisteredView(const QString &view, const QVariantMap &properties) {
     const auto it = views.find(view);
     if (it == views.end()) {
         qWarning() << "Cannot navigate to unregistered view:" << view;
@@ -98,7 +96,7 @@ void NavigationState::navigateToView(const QString &view) {
         }
     }
 
-    emit pushView(it->second, {});
+    emit pushView(it->second, properties);
 }
 
 void NavigationState::addView(QString view, QQmlComponent *component) { views.emplace(view, component); }
