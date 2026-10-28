@@ -10,5 +10,5 @@ For an incremental local run:
 ./scripts/run_tests.sh -R QmlTests
 ```
 
-Configure dependency prefixes first if needed. The legacy `test.sh` deletes
-`build/` on every invocation; prefer the incremental runner.
+Configure dependency prefixes first if needed. The runner preserves `build/`
+by default; pass `-r` only when you want to clear and rebuild it.

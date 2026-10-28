@@ -17,6 +17,11 @@ cmake --build build --parallel
 ./build/bin/appwikipedia_qt
 ```
 
+For incremental convenience builds, use `scripts/build_debug.sh` or
+`scripts/build_release.sh`; they keep separate build trees under `build/debug`
+and `build/release`, respectively. To build and launch the debug app, run
+`scripts/run_debug.sh` (add `rebuild` to clear only the debug build tree).
+
 See [Flatpak packaging](packaging/README.md) for sandboxed builds and bundles,
 and [testing](docs/full_testing.md) for the test suite.
 

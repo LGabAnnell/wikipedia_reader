@@ -78,8 +78,8 @@ ctest --test-dir build -R '^WikipediaRequestIsolationTest$' --output-on-failure
 `scripts/run_tests.sh` configures when needed, builds incrementally, and runs
 CTest with the offscreen platform. It accepts `-R <regex>`, `-n` for live
 network testing, and `-r` to delete and rebuild `build/`. Configure local
-dependency prefixes first. The separate root `test.sh` always deletes
-`build/` before configuring and rebuilding.
+dependency prefixes first. The optional `-r` switch deletes `build/` before
+configuring and rebuilding.
 
 The current source configuration registers **32 CTest entries: 20 C++ and
 12 QML**. These are executables/test files, not individual test cases or

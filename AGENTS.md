@@ -70,8 +70,10 @@ wikipedia_reader/
 ├── examples/                 # Usage example for WikipediaClient
 ├── icons/                    # SVG icons (home, history, back, search)
 ├── styles/                   # CSS (table_style.css)
+├── scripts/build_debug.sh    # Incremental debug build (tests disabled)
+├── scripts/build_release.sh  # Incremental release build (tests disabled)
 ├── scripts/run_debug.sh      # Build + run in debug mode
-├── test.sh                   # Legacy destructive rebuild + tests
+├── scripts/run_tests.sh      # Incremental build + offscreen CTest runner
 └── .vibe/                    # Vibe agent config (cpp agent + prompt)
 ```
 
@@ -107,7 +109,11 @@ QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
 # Run only the Qt Quick Tests
 ctest --test-dir build -R QmlTests
 
-# Debug run helper (rebuild from scratch with `rebuild` arg)
+# Incremental build helpers (separate build/debug and build/release trees)
+./scripts/build_debug.sh
+./scripts/build_release.sh
+
+# Debug run helper (optional `rebuild` clears only build/debug)
 ./scripts/run_debug.sh
 ./scripts/run_debug.sh rebuild
 ```
@@ -232,7 +238,7 @@ build dependencies, test inventory, fixtures, coverage limits, and adding tests.
 
 - Run `./scripts/run_tests.sh` for an incremental build and offscreen CTest run.
   It supports `-R <regex>` and opt-in live testing with `-n`.
-- The legacy `test.sh` deletes `build/` on every run; prefer the incremental runner.
+- `scripts/run_tests.sh` preserves the existing build by default; `-r` opts into a clean rebuild.
 - Backend tests link `wikipedia_qt_core`; fixture tests also link
   `wikipedia_test_network`. Use `QTEST_GUILESS_MAIN` when a core application
   suffices. Existing GUI-backed tests need `QT_QPA_PLATFORM=offscreen` headlessly.

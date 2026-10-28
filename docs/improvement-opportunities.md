@@ -109,13 +109,13 @@ production queue tests use a deterministic loopback HTTP server. Local final
 verification passed 31 of 32 CTest entries, with the opt-in live feed test skipped.
 The workflow itself has not yet run remotely.
 
-## 6. Refresh documentation and make test execution less disruptive
+## 6. Make test execution less disruptive
 
-**Remaining issues:** The legacy [test.sh](../test.sh) deletes `build`, rebuilds with `-j14`, and lacks fail-fast behavior. The incremental [runner](../scripts/run_tests.sh) also hardcodes `-j14`. Documentation now points to [full_testing.md](full_testing.md) as the authoritative testing guide; completed proposals are indexed as historical in [the docs index](README.md).
+**Completed:** Removed the legacy root test script, which always deleted `build/`, in favor of the incremental [runner](../scripts/run_tests.sh). Debug and release build helpers now live under `scripts/` with explicit names and separate build trees. Documentation points to [full_testing.md](full_testing.md) as the authoritative testing guide; completed proposals are indexed as historical in [the docs index](README.md).
 
-**Recommended change:** Replace or delegate the legacy `test.sh` to the incremental runner and make build parallelism configurable. CMake presets could provide shared debug/test configurations.
+**Remaining issue:** The incremental runner hardcodes `-j14`. CMake presets could provide shared debug/test configurations.
 
-**Validation:** Follow the documented steps from a fresh checkout. Exercise the incremental runner's configuration/build failure paths and confirm failure propagation; verify a unified root test command preserves existing build output by default.
+**Validation:** Follow the documented steps from a fresh checkout and confirm the runner preserves existing build output by default.
 
 ## 7. Let QML create independent singleton services
 
