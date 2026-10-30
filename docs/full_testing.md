@@ -108,19 +108,19 @@ Each named entry below has a matching `.cpp` file under `tests/`.
 | `ConstantsTest` | QML singleton reuse within one engine, independent instances across simultaneous engines, engine teardown and recreation, `clearSingletons()` recreation, and all six view-name properties. |
 | `WikipediaRequestIsolationTest` | Obsolete search successes/errors and featured replies are ignored; old page and random-title replies cannot start follow-up HTML or summary requests after a language switch. |
 | `WikipediaNetworkAccessManagerTest` | Production networking against a deterministic local HTTP server, covering request timeout overrides, response body caps, retries, origin-specific cooldowns, concurrency limits, and terminal completion behavior. |
-| `ContentDisplayModelTest` | Per-view section state, section-position/highlight resets, article-driven search/section resets, and case-insensitive text-search navigation wrapping. |
-| `HtmlProcessorTest` | Lexbor-based cleanup and repaired HTML, style/script/link removal, legacy colors, figure/thumbnail conversion, captions and fallback descriptions, preserved surrounding text, inline/table/multiple images, math accessibility cleanup, entities, and URL normalization. |
+| `ContentDisplayModelTest` | Per-view section state, section-position/highlight resets, article-driven search/section resets, case-insensitive text-search navigation wrapping, and external-link scheme validation. |
+| `HtmlProcessorTest` | Lexbor-based cleanup and repaired HTML, fail-closed parser errors, style/script/link removal, legacy colors, figure/thumbnail conversion, captions and fallback descriptions, preserved surrounding text, inline/table/multiple images, math accessibility cleanup, entities, and URL normalization. |
 | `HistoryStateTest` | Global 50-row retention and state recreation, startup pruning including legacy entries, identical-timestamp ordering, edition identity and revisits, trigger-injected insertion/pruning/clear rollback, unchanged memory and notifications on failure, retry recovery, unsupported-schema/startup-pruning errors, and checked-load/output preservation. |
 | `HistoryDatabaseTest` | Database opens, add/load/clear, edition-aware identity and uniqueness across database reopen, legacy-schema migration and idempotence, migration-failure rollback and blocked operations, explicit pruning, load limits, and timestamp ordering. The separate generic error-signal test only checks that no error was emitted; migration tests do inject a failure. |
 | `WikipediaSearchClientTest` | Search-result fields/counts, empty responses, missing keys, and malformed JSON. |
-| `WikipediaPageClientTest` | Page fields, title/ID mismatch, image titles, sections, empty/missing sections, and malformed JSON. Fixture requests cover successful metadata-to-HTML loading and missing/invalid page responses emitting an error without a follow-up HTML request; formula work limits, cache entry/byte eviction, timeout fallback, metadata validation, pagination continuation, retry, and stale-response handling. |
+| `WikipediaPageClientTest` | Page fields, title/ID mismatch, image titles, sections, empty/missing sections, and malformed JSON. Fixture requests cover successful metadata-to-HTML loading and missing/invalid page responses emitting an error without a follow-up HTML request; formula URL allowlisting and redirect policy, work limits, cache entry/byte eviction, timeout text completion, metadata validation, pagination continuation, retry, and stale-response handling. |
 | `WikipediaFeaturedClientTest` | Recorded English featured/French unavailable responses, featured parsing, feed thumbnail, missing `tfa`, invalid page IDs, malformed JSON, API errors, and unavailable versus invalid outcomes. |
 | `WikipediaHomeClientTest` | Recorded English/French most-read responses, news parsing and thumbnails, current most-read feeds without lookback, bounded lookback, news fallback after older-feed failures, typed section failures, invalid current feeds, on-this-day validation, and Did-you-know summary parsing. |
 | `WikipediaSummaryClientTest` | Valid and malformed summary responses, namespace metadata, thumbnail extraction, Unicode and reserved-character path encoding, HTTP failures, a deferred-request timeout, and cancellation of obsolete successes and errors. |
 | `ArticlePreviewModelTest` | Per-view cache reuse and five-minute expiration (including suppressed non-article results), 50-entry LRU eviction, edition-change invalidation for article and suppressed entries, and stale reply rejection including a cached target replacing a pending request. |
 | `WikipediaFeedLiveTest` | Opt-in production transport: aggregated feed request URLs, today's English featured article and populated English/French home articles, including usable titles, IDs, summaries, and edition-specific article URLs. Errors, empty content, and timeouts fail. Disabled runs are reported as skipped. |
 | `test_sidebar_layout` | Sidebar creation, presence of a ListView, and the `searchResults` property. CTest supplies its working directory and QML import path. |
-| `test_search_display` | Opt-in live search through `SearchBarModel` and `SearchState`; see the limitations below. |
+| `test_search_display` | Opt-in live English search through `SearchBarModel` and `SearchState`; requires a completed request, no error, and nonempty results with titles and page IDs. Disabled runs are reported as skipped. |
 
 The parser tests call parsing helpers directly; they do not establish complete
 HTTP error handling. Some deliberately expect empty/default data for malformed
@@ -182,13 +182,12 @@ JSON slash escapes and initialization checks that the final slot is registered.
 RUN_NETWORK_TESTS=1 ctest --test-dir build -R '^test_search_display$' --output-on-failure
 ```
 
-Without a nonzero integer `RUN_NETWORK_TESTS` value, this executable exits
-successfully without exercising search (unlike the feed test's explicit skip).
-When enabled, it submits “Quantum
-Computing,” logs state/results/errors, and exits after ten seconds. It has no
-assertion that a response arrived or that search succeeded, so a passing CTest
-result is not proof of a successful live search. Apart from `WikipediaFeedLiveTest`, the remaining tests use
-fixtures, in-memory inputs, or local files rather than live Wikipedia requests.
+Without a nonzero integer `RUN_NETWORK_TESTS` value, this executable returns 77
+and CTest reports it as skipped. When enabled, it submits “Quantum Computing,”
+checks that the search completes within 45 seconds without an error, and
+requires nonempty results with titles and positive page IDs. The live search
+and feed tests are serialized and labelled `live`; other tests use fixtures,
+in-memory inputs, or local files rather than live Wikipedia requests.
 
 ## Runtime request and gallery limits
 
@@ -202,7 +201,10 @@ host does not pause unrelated Wikimedia hosts.
 Formula rendering is optional: after article HTML arrives, the client waits at
 most three seconds, runs up to two formula downloads at once, and considers at
 most 128 distinct uncached formulas per article. Each formula response is
-limited to 1 MiB and rasterization to four million pixels. The formula cache
+limited to 1 MiB and rasterization to four million pixels. Downloads accept
+only HTTPS URLs on `upload.wikimedia.org` and do not follow redirects. Rejected
+or unresolved formula images are removed from rendered HTML while surrounding
+article text remains. The formula cache
 uses an LRU of 256 entries / 16 MiB; the existing 20-entry article LRU also has
 a 32 MiB payload limit. These are cache and work limits; they do not measure
 total process memory or content retained by navigation views.

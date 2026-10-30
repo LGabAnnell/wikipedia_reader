@@ -14,10 +14,26 @@
 #include <QTextDocument>
 #include <QUrl>
 #include <QUrlQuery>
+#include <lexbor/dom/interfaces/element.h>
+#include <lexbor/html/html.h>
 #include <algorithm>
 #include <cmath>
+#include <memory>
+#include <optional>
+#include <vector>
 
 namespace {
+using Node = lxb_dom_node_t;
+using Element = lxb_dom_element_t;
+
+struct HtmlDocumentDeleter {
+    void operator()(lxb_html_document_t *document) const {
+        if (document)
+            lxb_html_document_destroy(document);
+    }
+};
+using HtmlDocument = std::unique_ptr<lxb_html_document_t, HtmlDocumentDeleter>;
+
 struct MathImageRequest {
     QString htmlContent;
     QHash<QString, QString> dataUrls;
@@ -25,6 +41,7 @@ struct MathImageRequest {
     int nextSource = 0;
     int activeRequests = 0;
     bool completed = false;
+    bool hasMathImages = false;
     QVector<QPointer<QNetworkReply>> replies;
     QPointer<QTimer> deadlineTimer;
     std::function<void(const QString &)> completion;
@@ -91,6 +108,154 @@ QString rasterizeSvg(const QByteArray &svgData) {
     }
 
     return "data:image/png;base64," + QString::fromLatin1(buffer.data().toBase64());
+}
+
+QUrl approvedMathImageUrl(const QString &source) {
+    QString normalized = source;
+    if (normalized.startsWith(QStringLiteral("//")))
+        normalized.prepend(QStringLiteral("https:"));
+    const QUrl url(normalized, QUrl::StrictMode);
+    if (!url.isValid() || url.scheme() != QStringLiteral("https")
+        || url.host().compare(QStringLiteral("upload.wikimedia.org"), Qt::CaseInsensitive) != 0
+        || url.authority(QUrl::FullyEncoded).contains(QLatin1Char('@'))
+        || (url.port() != -1 && url.port() != 443))
+        return {};
+    return url;
+}
+
+bool hasMathFallbackClass(const QString &classes) {
+    qsizetype position = 0;
+    while (position < classes.size()) {
+        while (position < classes.size() && classes.at(position).isSpace())
+            ++position;
+        const qsizetype start = position;
+        while (position < classes.size() && !classes.at(position).isSpace())
+            ++position;
+        if (classes.mid(start, position - start)
+                .startsWith(QStringLiteral("mwe-math-fallback-image"), Qt::CaseInsensitive))
+            return true;
+    }
+    return false;
+}
+
+struct ParsedHtmlFragment {
+    HtmlDocument document;
+    Node *root = nullptr;
+};
+
+std::optional<ParsedHtmlFragment> parseHtmlFragment(const QString &html) {
+    const QByteArray utf8 = html.toUtf8();
+    HtmlDocument document(lxb_html_document_create());
+    if (!document)
+        return std::nullopt;
+    lxb_html_document_scripting_set(document.get(), false);
+    auto *context = lxb_html_document_create_element(
+        document.get(), reinterpret_cast<const lxb_char_t *>("body"), 4, nullptr);
+    if (!context)
+        return std::nullopt;
+    Node *root = lxb_html_document_parse_fragment(
+        document.get(), lxb_dom_interface_element(context),
+        reinterpret_cast<const lxb_char_t *>(utf8.constData()), size_t(utf8.size()));
+    if (!root)
+        return std::nullopt;
+    return ParsedHtmlFragment{std::move(document), root};
+}
+
+std::optional<QString> htmlAttribute(Element *element, const char *name) {
+    size_t length = 0;
+    const auto *value = lxb_dom_element_get_attribute(
+        element, reinterpret_cast<const lxb_char_t *>(name), std::char_traits<char>::length(name),
+        &length);
+    if (!value)
+        return std::nullopt;
+    return QString::fromUtf8(reinterpret_cast<const char *>(value), qsizetype(length));
+}
+
+bool setHtmlAttribute(Element *element, const char *name, const QString &value) {
+    const QByteArray utf8 = value.toUtf8();
+    return lxb_dom_element_set_attribute(
+               element, reinterpret_cast<const lxb_char_t *>(name),
+               std::char_traits<char>::length(name),
+               reinterpret_cast<const lxb_char_t *>(utf8.constData()), size_t(utf8.size()))
+        != nullptr;
+}
+
+void collectHtmlNodes(Node *root, std::vector<Node *> &nodes) {
+    for (Node *child = root ? root->first_child : nullptr; child; child = child->next) {
+        nodes.push_back(child);
+        collectHtmlNodes(child, nodes);
+    }
+}
+
+bool isMathImage(Node *node) {
+    if (!node || node->type != LXB_DOM_NODE_TYPE_ELEMENT)
+        return false;
+    Element *element = lxb_dom_interface_element(node);
+    size_t nameLength = 0;
+    const lxb_char_t *name = lxb_dom_element_local_name(element, &nameLength);
+    if (!name || QString::fromUtf8(reinterpret_cast<const char *>(name), qsizetype(nameLength))
+                     != QStringLiteral("img"))
+        return false;
+    const auto classes = htmlAttribute(element, "class");
+    return classes && hasMathFallbackClass(*classes);
+}
+
+struct MathImageSources {
+    QStringList sources;
+    bool hasMathImages = false;
+};
+
+std::optional<MathImageSources> extractMathImageSources(const QString &html) {
+    auto parsed = parseHtmlFragment(html);
+    if (!parsed)
+        return std::nullopt;
+    std::vector<Node *> nodes;
+    collectHtmlNodes(parsed->root, nodes);
+    MathImageSources result;
+    for (Node *node : nodes) {
+        if (!isMathImage(node))
+            continue;
+        result.hasMathImages = true;
+        const auto source = htmlAttribute(lxb_dom_interface_element(node), "src");
+        if (source && !source->isEmpty() && !approvedMathImageUrl(*source).isEmpty()
+            && !result.sources.contains(*source))
+            result.sources.append(*source);
+    }
+    return result;
+}
+
+std::optional<QString> prepareMathImagesForDisplay(
+    const QString &html, const QHash<QString, QString> &dataUrls) {
+    auto parsed = parseHtmlFragment(html);
+    if (!parsed)
+        return std::nullopt;
+    std::vector<Node *> nodes;
+    collectHtmlNodes(parsed->root, nodes);
+    for (Node *node : nodes) {
+        if (!isMathImage(node))
+            continue;
+        Element *image = lxb_dom_interface_element(node);
+        const auto source = htmlAttribute(image, "src");
+        const QString dataUrl = source ? dataUrls.value(*source) : QString();
+        if (source && !dataUrl.isEmpty() && !approvedMathImageUrl(*source).isEmpty()) {
+            if (!setHtmlAttribute(image, "src", dataUrl))
+                return std::nullopt;
+        } else {
+            lxb_dom_node_remove(node);
+        }
+    }
+
+    lexbor_str_t output = {0};
+    if (lxb_html_serialize_deep_str(parsed->root, &output) != LXB_STATUS_OK
+        || output.data == nullptr) {
+        if (output.data)
+            lexbor_str_destroy(&output, parsed->document->dom_document.text, false);
+        return std::nullopt;
+    }
+    const QString result = QString::fromUtf8(reinterpret_cast<const char *>(output.data),
+                                              qsizetype(output.length));
+    lexbor_str_destroy(&output, parsed->document->dom_document.text, false);
+    return result;
 }
 } // namespace
 
@@ -610,28 +775,17 @@ void WikipediaPageClient::fetchMathImageDataUrls(const QString &htmlContent,
                                                   const WikipediaRequestContext &context,
                                                   std::function<void(const QString &)> completion) {
     if (!m_requests.isCurrent(context)) return;
-    static const QRegularExpression imageTagRegex(R"(<img\b[^>]*>)",
-                                                  QRegularExpression::CaseInsensitiveOption);
-    static const QRegularExpression sourceRegex(R"(\bsrc\s*=\s*(["'])(.*?)\1)",
-                                                 QRegularExpression::CaseInsensitiveOption);
-
+    const auto imageSources = extractMathImageSources(htmlContent);
+    if (!imageSources) {
+        completion(QString());
+        return;
+    }
     auto request = QSharedPointer<MathImageRequest>::create();
     request->htmlContent = htmlContent;
     request->completion = std::move(completion);
+    request->hasMathImages = imageSources->hasMathImages;
 
-    QRegularExpressionMatchIterator imageTags = imageTagRegex.globalMatch(htmlContent);
-    while (imageTags.hasNext()) {
-        const QString imageTag = imageTags.next().captured();
-        if (!imageTag.contains("mwe-math-fallback-image", Qt::CaseInsensitive)) {
-            continue;
-        }
-
-        const QRegularExpressionMatch sourceMatch = sourceRegex.match(imageTag);
-        if (!sourceMatch.hasMatch()) {
-            continue;
-        }
-
-        const QString source = sourceMatch.captured(2);
+    for (const QString &source : imageSources->sources) {
         if (mathImageDataUrls.contains(source)) {
             request->dataUrls.insert(source, mathImageDataUrls.value(source));
             mathImageRecency.removeAll(source);
@@ -656,12 +810,12 @@ void WikipediaPageClient::fetchMathImageDataUrls(const QString &htmlContent,
             request->deadlineTimer->stop();
             request->deadlineTimer->deleteLater();
         }
-        for (auto it = request->dataUrls.cbegin(); it != request->dataUrls.cend(); ++it) {
-            if (!it.value().isEmpty()) {
-                request->htmlContent.replace(it.key(), it.value());
-            }
+        if (!request->hasMathImages) {
+            request->completion(request->htmlContent);
+            return;
         }
-        request->completion(request->htmlContent);
+        const auto safeHtml = prepareMathImagesForDisplay(request->htmlContent, request->dataUrls);
+        request->completion(safeHtml ? *safeHtml : QString());
     };
     if (request->sources.isEmpty()) {
         complete();
@@ -690,7 +844,9 @@ void WikipediaPageClient::fetchMathImageDataUrls(const QString &htmlContent,
             return;
         while (request->activeRequests < 2 && request->nextSource < request->sources.size()) {
             const QString source = request->sources.at(request->nextSource++);
-            QNetworkRequest mathRequest{QUrl(source)};
+            QNetworkRequest mathRequest{approvedMathImageUrl(source)};
+            mathRequest.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                                     QNetworkRequest::ManualRedirectPolicy);
             applyRequestDeadline(mathRequest, context);
             mathRequest.setAttribute(static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 2), 1024 * 1024);
             QNetworkReply *mathReply = networkManager->get(mathRequest);

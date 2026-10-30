@@ -1,6 +1,7 @@
 #include <QtTest/QtTest>
 
 #include <memory>
+#include <new>
 #include <vector>
 
 #include <lexbor/html/html.h>
@@ -93,6 +94,22 @@ class HtmlProcessorTest : public QObject {
     Q_OBJECT
 
 private slots:
+    void processingFailuresReturnEmptyFragments() {
+        const auto failWithNull = [](const QString &) -> QString { return {}; };
+        const auto failWithAllocation = [](const QString &) -> QString {
+            throw std::bad_alloc();
+        };
+
+        QTest::ignoreMessage(QtWarningMsg,
+                             "Lexbor failed to process article HTML; returning an empty fragment");
+        QVERIFY(HtmlProcessor::processHtmlWithProcessor(
+                    QStringLiteral("<script>unsafe()</script>"), failWithNull).isEmpty());
+        QTest::ignoreMessage(QtWarningMsg,
+                             "Lexbor allocation failed while processing article HTML");
+        QVERIFY(HtmlProcessor::processHtmlWithProcessor(
+                    QStringLiteral("<script>unsafe()</script>"), failWithAllocation).isEmpty());
+    }
+
     void summarySanitizerAllowsOnlySafeInlineMarkup() {
         const QString result = HtmlProcessor::sanitizeSummaryHtml(
             QStringLiteral("<p title='x'><b>Lead</b> <a href='https://evil.test'>linked</a>"

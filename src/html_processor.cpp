@@ -480,16 +480,20 @@ QString processWithLexbor(const QString &html) {
 } // namespace
 
 QString HtmlProcessor::processHtml(const QString &htmlContent) {
+    return processHtmlWithProcessor(htmlContent, processWithLexbor);
+}
+
+QString HtmlProcessor::processHtmlWithProcessor(const QString &htmlContent, Processor processor) {
     QString processed;
     try {
-        processed = processWithLexbor(htmlContent);
+        processed = processor(htmlContent);
     } catch (const std::bad_alloc &) {
         qWarning("Lexbor allocation failed while processing article HTML");
-        return withApplicationStyle(htmlContent);
+        return {};
     }
     if (processed.isNull()) {
-        qWarning("Lexbor failed to process article HTML; returning the original fragment");
-        return withApplicationStyle(htmlContent);
+        qWarning("Lexbor failed to process article HTML; returning an empty fragment");
+        return {};
     }
     return withApplicationStyle(processed);
 }

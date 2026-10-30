@@ -71,15 +71,20 @@ qt_add_executable(test_search_display
     ${CMAKE_SOURCE_DIR}/src/modules/SearchBarModule/SearchBarModel.cpp
 )
 
-target_link_libraries(test_search_display PRIVATE wikipedia_qt_core)
+target_link_libraries(test_search_display PRIVATE wikipedia_qt_core Qt::Test)
 
 target_include_directories(test_search_display PRIVATE
     ${CMAKE_SOURCE_DIR}/src/modules/SearchBarModule
 )
 
 add_test(NAME test_search_display COMMAND test_search_display)
-set_tests_properties(test_search_display PROPERTIES ENVIRONMENT
-    "XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-config/test_search_display")
+set_tests_properties(test_search_display PROPERTIES
+    ENVIRONMENT "XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-config/test_search_display"
+    SKIP_RETURN_CODE 77
+    LABELS "live"
+    TIMEOUT 60
+    RUN_SERIAL TRUE
+)
 
 # ---------------------------------------------------------------------------
 # test_sidebar_layout (QML layout test, headless)

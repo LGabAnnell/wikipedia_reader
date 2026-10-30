@@ -109,8 +109,12 @@ class ContentDisplayModelTest : public QObject {
     void externalLinksResolveAgainstSelectedEdition() {
         ContentDisplayModel model;
         s_handledUrl = QUrl();
+        QDesktopServices::setUrlHandler("http", this, "captureUrl");
         QDesktopServices::setUrlHandler("https", this, "captureUrl");
-        const auto cleanup = qScopeGuard([] { QDesktopServices::unsetUrlHandler("https"); });
+        const auto cleanup = qScopeGuard([] {
+            QDesktopServices::unsetUrlHandler("http");
+            QDesktopServices::unsetUrlHandler("https");
+        });
 
         model.openExternalLink("/w/index.php?title=Some_page&x=1", "en");
         QCOMPARE(s_handledUrl, QUrl("https://en.wikipedia.org/w/index.php?title=Some_page&x=1"));
@@ -120,6 +124,33 @@ class ContentDisplayModelTest : public QObject {
         QCOMPARE(s_handledUrl, QUrl("https://commons.wikimedia.org/wiki/File:X"));
         model.openExternalLink("https://example.org/path", "fr");
         QCOMPARE(s_handledUrl, QUrl("https://example.org/path"));
+        model.openExternalLink("http://example.org/path", "fr");
+        QCOMPARE(s_handledUrl, QUrl("http://example.org/path"));
+    }
+
+    void externalLinksRejectNonWebSchemes() {
+        ContentDisplayModel model;
+        s_handledUrl = QUrl();
+        const QStringList schemes{"file", "javascript", "data", "custom"};
+        for (const QString &scheme : schemes)
+            QDesktopServices::setUrlHandler(scheme, this, "captureUrl");
+        QDesktopServices::setUrlHandler("http", this, "captureUrl");
+        QDesktopServices::setUrlHandler("https", this, "captureUrl");
+        const auto cleanup = qScopeGuard([schemes] {
+            for (const QString &scheme : schemes)
+                QDesktopServices::unsetUrlHandler(scheme);
+            QDesktopServices::unsetUrlHandler("http");
+            QDesktopServices::unsetUrlHandler("https");
+        });
+
+        model.openExternalLink("file:///etc/passwd", "en");
+        model.openExternalLink("javascript:alert(1)", "en");
+        model.openExternalLink("data:text/html,<script>alert(1)</script>", "en");
+        model.openExternalLink("custom:payload", "en");
+        model.openExternalLink("JaVaScRiPt:alert(1)", "en");
+        model.openExternalLink("http://[invalid", "en");
+        model.openExternalLink("https://example.org/%ZZ", "en");
+        QVERIFY(s_handledUrl.isEmpty());
     }
 
     void emptyAndFragmentOnlyExternalLinksAreIgnored() {

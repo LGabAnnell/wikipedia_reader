@@ -23,7 +23,12 @@ void ContentDisplayModel::openExternalLink(const QString &link, const QString &l
         return;
 
     const QUrl baseUrl(QStringLiteral("https://%1.wikipedia.org/").arg(language));
-    QDesktopServices::openUrl(baseUrl.resolved(QUrl(link)));
+    const QUrl resolvedUrl = baseUrl.resolved(QUrl(link, QUrl::StrictMode));
+    if (!resolvedUrl.isValid()
+        || (resolvedUrl.scheme() != QStringLiteral("http")
+            && resolvedUrl.scheme() != QStringLiteral("https")))
+        return;
+    QDesktopServices::openUrl(resolvedUrl);
 }
 
 QVariantMap ContentDisplayModel::parseArticleLink(const QString &link) const {

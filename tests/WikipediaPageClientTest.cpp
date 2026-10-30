@@ -4,6 +4,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRegularExpression>
 #include "wikipedia_page_client.h"
 #include "wikipedia_network_access_manager.h"
 #include "support/FakeNetworkAccessManager.h"
@@ -148,7 +149,7 @@ class WikipediaPageClientTest : public QObject {
         QTest::newRow("API error")
             << QByteArray("{\"error\":{\"code\":\"badtoken\",\"info\":\"Invalid token\"},"
                           "\"parse\":{\"text\":\"<img class=\\\"mwe-math-fallback-image-inline\\\" "
-                          "src=\\\"https://math.example/formula.svg\\\">\"}}")
+                          "src=\\\"https://upload.wikimedia.org/math/formula.svg\\\">\"}}")
             << QString("badtoken") << QString("Invalid token");
         QTest::newRow("missing parse object") << QByteArray(R"({})") << QString() << QString();
         QTest::newRow("non-object parse") << QByteArray(R"({"parse":"invalid"})") << QString() << QString();
@@ -198,12 +199,98 @@ class WikipediaPageClientTest : public QObject {
         QCOMPARE(m_network.requestCount(), 2);
     }
 
+    void testMathImagesAllowOnlyUploadWikimediaHttps() {
+        const QUrl parseUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&disableeditsection=true&formatversion=2&pageid=736");
+        m_network.addFixture("GET", m_pageUrl,
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Formula article"}}}})");
+        const QString httpsSource = QStringLiteral("https://upload.wikimedia.org/math/valid.svg");
+        const QString relativeSource = QStringLiteral("//upload.wikimedia.org/math/relative.svg");
+        const QString mixedCaseSource = QStringLiteral("HTTPS://UPLOAD.WIKIMEDIA.ORG:443/math/mixed-case.svg");
+        const QByteArray svg("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"2\" height=\"2\"></svg>");
+        QString html = QStringLiteral("<p>Math ");
+        const QStringList allowedSources{httpsSource, relativeSource, mixedCaseSource};
+        for (const QString &source : allowedSources) {
+            const QUrl url(source.startsWith(QStringLiteral("//"))
+                               ? QStringLiteral("https:") + source : source);
+            m_network.addFixture("GET", url, svg, "image/svg+xml");
+            html += QStringLiteral("<img class=\"mwe-math-fallback-image-inline\" src=\"%1\">").arg(source);
+        }
+        const QStringList rejectedSources{
+            QStringLiteral("file:///etc/passwd"),
+            QStringLiteral("http://upload.wikimedia.org/math/http.svg"),
+            QStringLiteral("https://upload.wikimedia.org.evil.test/math/host.svg"),
+            QStringLiteral("https://user@upload.wikimedia.org/math/user.svg"),
+            QStringLiteral("https://@upload.wikimedia.org/math/empty-user.svg"),
+            QStringLiteral("https://upload.wikimedia.org:444/math/port.svg"),
+            QStringLiteral("https://upload.wikimedia.org@evil.test/math/at.svg"),
+            QStringLiteral("https://[invalid/math/malformed.svg"),
+            QStringLiteral("https://example.org/math/foreign.svg"),
+            QStringLiteral("//example.org/math/relative-foreign.svg"),
+            QStringLiteral("data:image/svg+xml,<svg/>"),
+            QStringLiteral("javascript:alert(1)"),
+            QString()
+        };
+        for (const QString &source : rejectedSources) {
+            html += QStringLiteral("<img class=\"mwe-math-fallback-image-inline\" src=\"%1\">").arg(source);
+        }
+        html += QStringLiteral("<img class=\"mwe-math-fallback-image-inline\" src=file:///etc/unquoted>");
+        html += QStringLiteral("<img class=\"mwe-math-fallback-image-inline\" data-src=\"https://upload.wikimedia.org/math/decoy.svg\" src=\"file:///etc/data-src\">");
+        html += QStringLiteral("<img class=\"mwe-math-fallback-image-inline\" title=\"src='https://upload.wikimedia.org/math/title-decoy.svg' > still title\" src=\"file:///etc/title\">");
+        html += QStringLiteral("<img class=\"mwe-math-fallback-image-inline\" alt='src=\"https://upload.wikimedia.org/math/alt-decoy.svg\" > still alt' src=\"https://example.org/math/alt.svg\">");
+        html += QStringLiteral("<img class=\"mwe&#45;math-fallback-image-inline\" src=\"file:///etc/encoded-class\">");
+        html += QStringLiteral("<img class=\"mwe-math-fallback-image-inline\" src=\"file:///etc/duplicate-first\" src=\"https://upload.wikimedia.org/math/duplicate-second.svg\">");
+        html += QStringLiteral("<img class=\"mwe-math-fallback-image-inline\" alt=\"missing source\"><span class=\"mwe-math-fallback-image-inline\">Preserved wrapper text</span><p>After</p>");
+        m_network.addFixture("GET", parseUrl,
+            QJsonDocument(QJsonObject{{"parse", QJsonObject{{"text", html}}}}).toJson());
+
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageReceived);
+        QSignalSpy errors(&client, &WikipediaPageClient::errorOccurred);
+        client.getPageById(736);
+
+        QTRY_COMPARE_WITH_TIMEOUT(pages.count(), 1, 5'000);
+        QCOMPARE(errors.count(), 0);
+        QCOMPARE(m_network.requestCount(), 5);
+        const QString extract = pages.first().first().value<page>().extract;
+        QVERIFY(extract.contains(QStringLiteral("After")));
+        QVERIFY(extract.contains(QStringLiteral("Preserved wrapper text")));
+        QCOMPARE(extract.count(QStringLiteral("data:image/png;base64,")), 3);
+        QVERIFY(!extract.contains(QStringLiteral("/etc/passwd")));
+        QVERIFY(!extract.contains(QStringLiteral("/etc/unquoted")));
+        QVERIFY(!extract.contains(QStringLiteral("/etc/data-src")));
+        QVERIFY(!extract.contains(QStringLiteral("/etc/title")));
+        QVERIFY(!extract.contains(QStringLiteral("/etc/encoded-class")));
+        QVERIFY(!extract.contains(QStringLiteral("/etc/duplicate-first")));
+        QVERIFY(!extract.contains(QStringLiteral("duplicate-second.svg")));
+        QVERIFY(!extract.contains(QStringLiteral("evil.test")));
+        QVERIFY(!extract.contains(QStringLiteral("javascript:")));
+        QRegularExpression imageTagRegex(QStringLiteral("<img\\b"),
+                                         QRegularExpression::CaseInsensitiveOption);
+        int remainingImages = 0;
+        auto imageTags = imageTagRegex.globalMatch(extract);
+        while (imageTags.hasNext()) {
+            imageTags.next();
+            ++remainingImages;
+        }
+        QCOMPARE(remainingImages, allowedSources.size());
+        int formulaRequestCount = 0;
+        for (const QVariant &entry : m_network.requests()) {
+            const QVariantMap request = entry.toMap();
+            if (request.value(QStringLiteral("host")).toString() != QStringLiteral("upload.wikimedia.org"))
+                continue;
+            ++formulaRequestCount;
+            QCOMPARE(request.value(QStringLiteral("redirectPolicy")).toInt(),
+                     int(QNetworkRequest::ManualRedirectPolicy));
+        }
+        QCOMPARE(formulaRequestCount, allowedSources.size());
+    }
+
     void testFormulaWorkAndCacheBudgetsAcrossRepeatedLoads() {
         QString html;
         constexpr int formulaCount = 257;
         const QByteArray svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"2\" height=\"2\"></svg>";
         for (int i = 0; i < formulaCount; ++i) {
-            const QString url = QString("https://math.example/formula-%1.svg").arg(i);
+            const QString url = QString("https://upload.wikimedia.org/math/formula-%1.svg").arg(i);
             html += QString("<img class=\"mwe-math-fallback-image-inline\" src=\"%1\">").arg(url);
             m_network.addFixture("GET", QUrl(url), svg, "image/svg+xml");
         }
@@ -254,7 +341,7 @@ class WikipediaPageClientTest : public QObject {
     void testFormulaCacheEvictsByPayloadBytes() {
         const QByteArray svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"2\" height=\"2\"></svg>";
         const QUrl parseUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&disableeditsection=true&formatversion=2&pageid=736");
-        const QString oneFormulaUrl = QStringLiteral("https://math.example/byte-probe.svg");
+        const QString oneFormulaUrl = QStringLiteral("https://upload.wikimedia.org/math/byte-probe.svg");
         m_network.addFixture("GET", m_pageUrl,
             R"({"query":{"pages":{"736":{"pageid":736,"title":"Formula byte probe"}}}})");
         m_network.addFixture("GET", parseUrl,
@@ -271,7 +358,7 @@ class WikipediaPageClientTest : public QObject {
         QString html;
         constexpr int formulaCount = 8;
         for (int i = 0; i < formulaCount; ++i) {
-            const QString url = QString("https://math.example/byte-budget-%1.svg").arg(i);
+            const QString url = QString("https://upload.wikimedia.org/math/byte-budget-%1.svg").arg(i);
             html += QString("<img class=\"mwe-math-fallback-image-inline\" src=\"%1\">").arg(url);
             m_network.addFixture("GET", QUrl(url), svg, "image/svg+xml");
         }
@@ -297,10 +384,10 @@ class WikipediaPageClientTest : public QObject {
         const QUrl parseUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&disableeditsection=true&formatversion=2&pageid=736");
         m_network.addFixture("GET", m_pageUrl,
             R"({"query":{"pages":{"736":{"pageid":736,"title":"Formula article"}}}})");
-        const QString stalledHtml = QStringLiteral("<p>Text<img class=\"mwe-math-fallback-image-inline\" src=\"https://math.example/stalled.svg\"></p>");
+        const QString stalledHtml = QStringLiteral("<p>Text<img class=\"mwe-math-fallback-image-inline\" src=\"https://upload.wikimedia.org/math/stalled.svg\"></p>");
         const QByteArray parseResponse = QJsonDocument(QJsonObject{{"parse", QJsonObject{{"text", stalledHtml}}}}).toJson();
         m_network.addFixture("GET", parseUrl, parseResponse);
-        m_network.addFixture("GET", QUrl("https://math.example/stalled.svg"), "<svg/>", "image/svg+xml");
+        m_network.addFixture("GET", QUrl("https://upload.wikimedia.org/math/stalled.svg"), "<svg/>", "image/svg+xml");
         WikipediaPageClientLimits limits;
         limits.formulaEnrichmentTimeoutMs = 40;
         WikipediaPageClient client(nullptr, limits);
@@ -317,12 +404,39 @@ class WikipediaPageClientTest : public QObject {
         QCOMPARE(m_network.pendingReplyCount(), 1); // Optional formula stage
 
         QTRY_COMPARE_WITH_TIMEOUT(pages.count(), 1, 1000);
-        QVERIFY(pages.first().first().value<page>().extract.contains("stalled.svg"));
+        const QString extract = pages.first().first().value<page>().extract;
+        QVERIFY(extract.contains("Text"));
+        QVERIFY(!extract.contains("stalled.svg"));
+        QVERIFY(!extract.contains("src=\"https://upload.wikimedia.org"));
+        QVERIFY(!extract.contains("<img"));
         QCOMPARE(errors.count(), 0);
         m_network.completeNextReply(); // Late optional response must not republish the article.
         QTest::qWait(25);
         QCOMPARE(pages.count(), 1);
         QCOMPARE(m_network.pendingReplyCount(), 0);
+    }
+
+    void testFailedFormulaEnrichmentRemovesRemoteImageSource() {
+        const QUrl parseUrl("https://en.wikipedia.org/w/api.php?action=parse&format=json&prop=text&disableeditsection=true&formatversion=2&pageid=736");
+        const QString formulaUrl = QStringLiteral("https://upload.wikimedia.org/math/unavailable.svg");
+        m_network.addFixture("GET", m_pageUrl,
+            R"({"query":{"pages":{"736":{"pageid":736,"title":"Formula article"}}}})");
+        m_network.addFixture("GET", parseUrl, QJsonDocument(QJsonObject{
+            {"parse", QJsonObject{{"text", QStringLiteral("<p>Text<img class='mwe-math-fallback-image-inline' src='%1'> after</p>").arg(formulaUrl)}}}
+        }).toJson());
+        m_network.addFixture("GET", QUrl(formulaUrl), "unavailable", "text/plain", 404);
+
+        WikipediaPageClient client;
+        QSignalSpy pages(&client, &WikipediaPageClient::pageReceived);
+        client.getPageById(736);
+
+        QTRY_COMPARE_WITH_TIMEOUT(pages.count(), 1, 5'000);
+        const QString extract = pages.first().first().value<page>().extract;
+        QVERIFY(extract.contains("Text"));
+        QVERIFY(extract.contains("after"));
+        QVERIFY(!extract.contains("unavailable.svg"));
+        QVERIFY(!extract.contains("<img"));
+        QCOMPARE(m_network.requestCount(), 3);
     }
 
     void testFormulaFanoutStopsAtTwoAndCanceledWorkDoesNotContinue() {
@@ -332,7 +446,7 @@ class WikipediaPageClientTest : public QObject {
         QString html;
         constexpr int formulaCount = 12;
         for (int i = 0; i < formulaCount; ++i) {
-            const QString url = QString("https://math.example/canceled-%1.svg").arg(i);
+            const QString url = QString("https://upload.wikimedia.org/math/canceled-%1.svg").arg(i);
             html += QString("<img class=\"mwe-math-fallback-image-inline\" src=\"%1\">").arg(url);
             m_network.addFixture("GET", QUrl(url), "<svg/>", "image/svg+xml");
         }
