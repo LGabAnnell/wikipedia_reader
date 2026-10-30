@@ -85,8 +85,9 @@ void ImageHomeModel::loadImagesForPage(int pageId) {
         m_isLoading = false;
         m_isLoadingMore = false;
         m_errorMessage = tr("Unable to load gallery for this article.");
-        if (previousHasMore)
+        if (previousHasMore) {
             emit hasMoreChanged();
+        }
         emit currentPageIdChanged();
         emit loadingChanged();
         emit loadingMoreChanged();
@@ -110,23 +111,25 @@ void ImageHomeModel::loadImagesForPage(int pageId) {
     emit imageDescriptionsChanged();
     emit loadingChanged();
     emit loadingMoreChanged();
-    if (previousHasMore)
+    if (previousHasMore) {
         emit hasMoreChanged();
+    }
     emit errorChanged();
     m_pageClient->getPageWithImages(pageId);
 }
 
 void ImageHomeModel::receiveGalleryBatch(const page &article, bool append) {
-    const QString continuation = continuationKey(article.imageContinuation);
-    if (append && !article.imageContinuation.isEmpty()
+    if (const QString continuation = continuationKey(article.imageContinuation);
+        append && !article.imageContinuation.isEmpty()
         && (article.imageContinuation == m_requestedContinuation || m_seenContinuations.contains(continuation))) {
         const bool previousHasMore = hasMore();
         m_continuation.clear();
         m_requestedContinuation.clear();
         m_errorMessage = tr("More images could not be loaded because Wikipedia repeated a gallery page.");
         m_isLoadingMore = false;
-        if (previousHasMore != hasMore())
+        if (previousHasMore != hasMore()) {
             emit hasMoreChanged();
+        }
         emit errorChanged();
         emit loadingMoreChanged();
         return;
@@ -181,7 +184,7 @@ void ImageHomeModel::loadMore() {
     m_pageClient->getPageWithImages(m_currentPageId, m_continuation);
 }
 
-void ImageHomeModel::selectImage(int index) {
+void ImageHomeModel::selectImage(int index) const {
     if (index < 0 || index >= m_imageUrls.size() || !ImageSelectionState::instance())
         return;
     ImageSelectionState::instance()->selectGalleryImageForPage(m_imageUrls, m_imageDescriptions,

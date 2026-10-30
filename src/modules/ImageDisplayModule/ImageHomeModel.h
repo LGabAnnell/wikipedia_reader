@@ -28,20 +28,20 @@ class ImageHomeModel : public QObject
 public:
     explicit ImageHomeModel(QObject *parent = nullptr);
 
-    bool isLoading() const { return m_isLoading; }
-    bool isLoadingMore() const { return m_isLoadingMore; }
-    bool hasMore() const { return !m_continuation.isEmpty(); }
-    QString errorMessage() const { return m_errorMessage; }
-    QStringList imageUrls() const;
-    QStringList imageDescriptions() const;
-    QString articleTitle() const;
-    int currentPageId() const;
+    [[nodiscard]] bool isLoading() const { return m_isLoading; }
+    [[nodiscard]] bool isLoadingMore() const { return m_isLoadingMore; }
+    [[nodiscard]] bool hasMore() const { return !m_continuation.isEmpty(); }
+    [[nodiscard]] QString errorMessage() const { return m_errorMessage; }
+    [[nodiscard]] QStringList imageUrls() const;
+    [[nodiscard]] QStringList imageDescriptions() const;
+    [[nodiscard]] QString articleTitle() const;
+    [[nodiscard]] int currentPageId() const;
 
     Q_INVOKABLE void loadImagesForCurrentPage();
     Q_INVOKABLE void loadImagesForPage(int pageId);
     Q_INVOKABLE void loadMore();
     /** @brief Select a thumbnail and fetch its fullscreen preview and caption. */
-    Q_INVOKABLE void selectImage(int index);
+    Q_INVOKABLE void selectImage(int index) const;
 
 signals:
     void loadingChanged();

@@ -66,7 +66,10 @@ class HomeModel : public QObject {
     QPointer<SettingsState> m_settings;
     QPointer<WikipediaFeaturedClient> m_featuredClient;
     QPointer<WikipediaHomeClient> m_homeClient;
-    QString m_featuredArticleTitle, m_featuredArticleExtract, m_featuredArticleImageUrl, m_featuredArticleUrl;
+    QString m_featuredArticleTitle;
+    QString m_featuredArticleExtract;
+    QString m_featuredArticleImageUrl;
+    QString m_featuredArticleUrl;
     int m_featuredArticlePageId = 0;
     QVector<news_item> m_newsItems;
     QVector<on_this_day_event> m_onThisDayEvents;

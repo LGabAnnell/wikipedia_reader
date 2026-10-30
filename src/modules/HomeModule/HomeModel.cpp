@@ -61,7 +61,7 @@ HomeModel::HomeModel(QObject *parent) : QObject(parent) {
 }
 
 void HomeModel::setStatus(Section section, Status status, const QString &error) {
-    const int i = static_cast<int>(section);
+    const auto i = static_cast<int>(section);
     m_status[i] = status;
     m_errors[i] = error;
     emit statusChanged();
@@ -126,9 +126,18 @@ void HomeModel::loadSection(Section s) {
         break;
     }
 }
+
 void HomeModel::handleHomeError(WikipediaHomeClient::Section section, const QString &error) {
-    setStatus(section == WikipediaHomeClient::News        ? News
-              : section == WikipediaHomeClient::OnThisDay ? OnThisDay
-                                                          : DidYouKnow,
-              Error, error);
+    Section sectionToSet = DidYouKnow;
+    switch (section) {
+    case WikipediaHomeClient::News:
+        sectionToSet = News;
+        break;
+    case WikipediaHomeClient::OnThisDay:
+        sectionToSet = OnThisDay;
+        break;
+    default:
+        break;
+    }
+    setStatus(sectionToSet, Error, error);
 }

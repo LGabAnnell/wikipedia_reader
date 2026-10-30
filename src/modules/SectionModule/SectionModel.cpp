@@ -56,8 +56,9 @@ void SectionModel::clearSections() {
 }
 
 void SectionModel::handleSectionsReceived(const QVector<section> &sections) {
-    if (!m_acceptResponses)
+    if (!m_acceptResponses) {
         return;
+    }
     m_sections = sections;
     m_isLoading = false;
     emit sectionsChanged();
@@ -65,8 +66,9 @@ void SectionModel::handleSectionsReceived(const QVector<section> &sections) {
 }
 
 void SectionModel::handleError(const QString &error) {
-    if (!m_acceptResponses)
+    if (!m_acceptResponses) {
         return;
+    }
     m_errorMessage = error;
     m_isLoading = false;
     emit errorChanged();

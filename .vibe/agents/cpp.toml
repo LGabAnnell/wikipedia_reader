@@ -1,3 +1,5 @@
 name = "cpp"
 system_prompt_id = "cpp"
-tools = ["web_search"]
+
+[tools.web_search]
+permission = "always"

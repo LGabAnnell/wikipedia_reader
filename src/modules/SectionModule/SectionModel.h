@@ -22,9 +22,9 @@ class SectionModel : public QObject
 public:
     explicit SectionModel(QObject *parent = nullptr);
     
-    QVector<section> sections() const;
-    bool isLoading() const;
-    QString errorMessage() const;
+    [[nodiscard]] QVector<section> sections() const;
+    [[nodiscard]] bool isLoading() const;
+    [[nodiscard]] QString errorMessage() const;
     
     Q_INVOKABLE void fetchSections(const QString &title);
     Q_INVOKABLE void clearSections();
